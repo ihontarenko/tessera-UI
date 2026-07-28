@@ -1,7 +1,7 @@
 import { Rows3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { QUICK_FILTERS } from "@/components/board/boardFilters"
+import type { BoardFilter } from "@/components/board/boardFilters"
 import { SWIMLANE_LABEL } from "@/components/board/swimlanes"
 import { useLanguage } from "@/context/LanguageContext"
 import type { SwimlaneStrategy } from "@/api/boards"
@@ -11,23 +11,28 @@ import { resolveText } from "@/lib/translatableText"
 const SWIMLANE_STRATEGIES: SwimlaneStrategy[] = ["NONE", "ASSIGNEE", "EPIC", "PRIORITY"]
 
 /**
- * The board's view controls: the swimlane selector (ticket 04) and the stub quick-filter toggles
- * (ticket 05).
+ * The board's view controls: the swimlane selector (ticket 04) and the quick-filter toggles.
  *
  * The two differ in scope on purpose. The swimlane strategy is a property of the *board* — every
  * viewer sees the same grouping — so it persists and only an administrator may change it; everyone
- * else sees the current choice, disabled. The quick filters are per-viewer and never leave the client.
+ * else sees the current choice, disabled. A quick filter is per-viewer: it is evaluated server-side as
+ * jME (ADR-0008) but never stored, so turning one on changes what this member sees and nothing else.
+ *
+ * The toggles arrive as data rather than being listed here, so the set of built-in filters is the
+ * backend's to change.
  */
 export function BoardToolbar({
   swimlaneStrategy,
   canChangeSwimlanes,
   onSwimlaneChange,
+  filters,
   activeFilterIds,
   onToggleFilter,
 }: {
   swimlaneStrategy: SwimlaneStrategy
   canChangeSwimlanes: boolean
   onSwimlaneChange: (strategy: SwimlaneStrategy) => void
+  filters: BoardFilter[]
   activeFilterIds: string[]
   onToggleFilter: (filterId: string) => void
 }) {
@@ -61,7 +66,7 @@ export function BoardToolbar({
       </Select>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        {QUICK_FILTERS.map((filter) => {
+        {filters.map((filter) => {
           const active = activeFilterIds.includes(filter.id)
           return (
             <Button

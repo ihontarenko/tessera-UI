@@ -1,51 +1,73 @@
 import type { BoardCard } from "@/api/boards"
+import type { BoardFilterView } from "@/api/boardFilters"
 import type { TranslatableText } from "@/lib/translatableText"
 
 /**
- * What the board actually shows (Phase-2 tickets 05/06): the quick-filter toggles a member turns on,
- * plus the board's done-threshold. Both narrow the already-loaded payload client-side — there is no
- * backend filter endpoint.
+ * What the board actually shows: the quick filters a member turns on, plus the board's done-threshold.
  *
- * The quick filters are a deliberate **stub** for ADR-0008's jME engine: each carries the jME
- * expression it stands in for, and {@link BoardFilter.matches} is the seam that expression evaluator
- * replaces. Keeping the expressions here makes the toggles the acceptance oracle for the real thing —
- * the jME version must agree with the predicate beside it, card for card.
+ * The two narrow in different places, and that difference is the whole design (ADR-0008). The
+ * done-threshold narrows what the board *contains*, so it runs here and WIP counts are taken after it.
+ * A quick filter narrows what *one viewer is looking at*, so the predicate is evaluated **server-side**
+ * as jME and the response marks the surviving cards in `matchedCardIds` — this module only hides the
+ * rest. A column at its limit does not stop being at its limit because someone filtered down to their
+ * own issues.
+ *
+ * The Phase-2 stub that lived here — three hardcoded predicates evaluated over the loaded payload — is
+ * gone. The seam it was built against is what stayed: same `BoardFilter` shape, same toggle ids, same
+ * hook-free key-returning module; only the evaluator moved to the backend. The expressions are no
+ * longer written here at all, because the server now owns what a filter *means*.
  */
 
-export interface BoardFilterContext {
-  currentMemberId: string | null
-}
-
+/** A toggle as the toolbar renders it: server-defined, with its copy resolved by the component. */
 export interface BoardFilter {
   id: string
   /** The toggle's copy — the module is hook-free, so the toolbar resolves the key. */
   label: TranslatableText
-  /** The ADR-0008 jME expression this predicate stands in for, verbatim. */
+  /** The jME predicate, authored server-side (ADR-0008) and handed straight back through `?filter=`. */
   expression: string
-  matches: (card: BoardCard, context: BoardFilterContext) => boolean
 }
 
-export const QUICK_FILTERS: BoardFilter[] = [
-  {
-    id: "my-issues",
-    label: { key: "board.filter.myIssues", text: "My issues" },
-    expression: "issue.assignee == #currentMember",
-    matches: (card, context) => context.currentMemberId !== null && card.assigneeId === context.currentMemberId,
-  },
-  {
-    id: "unassigned",
-    label: { key: "board.filter.unassigned", text: "Unassigned" },
-    expression: "issue.assignee is null",
-    matches: (card) => card.assigneeId === null,
-  },
-  {
-    // `open` is the server's projection of the `resolution IS NULL ⇔ open` invariant (ADR-0004).
-    id: "unresolved",
-    label: { key: "board.filter.unresolved", text: "Unresolved" },
-    expression: "issue.resolution is null",
-    matches: (card) => card.open,
-  },
-]
+/** The backend's catalog in the shape the toolbar wants, with its translation key rebuilt. */
+export function toBoardFilters(catalog: BoardFilterView[]): BoardFilter[] {
+  return catalog.map((filter) => ({
+    id: filter.id,
+    label: { key: filter.labelKey, text: filter.label },
+    expression: filter.expression,
+  }))
+}
+
+/**
+ * The active toggles as one predicate, or `null` when none are on.
+ *
+ * Each is bracketed before being joined: a predicate is arbitrary jME, and `in` binds looser than
+ * `and` there, so concatenating two correct filters without brackets can silently produce a third
+ * meaning. `null` is "send no filter at all" rather than a predicate that matches everything — the
+ * server then skips hydrating the filter view-model entirely.
+ */
+export function composeFilterExpression(filters: BoardFilter[], activeFilterIds: string[]): string | null {
+  const active = filters.filter((filter) => activeFilterIds.includes(filter.id))
+
+  if (active.length === 0) {
+    return null
+  }
+
+  return active.map((filter) => `(${filter.expression})`).join(" and ")
+}
+
+/**
+ * The cards the server's predicate selected. `null` means the request carried no filter, so nothing is
+ * hidden — distinct from an empty list, which means the filter matched nothing and the board should
+ * look empty rather than unfiltered.
+ */
+export function applyMatchedCardIds(cards: BoardCard[], matchedCardIds: string[] | null): BoardCard[] {
+  if (matchedCardIds === null) {
+    return cards
+  }
+
+  const matched = new Set(matchedCardIds)
+
+  return cards.filter((card) => matched.has(card.id))
+}
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000
 
@@ -55,7 +77,7 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000
  * resurrects it. A `null` threshold drops nothing; a DONE card with no recorded completion time is
  * kept rather than guessed at.
  *
- * Distinct from {@link applyQuickFilters}: this narrows what the board *contains*, so WIP counts are
+ * Distinct from {@link applyMatchedCardIds}: this narrows what the board *contains*, so WIP counts are
  * taken after it, whereas a quick filter only narrows what one viewer is looking at.
  */
 export function withoutAgedOutCards(
@@ -75,19 +97,4 @@ export function withoutAgedOutCards(
     }
     return new Date(card.resolvedAt).getTime() >= cutoff
   })
-}
-
-/** The active quick filters, AND-combined (ticket 05) — a per-viewer narrowing, never persisted. */
-export function applyQuickFilters(
-  cards: BoardCard[],
-  activeFilterIds: string[],
-  context: BoardFilterContext,
-): BoardCard[] {
-  const activeFilters = QUICK_FILTERS.filter((filter) => activeFilterIds.includes(filter.id))
-
-  if (activeFilters.length === 0) {
-    return cards
-  }
-
-  return cards.filter((card) => activeFilters.every((filter) => filter.matches(card, context)))
 }

@@ -50,11 +50,27 @@ export interface BoardResponse {
   activeSprint: ActiveSprintView | null
   columns: BoardColumnView[]
   cards: BoardCard[]
+  /**
+   * Which cards satisfied the request's `filter` predicate (ADR-0008), or `null` when it carried none.
+   *
+   * The filtered-out cards are still sent, and marked rather than dropped, because a filter narrows
+   * what one viewer is looking at and not what the board holds — WIP counts have to stay taken over
+   * everything on the board.
+   */
+  matchedCardIds: string[] | null
 }
 
-// Addressed by the same {projectId} the rest of the project API uses — the board is 1:1 with a project.
-export function getBoard(projectId: string) {
-  return httpClient.get<BoardResponse>(`/projects/${projectId}/board`).then((response) => response.data)
+/**
+ * Addressed by the same {projectId} the rest of the project API uses — the board is 1:1 with a project.
+ *
+ * `filter` is a jME predicate over one issue (ADR-0008). Only the expression travels: the server
+ * already holds the issues, so filtering costs one query parameter instead of a round trip of the
+ * board's own payload — and it keeps working when a filter has to outgrow the loaded slice.
+ */
+export function getBoard(projectId: string, filter: string | null = null) {
+  return httpClient
+    .get<BoardResponse>(`/projects/${projectId}/board`, filter === null ? undefined : { params: { filter } })
+    .then((response) => response.data)
 }
 
 // ── Move (Phase-2 ticket 02) ───────────────────────────────────────────────────────────────────────

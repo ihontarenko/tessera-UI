@@ -14,9 +14,14 @@ import { BoardGrid } from "@/components/board/BoardGrid"
 import { BoardSettingsSheet } from "@/components/board/BoardSettingsSheet"
 import { BoardToolbar } from "@/components/board/BoardToolbar"
 import { SprintHeader } from "@/components/board/SprintHeader"
-import { applyQuickFilters, withoutAgedOutCards } from "@/components/board/boardFilters"
+import {
+  applyMatchedCardIds,
+  composeFilterExpression,
+  toBoardFilters,
+  withoutAgedOutCards,
+} from "@/components/board/boardFilters"
 import { groupIntoSwimlanes } from "@/components/board/swimlanes"
-import { useCurrentMember } from "@/hooks/useCurrentMember"
+import { fetchBoardFilters } from "@/api/boardFilters"
 import { useLanguage } from "@/context/LanguageContext"
 import {
   getBoard,
@@ -45,7 +50,6 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   const { t } = useLanguage()
   const queryClient = useQueryClient()
   const [, setSearchParameters] = useSearchParams()
-  const boardKey = ["board", projectId]
 
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -58,9 +62,22 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   const canAdminister = permissions.includes("ADMINISTER_PROJECT")
   const canDrag = canEdit || canTransition
 
-  const { data: board, isLoading } = useQuery({ queryKey: boardKey, queryFn: () => getBoard(projectId) })
+  const { data: filterCatalog } = useQuery({ queryKey: ["board-filters"], queryFn: fetchBoardFilters })
+  const boardFilters = useMemo(() => toBoardFilters(filterCatalog ?? []), [filterCatalog])
+  const filterExpression = useMemo(
+    () => composeFilterExpression(boardFilters, activeFilterIds),
+    [boardFilters, activeFilterIds],
+  )
+
+  // The expression is part of the cache key: the server evaluates the predicate, so two filter
+  // selections are two different responses rather than one payload narrowed twice.
+  const boardKey = ["board", projectId, filterExpression]
+
+  const { data: board, isLoading } = useQuery({
+    queryKey: boardKey,
+    queryFn: () => getBoard(projectId, filterExpression),
+  })
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
-  const { data: currentMember } = useCurrentMember()
 
   const moveMutation = useMutation({
     mutationFn: (request: BoardMoveRequest) => moveCard(projectId, request),
@@ -111,15 +128,15 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
     [board],
   )
 
+  // What this viewer is looking at: the server evaluated the predicate and marked the survivors, so
+  // all that is left here is hiding the rest — the only part that knows whose view it is.
   const swimlanes = useMemo(() => {
     if (!board) {
       return []
     }
 
-    const shown = applyQuickFilters(cardsOnBoard, activeFilterIds, { currentMemberId: currentMember?.id ?? null })
-
-    return groupIntoSwimlanes(shown, board.swimlaneStrategy)
-  }, [board, cardsOnBoard, activeFilterIds, currentMember])
+    return groupIntoSwimlanes(applyMatchedCardIds(cardsOnBoard, board.matchedCardIds), board.swimlaneStrategy)
+  }, [board, cardsOnBoard])
 
   function attemptMove(request: BoardMoveRequest) {
     setPendingMove(request)
@@ -185,6 +202,7 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
           swimlaneStrategy={board.swimlaneStrategy}
           canChangeSwimlanes={canAdminister && !swimlaneMutation.isPending}
           onSwimlaneChange={(strategy) => swimlaneMutation.mutate(strategy)}
+          filters={boardFilters}
           activeFilterIds={activeFilterIds}
           onToggleFilter={toggleFilter}
         />
