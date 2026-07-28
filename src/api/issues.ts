@@ -4,7 +4,6 @@ import type { MemberSummary } from "@/api/members"
 // ── Shared catalog / summary shapes (mirror the backend dto/issue.* records) ─────────────────────
 
 export type StatusCategory = "TODO" | "IN_PROGRESS" | "DONE"
-export type VersionState = "UNRELEASED" | "RELEASED" | "ARCHIVED"
 export type LinkDirection = "OUTWARD" | "INWARD"
 
 export interface IssueTypeSummary {
@@ -30,17 +29,6 @@ export interface StatusSummary {
 export interface ResolutionSummary {
   id: string
   name: string
-}
-
-export interface ComponentRef {
-  id: string
-  name: string
-}
-
-export interface VersionRef {
-  id: string
-  name: string
-  state: VersionState
 }
 
 export interface IssueRef {
@@ -116,9 +104,6 @@ export interface IssueDetail {
   storyPoints: number | null
   rank: string
   labels: string[]
-  components: ComponentRef[]
-  affectsVersions: VersionRef[]
-  fixVersions: VersionRef[]
   links: IssueLinkView[]
   availableTransitions: TransitionOption[]
   createdAt: string
@@ -184,9 +169,6 @@ export function setIssueParent(issueId: string, parentId: string | null) {
 
 export interface UpdateOrganizationRequest {
   labels: string[]
-  componentIds: string[]
-  affectsVersionIds: string[]
-  fixVersionIds: string[]
 }
 
 export function updateIssueOrganization(issueId: string, request: UpdateOrganizationRequest) {
@@ -247,81 +229,6 @@ export interface ActivityLog {
 
 export function listHistory(issueId: string) {
   return httpClient.get<ActivityLog[]>(`/issues/${issueId}/history`).then((response) => response.data)
-}
-
-// ── Components ───────────────────────────────────────────────────────────────────────────────────
-
-export interface ComponentResponse {
-  id: string
-  projectId: string
-  name: string
-  lead: MemberSummary | null
-  description: string | null
-}
-
-export interface SaveComponentRequest {
-  name: string
-  leadMemberId?: string | null
-  description?: string | null
-}
-
-export function listComponents(projectId: string) {
-  return httpClient.get<ComponentResponse[]>(`/projects/${projectId}/components`).then((response) => response.data)
-}
-
-export function createComponent(projectId: string, request: SaveComponentRequest) {
-  return httpClient
-    .post<ComponentResponse>(`/projects/${projectId}/components`, request)
-    .then((response) => response.data)
-}
-
-export function updateComponent(projectId: string, componentId: string, request: SaveComponentRequest) {
-  return httpClient
-    .put<ComponentResponse>(`/projects/${projectId}/components/${componentId}`, request)
-    .then((response) => response.data)
-}
-
-export function deleteComponent(projectId: string, componentId: string) {
-  return httpClient
-    .delete<void>(`/projects/${projectId}/components/${componentId}`)
-    .then((response) => response.data)
-}
-
-// ── Versions ─────────────────────────────────────────────────────────────────────────────────────
-
-export interface VersionResponse {
-  id: string
-  projectId: string
-  name: string
-  description: string | null
-  releaseDate: string | null
-  state: VersionState
-  sequence: number
-}
-
-export interface SaveVersionRequest {
-  name: string
-  description?: string | null
-  releaseDate?: string | null
-  state: VersionState
-}
-
-export function listVersions(projectId: string) {
-  return httpClient.get<VersionResponse[]>(`/projects/${projectId}/versions`).then((response) => response.data)
-}
-
-export function createVersion(projectId: string, request: SaveVersionRequest) {
-  return httpClient.post<VersionResponse>(`/projects/${projectId}/versions`, request).then((response) => response.data)
-}
-
-export function updateVersion(projectId: string, versionId: string, request: SaveVersionRequest) {
-  return httpClient
-    .put<VersionResponse>(`/projects/${projectId}/versions/${versionId}`, request)
-    .then((response) => response.data)
-}
-
-export function deleteVersion(projectId: string, versionId: string) {
-  return httpClient.delete<void>(`/projects/${projectId}/versions/${versionId}`).then((response) => response.data)
 }
 
 // ── Catalog (global, read-only) ──────────────────────────────────────────────────────────────────

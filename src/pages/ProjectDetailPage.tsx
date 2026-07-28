@@ -8,8 +8,6 @@ import { MemberChip } from "@/components/MemberChip"
 import { ProjectTypeBadge } from "@/components/projects/ProjectTypeBadge"
 import { ProjectSettingsForm } from "@/components/projects/ProjectSettingsForm"
 import { ProjectAccessPanel } from "@/components/projects/ProjectAccessPanel"
-import { ProjectComponentsPanel } from "@/components/projects/ProjectComponentsPanel"
-import { ProjectVersionsPanel } from "@/components/projects/ProjectVersionsPanel"
 import { IssuesPanel } from "@/components/issues/IssuesPanel"
 import { BoardPanel } from "@/components/board/BoardPanel"
 import { BacklogPanel } from "@/components/backlog/BacklogPanel"
@@ -126,25 +124,13 @@ export function ProjectDetailPage() {
         </TabsContent>
 
         <TabsContent value="settings">
-          <div className="space-y-8">
-            {canAdminister ? (
-              <ProjectSettingsForm project={project} />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                You need the Administer project permission to edit these settings.
-              </p>
-            )}
-
-            <section className="space-y-2">
-              <h3 className="font-display text-sm font-semibold tracking-[-0.01em]">Components</h3>
-              <ProjectComponentsPanel projectId={project.id} canAdminister={canAdminister} />
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="font-display text-sm font-semibold tracking-[-0.01em]">Versions</h3>
-              <ProjectVersionsPanel projectId={project.id} canAdminister={canAdminister} />
-            </section>
-          </div>
+          {canAdminister ? (
+            <ProjectSettingsForm project={project} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You need the Administer project permission to edit these settings.
+            </p>
+          )}
         </TabsContent>
 
         <TabsContent value="access">

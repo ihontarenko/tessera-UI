@@ -10,7 +10,7 @@ const upcomingModules = [
   {
     icon: FolderKanban,
     title: "Projects",
-    description: "Multi-project workspaces, each with its own issue key, components and versions.",
+    description: "Multi-project workspaces, each with its own issue key, schemes and membership.",
   },
   {
     icon: Columns3,

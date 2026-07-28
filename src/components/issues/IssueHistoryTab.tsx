@@ -6,6 +6,8 @@ import { MemberChip } from "@/components/MemberChip"
 import { listHistory } from "@/api/issues"
 
 // Stable field keys → human labels (the backend records the key; the UI localizes it — ADR-0007).
+// Only fields the tracker still has are listed. History written before components and versions were
+// removed (ADR-0017) falls through to the raw key rather than naming a field that no longer exists.
 const FIELD_LABELS: Record<string, string> = {
   created: "Created",
   summary: "Summary",
@@ -18,9 +20,6 @@ const FIELD_LABELS: Record<string, string> = {
   resolution: "Resolution",
   parent: "Parent",
   labels: "Labels",
-  components: "Components",
-  affectsVersions: "Affects versions",
-  fixVersions: "Fix versions",
   link: "Link",
 }
 

@@ -15,9 +15,7 @@ import {
   addIssueLink,
   fetchCatalog,
   fetchLinkTypes,
-  listComponents,
   listIssues,
-  listVersions,
   removeIssueLink,
   setIssueParent,
   transitionIssue,
@@ -39,22 +37,14 @@ interface Permissions {
 }
 
 /** The Details tab: read-out of every field plus inline editors for the fields (ticket 07), the
- *  workflow transition control (ticket 09), the parent (ticket 10), organization (ticket 11) and
- *  links (ticket 12). Each mutation returns the refreshed issue, which updates the shared query. */
+ *  workflow transition control (ticket 09), the parent (ticket 10), labels (ticket 11) and links
+ *  (ticket 12). Each mutation returns the refreshed issue, which updates the shared query. */
 export function IssueDetailsTab({ issue, permissions }: { issue: IssueDetail; permissions: Permissions }) {
   const queryClient = useQueryClient()
   const issueKey = ["issue", issue.id]
 
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
   const { data: members = [] } = useQuery({ queryKey: ["members", "all"], queryFn: () => searchMembers() })
-  const { data: components = [] } = useQuery({
-    queryKey: ["components", issue.projectId],
-    queryFn: () => listComponents(issue.projectId),
-  })
-  const { data: versions = [] } = useQuery({
-    queryKey: ["versions", issue.projectId],
-    queryFn: () => listVersions(issue.projectId),
-  })
   const { data: linkTypes = [] } = useQuery({ queryKey: ["link-types"], queryFn: fetchLinkTypes })
   const { data: projectIssues = [] } = useQuery({
     queryKey: ["issues", issue.projectId],
@@ -140,35 +130,26 @@ export function IssueDetailsTab({ issue, permissions }: { issue: IssueDetail; pe
     onError: (error) => toast.error(apiErrorMessage(error, "Could not set the parent")),
   })
 
-  // ── Organization (labels / components / versions) ────────────────────────────────
-  const [organizationEditing, setOrganizationEditing] = useState(false)
+  // ── Labels ───────────────────────────────────────────────────────────────────────
+  const [labelsEditing, setLabelsEditing] = useState(false)
   const [labelsText, setLabelsText] = useState("")
-  const [componentIds, setComponentIds] = useState<string[]>([])
-  const [affectsIds, setAffectsIds] = useState<string[]>([])
-  const [fixIds, setFixIds] = useState<string[]>([])
 
-  function startOrganizationEditing() {
+  function startLabelsEditing() {
     setLabelsText(issue.labels.join(", "))
-    setComponentIds(issue.components.map((component) => component.id))
-    setAffectsIds(issue.affectsVersions.map((version) => version.id))
-    setFixIds(issue.fixVersions.map((version) => version.id))
-    setOrganizationEditing(true)
+    setLabelsEditing(true)
   }
 
-  const organizationMutation = useMutation({
+  const labelsMutation = useMutation({
     mutationFn: () =>
       updateIssueOrganization(issue.id, {
         labels: labelsText.split(",").map((label) => label.trim()).filter(Boolean),
-        componentIds,
-        affectsVersionIds: affectsIds,
-        fixVersionIds: fixIds,
       }),
     onSuccess: (updated) => {
       applyUpdated(updated)
-      setOrganizationEditing(false)
-      toast.success("Organization updated")
+      setLabelsEditing(false)
+      toast.success("Labels updated")
     },
-    onError: (error) => toast.error(apiErrorMessage(error, "Could not update labels/components/versions")),
+    onError: (error) => toast.error(apiErrorMessage(error, "Could not update the labels")),
   })
 
   // ── Links ───────────────────────────────────────────────────────────────────────
@@ -395,46 +376,28 @@ export function IssueDetailsTab({ issue, permissions }: { issue: IssueDetail; pe
 
       <Separator />
 
-      {/* Organization */}
+      {/* Labels */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <SectionTitle>Labels, components & versions</SectionTitle>
-          {permissions.canEdit && !organizationEditing && (
-            <Button size="sm" variant="ghost" onClick={startOrganizationEditing}>
+          <SectionTitle>Labels</SectionTitle>
+          {permissions.canEdit && !labelsEditing && (
+            <Button size="sm" variant="ghost" onClick={startLabelsEditing}>
               Edit
             </Button>
           )}
         </div>
 
-        {organizationEditing ? (
+        {labelsEditing ? (
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>Labels (comma-separated)</Label>
               <Input value={labelsText} onChange={(event) => setLabelsText(event.target.value)} placeholder="backend, urgent" />
             </div>
-            <CheckboxList
-              title="Components"
-              options={components.map((component) => ({ id: component.id, label: component.name }))}
-              selected={componentIds}
-              onToggle={(id) => setComponentIds(toggle(componentIds, id))}
-            />
-            <CheckboxList
-              title="Affects versions"
-              options={versions.map((version) => ({ id: version.id, label: version.name }))}
-              selected={affectsIds}
-              onToggle={(id) => setAffectsIds(toggle(affectsIds, id))}
-            />
-            <CheckboxList
-              title="Fix versions"
-              options={versions.map((version) => ({ id: version.id, label: version.name }))}
-              selected={fixIds}
-              onToggle={(id) => setFixIds(toggle(fixIds, id))}
-            />
             <div className="flex justify-end gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setOrganizationEditing(false)}>
+              <Button size="sm" variant="ghost" onClick={() => setLabelsEditing(false)}>
                 Cancel
               </Button>
-              <Button size="sm" disabled={organizationMutation.isPending} onClick={() => organizationMutation.mutate()}>
+              <Button size="sm" disabled={labelsMutation.isPending} onClick={() => labelsMutation.mutate()}>
                 Save
               </Button>
             </div>
@@ -442,9 +405,6 @@ export function IssueDetailsTab({ issue, permissions }: { issue: IssueDetail; pe
         ) : (
           <div className="space-y-1.5 text-sm">
             <ChipRow label="Labels" values={issue.labels} />
-            <ChipRow label="Components" values={issue.components.map((component) => component.name)} />
-            <ChipRow label="Affects" values={issue.affectsVersions.map((version) => version.name)} />
-            <ChipRow label="Fix" values={issue.fixVersions.map((version) => version.name)} />
           </div>
         )}
       </section>
@@ -552,49 +512,4 @@ function ChipRow({ label, values }: { label: string; values: string[] }) {
       )}
     </div>
   )
-}
-
-function CheckboxList({
-  title,
-  options,
-  selected,
-  onToggle,
-}: {
-  title: string
-  options: Array<{ id: string; label: string }>
-  selected: string[]
-  onToggle: (id: string) => void
-}) {
-  return (
-    <div className="space-y-1">
-      <Label>{title}</Label>
-      {options.length === 0 ? (
-        <p className="text-xs text-muted-foreground">None defined in this project.</p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {options.map((option) => {
-            const active = selected.includes(option.id)
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => onToggle(option.id)}
-                className={
-                  active
-                    ? "rounded border border-primary bg-primary/10 px-2 py-0.5 text-xs"
-                    : "rounded border px-2 py-0.5 text-xs text-muted-foreground"
-                }
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function toggle(list: string[], id: string): string[] {
-  return list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id]
 }
