@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react"
 import { useTranslations } from "@/api/translations"
+import { interpolate, type Translate } from "@/lib/translatableText"
 
 export type Language = "en" | "uk"
 
@@ -8,7 +9,7 @@ const LANGUAGE_STORAGE_KEY = "tessera.language"
 interface LanguageContextValue {
   language: Language
   setLanguage: (language: Language) => void
-  t: (key: string, fallback: string) => string
+  t: Translate
   isLoading: boolean
 }
 
@@ -32,15 +33,17 @@ export function LanguageProvider({ children }: LanguageProviderProperties) {
     setLanguageState(nextLanguage)
   }
 
-  const value = useMemo<LanguageContextValue>(
-    () => ({
-      language,
-      setLanguage,
-      t: (key: string, fallback: string) => translations?.[key] ?? fallback,
-      isLoading,
-    }),
-    [language, translations, isLoading],
-  )
+  const value = useMemo<LanguageContextValue>(() => {
+    // Interpolation runs on whichever of translation-or-fallback was chosen, so a sentence still reads
+    // correctly before its row exists in Central.
+    const translate: Translate = (key, fallback, values) => {
+      const template = translations?.[key] ?? fallback
+
+      return values ? interpolate(template, values) : template
+    }
+
+    return { language, setLanguage, t: translate, isLoading }
+  }, [language, translations, isLoading])
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }

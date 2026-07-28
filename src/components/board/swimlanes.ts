@@ -1,4 +1,6 @@
 import type { BoardCard, SwimlaneStrategy } from "@/api/boards"
+import { memberName } from "@/lib/memberDisplay"
+import type { TranslatableText } from "@/lib/translatableText"
 
 /**
  * Swimlane grouping (Phase-2 ticket 04) — computed entirely on the client from keys the board payload
@@ -7,6 +9,10 @@ import type { BoardCard, SwimlaneStrategy } from "@/api/boards"
  *
  * The seam is {@link SwimlaneGrouping}: a new grouping kind is one entry in {@link GROUPINGS} plus one
  * enum value, never a change to the grouping algorithm itself.
+ *
+ * The module stays hook-free, so every lane title it produces is a {@link TranslatableText} the
+ * rendering component resolves: keyed where the title is UI copy ("Unassigned"), unkeyed where it is
+ * the member's, epic's or priority's own name — administrator-authored data that is never translated.
  */
 
 /** The single lane a `NONE` board renders into — a titleless lane holding every card. */
@@ -18,8 +24,13 @@ export const UNGROUPED_LANE_ID = "__ungrouped__"
 export interface Swimlane {
   id: string
   /** `null` renders no lane header — the flat, ungrouped board. */
-  title: string | null
+  title: TranslatableText | null
   cards: BoardCard[]
+}
+
+/** A lane title taken straight from the card's own data — a name an administrator authored. */
+function verbatimText(text: string): TranslatableText {
+  return { key: null, text }
 }
 
 /** How one grouping kind reads a card. Adding a kind means adding one of these — nothing else. */
@@ -27,34 +38,46 @@ interface SwimlaneGrouping {
   /** Stable lane key, or `null` when the card has no value for this grouping. */
   keyOf: (card: BoardCard) => string | null
   /** Lane title, derived from any card in the lane (they all share the key). */
-  titleOf: (card: BoardCard) => string
+  titleOf: (card: BoardCard) => TranslatableText
   /** Title of the catch-all lane collecting the cards `keyOf` returned `null` for. */
-  ungroupedTitle: string
+  ungroupedTitle: TranslatableText
 }
 
 const GROUPINGS: Record<Exclude<SwimlaneStrategy, "NONE">, SwimlaneGrouping> = {
   ASSIGNEE: {
     keyOf: (card) => card.assigneeId,
-    titleOf: (card) => card.assignee?.displayName ?? card.assignee?.email ?? "Unknown member",
-    ungroupedTitle: "Unassigned",
+    // `memberName` owns the display-name-then-email precedence every other member label uses; the
+    // empty fallback hands the "no name at all" case back here, where it becomes translatable copy.
+    titleOf: (card) => {
+      const name = memberName(card.assignee, "")
+
+      return name ? verbatimText(name) : { key: "board.swimlane.assignee.unknown", text: "Unknown member" }
+    },
+    ungroupedTitle: { key: "board.swimlane.assignee.ungrouped", text: "Unassigned" },
   },
   EPIC: {
     keyOf: (card) => card.epicKey,
-    titleOf: (card) => card.epicKey ?? "",
-    ungroupedTitle: "No epic",
+    titleOf: (card) => verbatimText(card.epicKey ?? ""),
+    ungroupedTitle: { key: "board.swimlane.epic.ungrouped", text: "No epic" },
   },
   PRIORITY: {
     keyOf: (card) => card.priorityId,
-    titleOf: (card) => card.priority?.name ?? "Unknown priority",
-    ungroupedTitle: "No priority",
+    // The guard sits on the name, not its container — a priority row that carries no usable name still
+    // gets the translated stand-in rather than a blank lane header.
+    titleOf: (card) => {
+      const name = card.priority?.name
+
+      return name ? verbatimText(name) : { key: "board.swimlane.priority.unknown", text: "Unknown priority" }
+    },
+    ungroupedTitle: { key: "board.swimlane.priority.ungrouped", text: "No priority" },
   },
 }
 
-export const SWIMLANE_LABEL: Record<SwimlaneStrategy, string> = {
-  NONE: "No swimlanes",
-  ASSIGNEE: "By assignee",
-  EPIC: "By epic",
-  PRIORITY: "By priority",
+export const SWIMLANE_LABEL: Record<SwimlaneStrategy, TranslatableText> = {
+  NONE: { key: "board.swimlane.strategy.none", text: "No swimlanes" },
+  ASSIGNEE: { key: "board.swimlane.strategy.assignee", text: "By assignee" },
+  EPIC: { key: "board.swimlane.strategy.epic", text: "By epic" },
+  PRIORITY: { key: "board.swimlane.strategy.priority", text: "By priority" },
 }
 
 /**

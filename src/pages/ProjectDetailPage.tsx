@@ -12,6 +12,7 @@ import { ProjectComponentsPanel } from "@/components/projects/ProjectComponentsP
 import { ProjectVersionsPanel } from "@/components/projects/ProjectVersionsPanel"
 import { IssuesPanel } from "@/components/issues/IssuesPanel"
 import { BoardPanel } from "@/components/board/BoardPanel"
+import { BacklogPanel } from "@/components/backlog/BacklogPanel"
 import { ADMINISTER_PROJECT, getProject } from "@/api/projects"
 
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
@@ -47,6 +48,9 @@ export function ProjectDetailPage() {
   }
 
   const canAdminister = project.myPermissions.includes(ADMINISTER_PROJECT)
+  // Whether this project plans in sprints is a property of its board, never of its type (ADR-0012) —
+  // so a Kanban team switched onto sprints gets the Backlog tab with no code change here.
+  const plansInSprints = project.boardScopeStrategy === "ACTIVE_SPRINT"
   // A KANBAN project opens on its board; every other type opens on the issue list (a TODO project keeps
   // its checklist view). The tab is a URL param so a board deep-link (?tab=board) lands on the board.
   const defaultTab = project.type === "KANBAN" ? "board" : "issues"
@@ -68,6 +72,7 @@ export function ProjectDetailPage() {
         <TabsList>
           <TabsTrigger value="issues">Issues</TabsTrigger>
           <TabsTrigger value="board">Board</TabsTrigger>
+          {plansInSprints && <TabsTrigger value="backlog">Backlog</TabsTrigger>}
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="access">Access</TabsTrigger>
@@ -80,6 +85,12 @@ export function ProjectDetailPage() {
         <TabsContent value="board">
           <BoardPanel projectId={project.id} permissions={project.myPermissions} />
         </TabsContent>
+
+        {plansInSprints && (
+          <TabsContent value="backlog">
+            <BacklogPanel projectId={project.id} permissions={project.myPermissions} />
+          </TabsContent>
+        )}
 
         <TabsContent value="overview">
           <div className="max-w-xl">

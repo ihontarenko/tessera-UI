@@ -1,6 +1,7 @@
 import { httpClient } from "@/api/httpClient"
 import type { MemberSummary } from "@/api/members"
 import type { IssueTypeSummary, PrioritySummary, StatusCategory, StatusSummary } from "@/api/issues"
+import type { ActiveSprintView, BoardScopeStrategy } from "@/api/sprints"
 
 // ── Board payload (mirrors the backend dto/board.* records) ──────────────────────────────────────
 
@@ -42,7 +43,11 @@ export interface BoardResponse {
   projectId: string
   name: string
   swimlaneStrategy: SwimlaneStrategy
+  /** Where `cards` came from: the whole project, or only the active sprint (ADR-0012). */
+  scopeStrategy: BoardScopeStrategy
   hideDoneOlderThanDays: number | null
+  /** The running sprint's context for the header — absent under `ALL_ISSUES`, or when none is running. */
+  activeSprint: ActiveSprintView | null
   columns: BoardColumnView[]
   cards: BoardCard[]
 }

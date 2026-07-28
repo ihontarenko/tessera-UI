@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
-import { Columns3, Settings } from "lucide-react"
+import { Columns3, ListTodo, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -12,9 +13,11 @@ import { IssueDetailModal } from "@/components/issues/IssueDetailModal"
 import { BoardGrid } from "@/components/board/BoardGrid"
 import { BoardSettingsSheet } from "@/components/board/BoardSettingsSheet"
 import { BoardToolbar } from "@/components/board/BoardToolbar"
+import { SprintHeader } from "@/components/board/SprintHeader"
 import { applyQuickFilters, withoutAgedOutCards } from "@/components/board/boardFilters"
 import { groupIntoSwimlanes } from "@/components/board/swimlanes"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
+import { useLanguage } from "@/context/LanguageContext"
 import {
   getBoard,
   moveCard,
@@ -39,7 +42,9 @@ const RESOLUTION_REQUIRED = "resolution is required"
  *  done-threshold and the active quick filters, then grouped into swimlanes. The server neither filters
  *  nor groups (ADR-0009) — it returns the slice and this component decides the view. */
 export function BoardPanel({ projectId, permissions }: { projectId: string; permissions: string[] }) {
+  const { t } = useLanguage()
   const queryClient = useQueryClient()
+  const [, setSearchParameters] = useSearchParams()
   const boardKey = ["board", projectId]
 
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
@@ -78,7 +83,7 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
       }
 
       setPendingMove(null)
-      toast.error(apiErrorMessage(error, "Could not move the card"))
+      toast.error(apiErrorMessage(error, t("board.error.move", "Could not move the card")))
     },
     onSuccess: (updatedCard) => {
       queryClient.setQueryData<BoardResponse>(boardKey, (current) =>
@@ -96,7 +101,7 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
     onSuccess: (settings) => {
       queryClient.setQueryData<BoardResponse>(boardKey, (current) => (current ? { ...current, ...settings } : current))
     },
-    onError: (error) => toast.error(apiErrorMessage(error, "Could not change the grouping")),
+    onError: (error) => toast.error(apiErrorMessage(error, t("board.error.grouping", "Could not change the grouping"))),
   })
 
   // What the board holds, once completed cards past the threshold have dropped off — the set WIP
@@ -133,6 +138,9 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
     moveMutation.reset()
   }
 
+  // One prompt, three slots — the field label, the trigger's placeholder and the disabled first item.
+  const chooseResolution = t("board.resolution.choose", "Choose a resolution")
+
   const pendingColumn = board?.columns.find((column) => column.id === pendingMove?.targetColumnId)
   const resolutionPromptOpen =
     pendingMove !== null && apiErrorMessage(moveMutation.error, "").toLowerCase().includes(RESOLUTION_REQUIRED)
@@ -142,11 +150,36 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   }
 
   if (!board || board.columns.length === 0) {
-    return <EmptyState icon={Columns3} title="No board" message="This project has no board columns yet." />
+    return (
+      <EmptyState
+        icon={Columns3}
+        title={t("board.empty.title", "No board")}
+        message={t("board.empty.message", "This project has no board columns yet.")}
+      />
+    )
+  }
+
+  // A sprint-scoped board with nothing running holds no cards by design — say so, and point at where a
+  // sprint is started, rather than rendering an empty grid that reads as broken.
+  if (board.scopeStrategy === "ACTIVE_SPRINT" && !board.activeSprint) {
+    return (
+      <EmptyState
+        icon={ListTodo}
+        title={t("board.noSprint.title", "No sprint is running")}
+        message={t("board.noSprint.message", "Plan and start a sprint on the backlog and it appears here.")}
+        action={
+          <Button size="sm" variant="outline" onClick={() => setSearchParameters({ tab: "backlog" }, { replace: true })}>
+            {t("board.noSprint.action", "Go to the backlog")}
+          </Button>
+        }
+      />
+    )
   }
 
   return (
     <div className="space-y-3">
+      {board.activeSprint ? <SprintHeader sprint={board.activeSprint} /> : null}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <BoardToolbar
           swimlaneStrategy={board.swimlaneStrategy}
@@ -158,7 +191,7 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
 
         {canAdminister && (
           <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
-            <Settings className="mr-1.5 size-3.5" /> Board settings
+            <Settings className="mr-1.5 size-3.5" /> {t("board.settings.title", "Board settings")}
           </Button>
         )}
       </div>
@@ -194,17 +227,19 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Resolution for “{pendingColumn?.name}”</DialogTitle>
+            <DialogTitle>
+              {t("board.resolution.title", "Resolution for “{column}”", { column: pendingColumn?.name ?? "" })}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-1.5">
-            <Label>Choose a resolution</Label>
+            <Label>{chooseResolution}</Label>
             <Select value={resolutionId} onValueChange={setResolutionId}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose a resolution" />
+                <SelectValue placeholder={chooseResolution} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={CHOOSE} disabled>
-                  Choose a resolution
+                  {chooseResolution}
                 </SelectItem>
                 {catalog?.resolutions.map((resolution) => (
                   <SelectItem key={resolution.id} value={resolution.id}>
@@ -216,13 +251,13 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={dismissResolutionPrompt}>
-              Cancel
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button
               disabled={resolutionId === CHOOSE || moveMutation.isPending}
               onClick={() => pendingMove && attemptMove({ ...pendingMove, resolutionId })}
             >
-              Confirm
+              {t("common.confirm", "Confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -15,10 +15,10 @@ export interface NavigationGroup {
   items: NavigationItem[]
 }
 
-// Phase 0 ships the shell with only the Dashboard actually built; the rest carry a "soon" badge so
-// the sidebar reads as a real tracker from day one (dense, not empty — Ivan's ask) while staying
-// honest about what exists. Flip each `isBuilt` to true as its module lands (Projects & Issues next,
-// then Boards, then Backlog/Sprints — see the Tessera roadmap).
+// Phase 0 shipped the shell with only the Dashboard actually built; anything still unbuilt carries a
+// "soon" badge so the sidebar reads as a real tracker from day one (dense, not empty — Ivan's ask)
+// while staying honest about what exists. Projects, Issues-in-project, Boards and now Backlog have
+// landed; Issues (the cross-project search) is what remains.
 export const navigationGroups: NavigationGroup[] = [
   {
     title: "Work",
@@ -53,7 +53,7 @@ export const navigationGroups: NavigationGroup[] = [
         translationKey: "nav.backlog",
         path: "/backlog",
         icon: ListTodo,
-        isBuilt: false,
+        isBuilt: true,
         description: "",
       },
       {

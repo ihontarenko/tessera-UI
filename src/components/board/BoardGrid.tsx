@@ -3,8 +3,10 @@ import type { DragEvent } from "react"
 import { MemberChip } from "@/components/MemberChip"
 import { IssueTypeIcon, PriorityBadge } from "@/components/issues/issueVisuals"
 import type { Swimlane } from "@/components/board/swimlanes"
+import { useLanguage } from "@/context/LanguageContext"
 import type { BoardCard, BoardColumnView, BoardMoveRequest } from "@/api/boards"
 import { cn } from "@/lib/helpers"
+import { resolveText } from "@/lib/translatableText"
 
 /** Every column cell — header and drop zone alike — shares this width so the grid stays aligned. */
 const COLUMN_WIDTH = "w-72 shrink-0"
@@ -37,6 +39,8 @@ export function BoardGrid({
   onSelectCard: (issueId: string) => void
   onMove: (request: BoardMoveRequest) => void
 }) {
+  const { t } = useLanguage()
+
   const countsByColumn = useMemo(() => {
     const counts = new Map<string, number>()
     for (const card of cardsOnBoard) {
@@ -78,7 +82,7 @@ export function BoardGrid({
             {lane.title !== null && (
               <header className="flex items-center gap-2 px-0.5">
                 <h3 className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {lane.title}
+                  {resolveText(t, lane.title)}
                 </h3>
                 <span className="text-xs tabular-nums text-muted-foreground/70">{lane.cards.length}</span>
                 <div className="h-px flex-1 bg-border" />
@@ -104,10 +108,14 @@ export function BoardGrid({
   )
 }
 
-/** Column name and its WIP state — over-max and under-min highlight, never enforce (soft limits). */
+/** Column name and its WIP state — over-max and under-min highlight, never enforce (soft limits). The
+ *  column's own name is administrator-authored data and stays untranslated. */
 function ColumnHeader({ column, count }: { column: BoardColumnView; count: number }) {
-  const overMax = column.maxIssues != null && count > column.maxIssues
-  const underMin = column.minIssues != null && count < column.minIssues
+  const { t } = useLanguage()
+  // Destructured so the null checks narrow the limits for the tooltip below, not just for the styling.
+  const { minIssues, maxIssues } = column
+  const overMax = maxIssues != null && count > maxIssues
+  const underMin = minIssues != null && count < minIssues
 
   return (
     <div
@@ -130,14 +138,14 @@ function ColumnHeader({ column, count }: { column: BoardColumnView; count: numbe
         )}
         title={
           overMax
-            ? `Over the limit of ${column.maxIssues}`
+            ? t("board.column.overLimit", "Over the limit of {maximum}", { maximum: maxIssues })
             : underMin
-              ? `Under the minimum of ${column.minIssues}`
+              ? t("board.column.underMinimum", "Under the minimum of {minimum}", { minimum: minIssues })
               : undefined
         }
       >
         {count}
-        {column.maxIssues != null ? ` / ${column.maxIssues}` : ""}
+        {maxIssues != null ? ` / ${maxIssues}` : ""}
       </span>
     </div>
   )
@@ -162,6 +170,7 @@ function ColumnDropZone({
   onSelectCard: (issueId: string) => void
   onMove: (request: BoardMoveRequest) => void
 }) {
+  const { t } = useLanguage()
   const [dropIndex, setDropIndex] = useState<number | null>(null)
 
   function computeDropIndex(event: DragEvent<HTMLElement>, index: number) {
@@ -209,7 +218,7 @@ function ColumnDropZone({
       onDrop={canDrag ? handleDrop : undefined}
     >
       {cards.length === 0 && dropIndex === null ? (
-        <p className="px-1 py-6 text-center text-xs text-muted-foreground">No issues</p>
+        <p className="px-1 py-6 text-center text-xs text-muted-foreground">{t("board.column.empty", "No issues")}</p>
       ) : (
         cards.map((card, index) => (
           <Fragment key={card.id}>

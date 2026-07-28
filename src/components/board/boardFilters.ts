@@ -1,4 +1,5 @@
 import type { BoardCard } from "@/api/boards"
+import type { TranslatableText } from "@/lib/translatableText"
 
 /**
  * What the board actually shows (Phase-2 tickets 05/06): the quick-filter toggles a member turns on,
@@ -17,7 +18,8 @@ export interface BoardFilterContext {
 
 export interface BoardFilter {
   id: string
-  label: string
+  /** The toggle's copy — the module is hook-free, so the toolbar resolves the key. */
+  label: TranslatableText
   /** The ADR-0008 jME expression this predicate stands in for, verbatim. */
   expression: string
   matches: (card: BoardCard, context: BoardFilterContext) => boolean
@@ -26,20 +28,20 @@ export interface BoardFilter {
 export const QUICK_FILTERS: BoardFilter[] = [
   {
     id: "my-issues",
-    label: "My issues",
+    label: { key: "board.filter.myIssues", text: "My issues" },
     expression: "issue.assignee == #currentMember",
     matches: (card, context) => context.currentMemberId !== null && card.assigneeId === context.currentMemberId,
   },
   {
     id: "unassigned",
-    label: "Unassigned",
+    label: { key: "board.filter.unassigned", text: "Unassigned" },
     expression: "issue.assignee is null",
     matches: (card) => card.assigneeId === null,
   },
   {
     // `open` is the server's projection of the `resolution IS NULL ⇔ open` invariant (ADR-0004).
     id: "unresolved",
-    label: "Unresolved",
+    label: { key: "board.filter.unresolved", text: "Unresolved" },
     expression: "issue.resolution is null",
     matches: (card) => card.open,
   },

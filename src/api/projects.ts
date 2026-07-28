@@ -1,5 +1,6 @@
 import { httpClient } from "@/api/httpClient"
 import type { MemberSummary } from "@/api/members"
+import type { BoardScopeStrategy } from "@/api/sprints"
 
 export type ProjectType = "SCRUM" | "KANBAN" | "TODO"
 export type PermissionEffect = "ALLOW" | "DENY"
@@ -14,6 +15,8 @@ export interface ProjectResponse {
   key: string
   name: string
   type: ProjectType
+  /** Whether this project plans in sprints — the Backlog view keys off this, never off `type` (ADR-0012). */
+  boardScopeStrategy: BoardScopeStrategy
   lead: MemberSummary | null
   issueTypeScheme: SchemeSummary | null
   workflowScheme: SchemeSummary | null

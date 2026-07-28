@@ -61,6 +61,8 @@ export function CreateIssueDialog({ projectId }: { projectId: string }) {
       }),
     onSuccess: (issue) => {
       void queryClient.invalidateQueries({ queryKey: ["issues", projectId] })
+      // A new open issue lands in the backlog uncommitted, so the planning screen is stale too.
+      void queryClient.invalidateQueries({ queryKey: ["backlog", projectId] })
       toast.success(`Issue ${issue.issueKey} created`)
       resetAndClose()
     },

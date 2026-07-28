@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { QUICK_FILTERS } from "@/components/board/boardFilters"
 import { SWIMLANE_LABEL } from "@/components/board/swimlanes"
+import { useLanguage } from "@/context/LanguageContext"
 import type { SwimlaneStrategy } from "@/api/boards"
 import { cn } from "@/lib/helpers"
+import { resolveText } from "@/lib/translatableText"
 
 const SWIMLANE_STRATEGIES: SwimlaneStrategy[] = ["NONE", "ASSIGNEE", "EPIC", "PRIORITY"]
 
@@ -29,6 +31,8 @@ export function BoardToolbar({
   activeFilterIds: string[]
   onToggleFilter: (filterId: string) => void
 }) {
+  const { t } = useLanguage()
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select
@@ -38,7 +42,11 @@ export function BoardToolbar({
       >
         <SelectTrigger
           className="h-8 w-44"
-          title={canChangeSwimlanes ? undefined : "Only project administrators can change the grouping"}
+          title={
+            canChangeSwimlanes
+              ? undefined
+              : t("board.swimlane.lockedHint", "Only project administrators can change the grouping")
+          }
         >
           <Rows3 className="size-3.5 text-muted-foreground" />
           <SelectValue />
@@ -46,7 +54,7 @@ export function BoardToolbar({
         <SelectContent>
           {SWIMLANE_STRATEGIES.map((strategy) => (
             <SelectItem key={strategy} value={strategy}>
-              {SWIMLANE_LABEL[strategy]}
+              {resolveText(t, SWIMLANE_LABEL[strategy])}
             </SelectItem>
           ))}
         </SelectContent>
@@ -64,7 +72,7 @@ export function BoardToolbar({
               onClick={() => onToggleFilter(filter.id)}
               className={cn("h-8", !active && "text-muted-foreground")}
             >
-              {filter.label}
+              {resolveText(t, filter.label)}
             </Button>
           )
         })}
