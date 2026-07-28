@@ -1,0 +1,120 @@
+import { useMemo, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RoleToggleGroup } from "@/components/projects/RoleToggleGroup"
+import { addProjectMember, fetchProjectRoles, type ProjectMember } from "@/api/projects"
+import { searchMembers } from "@/api/members"
+import { apiErrorMessage } from "@/api/errors"
+import { memberName } from "@/lib/memberDisplay"
+
+interface AddMemberDialogProperties {
+  projectId: string
+  existingMemberIds: string[]
+}
+
+export function AddMemberDialog({ projectId, existingMemberIds }: AddMemberDialogProperties) {
+  const [open, setOpen] = useState(false)
+  const [memberId, setMemberId] = useState("")
+  const [roleIds, setRoleIds] = useState<string[]>([])
+
+  const queryClient = useQueryClient()
+
+  const { data: allMembers = [] } = useQuery({
+    queryKey: ["members", "all"],
+    queryFn: () => searchMembers(),
+    enabled: open,
+  })
+  const { data: roles = [] } = useQuery({ queryKey: ["project-roles"], queryFn: fetchProjectRoles, enabled: open })
+
+  const selectableMembers = useMemo(
+    () => allMembers.filter((member) => !existingMemberIds.includes(member.id)),
+    [allMembers, existingMemberIds],
+  )
+
+  const mutation = useMutation({
+    mutationFn: () => addProjectMember(projectId, memberId, roleIds),
+    onSuccess: (members: ProjectMember[]) => {
+      queryClient.setQueryData(["project-members", projectId], members)
+      toast.success("Member added")
+      reset()
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, "Could not add the member")),
+  })
+
+  function reset() {
+    setOpen(false)
+    setMemberId("")
+    setRoleIds([])
+  }
+
+  function toggleRole(roleId: string) {
+    setRoleIds((current) =>
+      current.includes(roleId) ? current.filter((id) => id !== roleId) : [...current, roleId],
+    )
+  }
+
+  const canSubmit = memberId.length > 0 && roleIds.length > 0
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : reset())}>
+      <DialogTrigger asChild>
+        <Button size="sm">Add member</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add a member</DialogTitle>
+          <DialogDescription>Grant a member one or more roles in this project.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="add-member">Member</Label>
+            <Select value={memberId} onValueChange={setMemberId}>
+              <SelectTrigger id="add-member">
+                <SelectValue placeholder="Select a member" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectableMembers.map((member) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {memberName(member)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectableMembers.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Everyone who has signed in is already a member. New people appear here once they sign in.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Roles</Label>
+            <RoleToggleGroup roles={roles} selectedIds={roleIds} onToggle={toggleRole} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={reset}>
+            Cancel
+          </Button>
+          <Button disabled={!canSubmit || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? "Adding…" : "Add member"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
