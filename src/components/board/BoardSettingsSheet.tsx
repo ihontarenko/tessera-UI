@@ -22,6 +22,7 @@ import {
   mapColumnStatus,
   reorderColumn,
   setColumnFallback,
+  setDoneThreshold,
   unmapColumnStatus,
   updateColumn,
   type BoardColumnView,
@@ -39,10 +40,10 @@ const CATEGORY_LABEL: Record<StatusCategory, string> = {
   DONE: "Done",
 }
 
-/** Board configuration (Phase-2 ticket 03, {@code ADMINISTER_PROJECT}): reshape columns, set WIP
- *  limits, assign which column backs each status category, and override individual status→column
- *  mappings. Every mutation invalidates the shared board query, so this panel and the board itself
- *  stay in sync. */
+/** Board configuration (Phase-2 tickets 03/06, {@code ADMINISTER_PROJECT}): reshape columns, set WIP
+ *  limits, assign which column backs each status category, override individual status→column mappings,
+ *  and set the done-threshold. Every mutation invalidates the shared board query, so this panel and the
+ *  board itself stay in sync. */
 export function BoardSettingsSheet({
   projectId,
   board,
@@ -140,6 +141,10 @@ export function BoardSettingsSheet({
         </SheetHeader>
 
         <div className="flex flex-col gap-4 px-4 pb-4">
+          <DoneThresholdRow projectId={projectId} board={board} />
+
+          <Separator />
+
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-1.5">
               <Label className="text-xs">New column</Label>
@@ -183,6 +188,71 @@ export function BoardSettingsSheet({
         </div>
       </SheetContent>
     </Sheet>
+  )
+}
+
+/** A blank box means "never drop completed issues"; anything else must be a whole, non-negative number
+ *  of days. `undefined` marks input the box cannot send, so Save stays disabled rather than quietly
+ *  posting `NaN` — which would serialise to `null` and read back as "never". */
+function parseThreshold(days: string): number | null | undefined {
+  if (days.trim().length === 0) {
+    return null
+  }
+
+  const parsed = Number(days)
+
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined
+}
+
+/** The done-threshold (ticket 06): how many days a completed issue stays on the board. Blank means it
+ *  never drops off; `0` drops it as soon as it is done. The cutoff is measured against the issue's
+ *  recorded completion time, so editing a done issue does not bring it back. */
+function DoneThresholdRow({ projectId, board }: { projectId: string; board: BoardResponse }) {
+  const queryClient = useQueryClient()
+  const [days, setDays] = useState(board.hideDoneOlderThanDays != null ? String(board.hideDoneOlderThanDays) : "")
+
+  const threshold = parseThreshold(days)
+  const invalid = threshold === undefined
+  const unchanged = threshold === board.hideDoneOlderThanDays
+
+  const thresholdMutation = useMutation({
+    mutationFn: (value: number | null) => setDoneThreshold(projectId, value),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["board", projectId] })
+      toast.success("Done-threshold updated")
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, "Could not update the done-threshold")),
+  })
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">Hide completed issues older than</Label>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={0}
+          step={1}
+          value={days}
+          onChange={(event) => setDays(event.target.value)}
+          placeholder="Never"
+          aria-invalid={invalid}
+          className="h-8 w-28"
+        />
+        <span className="text-sm text-muted-foreground">days</span>
+        <Button
+          size="sm"
+          disabled={invalid || unchanged || thresholdMutation.isPending}
+          onClick={() => threshold !== undefined && thresholdMutation.mutate(threshold)}
+        >
+          Save
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {invalid
+          ? "Enter a whole number of days, or leave blank."
+          : "Leave blank to keep completed issues on the board forever."}
+      </p>
+    </div>
   )
 }
 

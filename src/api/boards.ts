@@ -28,9 +28,13 @@ export interface BoardCard {
   open: boolean
   columnId: string | null
   rank: string
-  // Raw grouping keys the client uses for swimlanes / quick-filters (later Phase-2 tickets).
+  // Raw grouping keys the client uses for swimlanes (ticket 04) and quick filters (ticket 05).
   assigneeId: string | null
   priorityId: string | null
+  /** Nearest Epic ancestor's key, resolved server-side; `null` gathers the card in the "No epic" lane. */
+  epicKey: string | null
+  /** Recorded completion time the done-threshold measures against (ticket 06) — never `updatedAt`. */
+  resolvedAt: string | null
 }
 
 export interface BoardResponse {
@@ -60,6 +64,29 @@ export interface BoardMoveRequest {
 
 export function moveCard(projectId: string, request: BoardMoveRequest) {
   return httpClient.post<BoardCard>(`/projects/${projectId}/board/move`, request).then((response) => response.data)
+}
+
+// ── Board view settings (Phase-2 tickets 04/06, ADMINISTER_PROJECT) ───────────────────────────────
+
+export interface BoardSettingsView {
+  swimlaneStrategy: SwimlaneStrategy
+  hideDoneOlderThanDays: number | null
+}
+
+// Set independently, never as one payload — a caller echoing back the setting it isn't changing would
+// revert a concurrent edit from its own stale copy of the board.
+
+export function setSwimlaneStrategy(projectId: string, strategy: SwimlaneStrategy) {
+  return httpClient
+    .put<BoardSettingsView>(`/projects/${projectId}/board/settings/swimlane-strategy`, { strategy })
+    .then((response) => response.data)
+}
+
+/** `null` days keeps completed issues on the board forever. */
+export function setDoneThreshold(projectId: string, days: number | null) {
+  return httpClient
+    .put<BoardSettingsView>(`/projects/${projectId}/board/settings/done-threshold`, { days })
+    .then((response) => response.data)
 }
 
 // ── Column configuration (Phase-2 ticket 03, ADMINISTER_PROJECT) ──────────────────────────────────
