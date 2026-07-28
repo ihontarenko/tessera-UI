@@ -1,17 +1,21 @@
-import { CalendarClock } from "lucide-react"
+import { CalendarClock, FlagTriangleRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/context/LanguageContext"
 import type { ActiveSprintView } from "@/api/sprints"
 import { cn } from "@/lib/helpers"
 
 /**
- * The running sprint's context above the board (Phase-3 ticket 04) — what the team signed up for, and
- * how long is left of it. Everything here rides on the board payload, so the header costs no second
- * request.
+ * The running sprint's context above the board (Phase-3 tickets 04/05) — what the team signed up for,
+ * how long is left of it, and the action that ends it. Everything here rides on the board payload, so
+ * the header costs no second request.
  *
  * `daysRemaining` is signed: a sprint past its end date says so in the destructive colour rather than
  * quietly showing zero, because a sprint that has run over is exactly the thing a board should surface.
+ *
+ * Completing lives here rather than in settings for the same reason the header does: closing a sprint
+ * is a decision about the work, taken while looking at it.
  */
-export function SprintHeader({ sprint }: { sprint: ActiveSprintView }) {
+export function SprintHeader({ sprint, onComplete }: { sprint: ActiveSprintView; onComplete?: () => void }) {
   const { t } = useLanguage()
   const daysRemaining = sprint.daysRemaining
   const isOverdue = daysRemaining !== null && daysRemaining !== undefined && daysRemaining < 0
@@ -23,18 +27,26 @@ export function SprintHeader({ sprint }: { sprint: ActiveSprintView }) {
 
       {sprint.goal ? <span className="truncate text-xs italic text-muted-foreground">{sprint.goal}</span> : null}
 
-      {daysRemaining !== null && daysRemaining !== undefined && (
-        <span
-          className={cn(
-            "ml-auto shrink-0 rounded px-1.5 py-0.5 text-xs tabular-nums",
-            isOverdue ? "bg-destructive/15 text-destructive" : "bg-background text-muted-foreground",
-          )}
-        >
-          {isOverdue
-            ? t("sprint.header.overdue", "{days} days over", { days: Math.abs(daysRemaining) })
-            : t("sprint.header.daysRemaining", "{days} days remaining", { days: daysRemaining })}
-        </span>
-      )}
+      <span className="ml-auto flex shrink-0 items-center gap-2">
+        {daysRemaining !== null && daysRemaining !== undefined && (
+          <span
+            className={cn(
+              "rounded px-1.5 py-0.5 text-xs tabular-nums",
+              isOverdue ? "bg-destructive/15 text-destructive" : "bg-background text-muted-foreground",
+            )}
+          >
+            {isOverdue
+              ? t("sprint.header.overdue", "{days} days over", { days: Math.abs(daysRemaining) })
+              : t("sprint.header.daysRemaining", "{days} days remaining", { days: daysRemaining })}
+          </span>
+        )}
+
+        {onComplete && (
+          <Button size="sm" variant="outline" onClick={onComplete}>
+            <FlagTriangleRight className="mr-1.5 size-3.5" /> {t("sprint.complete.action", "Complete sprint")}
+          </Button>
+        )}
+      </span>
     </div>
   )
 }

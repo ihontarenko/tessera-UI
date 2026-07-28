@@ -87,15 +87,16 @@ export function moveCard(projectId: string, request: BoardMoveRequest) {
   return httpClient.post<BoardCard>(`/projects/${projectId}/board/move`, request).then((response) => response.data)
 }
 
-// ── Board view settings (Phase-2 tickets 04/06, ADMINISTER_PROJECT) ───────────────────────────────
+// ── Board view settings (Phase-2 tickets 04/06, Phase-3 ticket 08, ADMINISTER_PROJECT) ────────────
 
 export interface BoardSettingsView {
   swimlaneStrategy: SwimlaneStrategy
+  scopeStrategy: BoardScopeStrategy
   hideDoneOlderThanDays: number | null
 }
 
-// Set independently, never as one payload — a caller echoing back the setting it isn't changing would
-// revert a concurrent edit from its own stale copy of the board.
+// Set independently, each through its own endpoint, never as one payload — a caller echoing back the
+// setting it isn't changing would revert a concurrent edit from its own stale copy of the board.
 
 export function setSwimlaneStrategy(projectId: string, strategy: SwimlaneStrategy) {
   return httpClient
@@ -107,6 +108,17 @@ export function setSwimlaneStrategy(projectId: string, strategy: SwimlaneStrateg
 export function setDoneThreshold(projectId: string, days: number | null) {
   return httpClient
     .put<BoardSettingsView>(`/projects/${projectId}/board/settings/done-threshold`, { days })
+    .then((response) => response.data)
+}
+
+/**
+ * Switch the project between Scrum and a board of everything (ticket 08). It changes only what the
+ * board renders: no sprint is started, closed or altered by it, so switching away while a sprint is
+ * running and switching back shows that sprint exactly as it was.
+ */
+export function setScopeStrategy(projectId: string, strategy: BoardScopeStrategy) {
+  return httpClient
+    .put<BoardSettingsView>(`/projects/${projectId}/board/settings/scope-strategy`, { strategy })
     .then((response) => response.data)
 }
 

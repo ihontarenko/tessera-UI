@@ -14,6 +14,7 @@ import { BoardGrid } from "@/components/board/BoardGrid"
 import { BoardSettingsSheet } from "@/components/board/BoardSettingsSheet"
 import { BoardToolbar } from "@/components/board/BoardToolbar"
 import { SprintHeader } from "@/components/board/SprintHeader"
+import { CompleteSprintDialog } from "@/components/board/CompleteSprintDialog"
 import {
   andTogether,
   applyMatchedCardIds,
@@ -35,6 +36,7 @@ import {
   type SwimlaneStrategy,
 } from "@/api/boards"
 import { fetchCatalog } from "@/api/issues"
+import { completeSprint, listSprints, MANAGE_SPRINT, type CompleteSprintRequest } from "@/api/sprints"
 import { apiErrorMessage } from "@/api/errors"
 
 const CHOOSE = "__choose__"
@@ -59,10 +61,12 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   const [resolutionId, setResolutionId] = useState(CHOOSE)
   const [activeFilterIds, setActiveFilterIds] = useState<string[]>([])
   const [appliedFilter, setAppliedFilter] = useState<SavedFilterView | null>(null)
+  const [completeOpen, setCompleteOpen] = useState(false)
 
   const canEdit = permissions.includes("EDIT_ISSUE")
   const canTransition = permissions.includes("TRANSITION_ISSUE")
   const canAdminister = permissions.includes("ADMINISTER_PROJECT")
+  const canManageSprint = permissions.includes(MANAGE_SPRINT)
   const canDrag = canEdit || canTransition
 
   const { data: filterCatalog } = useQuery({ queryKey: ["board-filters"], queryFn: fetchBoardFilters })
@@ -89,6 +93,14 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
     queryFn: () => getBoard(projectId, filterExpression),
   })
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
+
+  // Only the completion dialog needs the sprint list, and only to offer a destination — so a member who
+  // cannot close a sprint never pays for the request.
+  const { data: sprints = [] } = useQuery({
+    queryKey: ["sprints", projectId],
+    queryFn: () => listSprints(projectId),
+    enabled: canManageSprint && board?.activeSprint != null,
+  })
 
   const moveMutation = useMutation({
     mutationFn: (request: BoardMoveRequest) => moveCard(projectId, request),
@@ -122,6 +134,23 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
       setPendingMove(null)
       setResolutionId(CHOOSE)
     },
+  })
+
+  const completeSprintMutation = useMutation({
+    mutationFn: (request: CompleteSprintRequest) => completeSprint(projectId, board!.activeSprint!.id, request),
+    onSuccess: (sprint) => {
+      setCompleteOpen(false)
+      // Closing empties a sprint-scoped board and reshapes the backlog in one act, so both are refetched
+      // rather than patched — there is no partial update that could describe this. Velocity goes with
+      // them: a closing sprint is precisely the event that adds a bar to it (ticket 07).
+      void queryClient.invalidateQueries({ queryKey: ["board", projectId] })
+      void queryClient.invalidateQueries({ queryKey: ["backlog", projectId] })
+      void queryClient.invalidateQueries({ queryKey: ["sprints", projectId] })
+      void queryClient.invalidateQueries({ queryKey: ["velocity", projectId] })
+      toast.success(t("sprint.completed", "{sprint} is closed", { sprint: sprint.name }))
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, t("sprint.error.complete", "Could not complete the sprint"))),
   })
 
   const swimlaneMutation = useMutation({
@@ -187,26 +216,53 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
     )
   }
 
+  const settingsButton = canAdminister ? (
+    <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
+      <Settings className="mr-1.5 size-3.5" /> {t("board.settings.title", "Board settings")}
+    </Button>
+  ) : null
+
+  const settingsSheet = canAdminister ? (
+    <BoardSettingsSheet projectId={projectId} board={board} open={settingsOpen} onOpenChange={setSettingsOpen} />
+  ) : null
+
   // A sprint-scoped board with nothing running holds no cards by design — say so, and point at where a
-  // sprint is started, rather than rendering an empty grid that reads as broken.
+  // sprint is started, rather than rendering an empty grid that reads as broken. Board settings stay
+  // reachable here on purpose: this is exactly the state a project lands in the moment it is switched
+  // onto sprints (ticket 08), and switching back has to be possible from the screen you are looking at.
   if (board.scopeStrategy === "ACTIVE_SPRINT" && !board.activeSprint) {
     return (
-      <EmptyState
-        icon={ListTodo}
-        title={t("board.noSprint.title", "No sprint is running")}
-        message={t("board.noSprint.message", "Plan and start a sprint on the backlog and it appears here.")}
-        action={
-          <Button size="sm" variant="outline" onClick={() => setSearchParameters({ tab: "backlog" }, { replace: true })}>
-            {t("board.noSprint.action", "Go to the backlog")}
-          </Button>
-        }
-      />
+      <div className="space-y-3">
+        <div className="flex justify-end">{settingsButton}</div>
+
+        <EmptyState
+          icon={ListTodo}
+          title={t("board.noSprint.title", "No sprint is running")}
+          message={t("board.noSprint.message", "Plan and start a sprint on the backlog and it appears here.")}
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSearchParameters({ tab: "backlog" }, { replace: true })}
+            >
+              {t("board.noSprint.action", "Go to the backlog")}
+            </Button>
+          }
+        />
+
+        {settingsSheet}
+      </div>
     )
   }
 
   return (
     <div className="space-y-3">
-      {board.activeSprint ? <SprintHeader sprint={board.activeSprint} /> : null}
+      {board.activeSprint ? (
+        <SprintHeader
+          sprint={board.activeSprint}
+          onComplete={canManageSprint ? () => setCompleteOpen(true) : undefined}
+        />
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <BoardToolbar
@@ -222,11 +278,7 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
           onApplyFilter={setAppliedFilter}
         />
 
-        {canAdminister && (
-          <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
-            <Settings className="mr-1.5 size-3.5" /> {t("board.settings.title", "Board settings")}
-          </Button>
-        )}
+        {settingsButton}
       </div>
 
       <BoardGrid
@@ -296,9 +348,18 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
         </DialogContent>
       </Dialog>
 
-      {canAdminister && (
-        <BoardSettingsSheet projectId={projectId} board={board} open={settingsOpen} onOpenChange={setSettingsOpen} />
+      {canManageSprint && board.activeSprint && (
+        <CompleteSprintDialog
+          sprint={board.activeSprint}
+          futureSprints={sprints.filter((sprint) => sprint.state === "FUTURE")}
+          open={completeOpen}
+          onOpenChange={setCompleteOpen}
+          isPending={completeSprintMutation.isPending}
+          onComplete={(request) => completeSprintMutation.mutate(request)}
+        />
       )}
+
+      {settingsSheet}
     </div>
   )
 }

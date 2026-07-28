@@ -6,7 +6,7 @@ import { StoryPointsField } from "@/components/backlog/StoryPointsField"
 import type { BacklogSection } from "@/components/backlog/backlogSections"
 import { useLanguage } from "@/context/LanguageContext"
 import type { BacklogIssue, BacklogMoveRequest } from "@/api/sprints"
-import { cn } from "@/lib/helpers"
+import { cn, formatPointTotal } from "@/lib/helpers"
 import { resolveText } from "@/lib/translatableText"
 
 /**
@@ -85,7 +85,7 @@ export function BacklogSectionCard({
         <span className="text-xs tabular-nums text-muted-foreground">
           {t("backlog.panel.summary", "{issues} issues · {points} points", {
             issues: panel.issueCount,
-            points: formatPoints(panel.storyPointTotal),
+            points: formatPointTotal(panel.storyPointTotal),
           })}
         </span>
 
@@ -202,9 +202,4 @@ function BacklogRow({
       </div>
     </div>
   )
-}
-
-/** Whole totals read as whole numbers — "13", not "13.0"; a half-point estimate still shows up. */
-function formatPoints(total: number): string {
-  return Number.isInteger(total) ? String(total) : total.toFixed(1)
 }

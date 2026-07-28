@@ -29,6 +29,9 @@ export interface ActiveSprintView {
   goal: string | null
   endDate: string | null
   daysRemaining: number | null
+  /** The sprint's members split by `resolution IS NULL` — what the complete-sprint dialog states. */
+  completedIssues: number
+  incompleteIssues: number
 }
 
 /** One backlog row — a planning unit (ADR-0014), so never a sub-task or an epic. */
@@ -114,6 +117,22 @@ export function deleteSprint(projectId: string, sprintId: string) {
 export function startSprint(projectId: string, sprintId: string, endDate: string) {
   return httpClient
     .post<SprintSummary>(`/projects/${projectId}/sprints/${sprintId}/start`, { endDate })
+    .then((response) => response.data)
+}
+
+/** Where a closing sprint's unfinished work goes. The server never guesses, so this is always sent. */
+export type IncompleteIssueDestination = "BACKLOG" | "SPRINT"
+
+export interface CompleteSprintRequest {
+  moveIncompleteTo: IncompleteIssueDestination
+  /** Required for `SPRINT`, and refused with a 409 unless it is a future sprint of the same project. */
+  targetSprintId?: string | null
+}
+
+/** One-way: a closed sprint never reopens, and its membership rows stay exactly as they were. */
+export function completeSprint(projectId: string, sprintId: string, request: CompleteSprintRequest) {
+  return httpClient
+    .post<SprintSummary>(`/projects/${projectId}/sprints/${sprintId}/complete`, request)
     .then((response) => response.data)
 }
 

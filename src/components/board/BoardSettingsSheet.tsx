@@ -23,18 +23,50 @@ import {
   reorderColumn,
   setColumnFallback,
   setDoneThreshold,
+  setScopeStrategy,
   unmapColumnStatus,
   updateColumn,
   type BoardColumnView,
   type BoardResponse,
 } from "@/api/boards"
+import type { BoardScopeStrategy } from "@/api/sprints"
 import { fetchCatalog, type StatusCategory } from "@/api/issues"
 import { apiErrorMessage } from "@/api/errors"
 import { useLanguage } from "@/context/LanguageContext"
+import { cn } from "@/lib/helpers"
 import { resolveText, type TranslatableText } from "@/lib/translatableText"
 
 const NO_FALLBACK = "__none__"
 const CHOOSE_STATUS = "__choose__"
+
+/** Offered in this order deliberately: the plainer board first, sprints as the step up from it. */
+const SCOPE_STRATEGIES: BoardScopeStrategy[] = ["ALL_ISSUES", "ACTIVE_SPRINT"]
+
+/**
+ * What each scope strategy is called, what choosing it does, and what to say once it is chosen — one
+ * table rather than the same two-branch ternary written out at each of the three places (ticket 08).
+ */
+const SCOPE_STRATEGY_COPY: Record<
+  BoardScopeStrategy,
+  { option: TranslatableText; consequence: TranslatableText; confirmation: TranslatableText }
+> = {
+  ALL_ISSUES: {
+    option: { key: "board.settings.scope.allIssues", text: "Every issue in the project" },
+    consequence: {
+      key: "board.settings.scope.allIssues.consequence",
+      text: "— the whole project on the board, with no Backlog or Reports tabs.",
+    },
+    confirmation: { key: "board.settings.scope.switchedToAllIssues", text: "The board now shows every issue" },
+  },
+  ACTIVE_SPRINT: {
+    option: { key: "board.settings.scope.activeSprint", text: "Only the active sprint" },
+    consequence: {
+      key: "board.settings.scope.activeSprint.consequence",
+      text: "— the running sprint only, and the Backlog and Reports tabs appear. A running sprint is never altered by switching either way.",
+    },
+    confirmation: { key: "board.settings.scope.switchedToSprint", text: "The board now shows the active sprint" },
+  },
+}
 
 /** The three workflow categories, as UI copy — unlike a status *name*, which an administrator authors. */
 const CATEGORY_LABEL: Record<StatusCategory, TranslatableText> = {
@@ -43,10 +75,10 @@ const CATEGORY_LABEL: Record<StatusCategory, TranslatableText> = {
   DONE: { key: "board.category.done", text: "Done" },
 }
 
-/** Board configuration (Phase-2 tickets 03/06, {@code ADMINISTER_PROJECT}): reshape columns, set WIP
- *  limits, assign which column backs each status category, override individual status→column mappings,
- *  and set the done-threshold. Every mutation invalidates the shared board query, so this panel and the
- *  board itself stay in sync. */
+/** Board configuration (Phase-2 tickets 03/06, Phase-3 ticket 08, {@code ADMINISTER_PROJECT}): choose
+ *  what the board shows, reshape columns, set WIP limits, assign which column backs each status
+ *  category, override individual status→column mappings, and set the done-threshold. Every mutation
+ *  invalidates the shared board query, so this panel and the board itself stay in sync. */
 export function BoardSettingsSheet({
   projectId,
   board,
@@ -142,11 +174,18 @@ export function BoardSettingsSheet({
         <SheetHeader>
           <SheetTitle>{t("board.settings.title", "Board settings")}</SheetTitle>
           <SheetDescription>
-            {t("board.settings.description", "Columns, status mappings and WIP limits for this board.")}
+            {t(
+              "board.settings.description",
+              "What this board shows, and its columns, status mappings and WIP limits.",
+            )}
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-4 px-4 pb-4">
+          <ScopeStrategyRow projectId={projectId} board={board} />
+
+          <Separator />
+
           <DoneThresholdRow projectId={projectId} board={board} />
 
           <Separator />
@@ -194,6 +233,68 @@ export function BoardSettingsSheet({
         </div>
       </SheetContent>
     </Sheet>
+  )
+}
+
+/**
+ * The scope strategy (Phase-3 ticket 08): whether this project does Scrum. One field decides both what
+ * the board draws from and whether the Backlog and Reports tabs exist (ADR-0012) — nothing branches on
+ * the project's *type*, which is why changing process is this control rather than a migration.
+ *
+ * Each option carries its consequence in one line, because the consequence — two tabs appearing or
+ * disappearing — is a great deal larger than a two-item select looks. Switching away from sprint scope
+ * changes only what is rendered: a running sprint keeps running and comes back untouched.
+ *
+ * Four caches follow the change: the board itself, the project (whose scope strategy drives the tab
+ * list), the projects list (which the backlog index filters on) and the backlog. Invalidating them is
+ * what makes the tabs appear and disappear immediately, with no reload.
+ */
+function ScopeStrategyRow({ projectId, board }: { projectId: string; board: BoardResponse }) {
+  const { t } = useLanguage()
+  const queryClient = useQueryClient()
+
+  const scopeMutation = useMutation({
+    mutationFn: (strategy: BoardScopeStrategy) => setScopeStrategy(projectId, strategy),
+    onSuccess: (settings) => {
+      for (const queryKey of [["board", projectId], ["project", projectId], ["projects"], ["backlog", projectId]]) {
+        void queryClient.invalidateQueries({ queryKey })
+      }
+      toast.success(resolveText(t, SCOPE_STRATEGY_COPY[settings.scopeStrategy].confirmation))
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, t("board.error.scope", "Could not change what the board shows"))),
+  })
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{t("board.settings.scope.label", "This board shows")}</Label>
+      <Select
+        value={board.scopeStrategy}
+        disabled={scopeMutation.isPending}
+        onValueChange={(value) => scopeMutation.mutate(value as BoardScopeStrategy)}
+      >
+        <SelectTrigger className="h-8 w-full sm:w-80">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {SCOPE_STRATEGIES.map((strategy) => (
+            <SelectItem key={strategy} value={strategy}>
+              {resolveText(t, SCOPE_STRATEGY_COPY[strategy].option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {/* Both consequences stay on screen, not only the chosen one: the option you are weighing up is
+          the one you need explained, and neither is visible from inside a two-item select. */}
+      <dl className="space-y-0.5 text-xs text-muted-foreground">
+        {SCOPE_STRATEGIES.map((strategy) => (
+          <div key={strategy} className={cn("flex gap-1.5", strategy === board.scopeStrategy && "text-foreground")}>
+            <dt className="font-medium">{resolveText(t, SCOPE_STRATEGY_COPY[strategy].option)}</dt>
+            <dd>{resolveText(t, SCOPE_STRATEGY_COPY[strategy].consequence)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   )
 }
 
