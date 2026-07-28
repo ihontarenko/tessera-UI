@@ -22,10 +22,18 @@ export interface BacklogSection {
   kind: BacklogSectionKind
   /** A sprint's own name is user data and renders verbatim; the backlog's title is UI copy. */
   title: TranslatableText
+  /** What this section says when it holds nothing — which depends on where its work would have gone. */
+  emptyMessage: TranslatableText
   panel: BacklogPanel
 }
 
-/** Top to bottom, the way the screen reads: what is running, what is planned, what is merely known. */
+const SPRINT_EMPTY: TranslatableText = { key: "sprint.panel.empty", text: "Drag issues here to plan this sprint." }
+
+/**
+ * Top to bottom, the way the screen reads: what is running, what is planned, what is merely known.
+ * A project that does not plan in sprints gets no sprint panels from the server, so the product backlog
+ * stands alone — the ordering below needs no branch for it.
+ */
 export function toSections(backlog: BacklogResponse): BacklogSection[] {
   const sections: BacklogSection[] = []
 
@@ -44,6 +52,13 @@ export function toSections(backlog: BacklogResponse): BacklogSection[] {
     targetSprintId: null,
     kind: "backlog",
     title: { key: "backlog.panel.backlog", text: "Backlog" },
+    // An empty backlog means two different things, and saying the wrong one is worse than saying
+    // nothing: under sprints the open work has been committed, otherwise the board is already
+    // rendering all of it (ADR-0016).
+    emptyMessage:
+      backlog.scopeStrategy === "ACTIVE_SPRINT"
+        ? { key: "backlog.panel.empty", text: "Nothing waiting — every open issue is committed." }
+        : { key: "backlog.panel.emptyOnBoard", text: "Nothing waiting — the board is showing every open issue." },
     panel: backlog.backlog,
   })
 
@@ -124,6 +139,7 @@ function sprintSection(panel: BacklogPanel, kind: BacklogSectionKind): BacklogSe
     targetSprintId: panel.sprint?.id ?? null,
     kind,
     title: { key: null, text: panel.sprint?.name ?? "" },
+    emptyMessage: SPRINT_EMPTY,
     panel,
   }
 }

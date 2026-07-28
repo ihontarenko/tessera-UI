@@ -538,6 +538,17 @@ function ColumnRow({
         </Select>
       </div>
 
+      {/* Where the board ends and the backlog begins is exactly this choice (ADR-0016), so it says so
+          at the moment it is being made rather than leaving the work to look lost. */}
+      {column.fallbackForCategory === null && column.explicitStatusIds.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          {t(
+            "board.settings.fallbackNoneHint",
+            "This column holds nothing. Statuses no column maps appear in the backlog instead.",
+          )}
+        </p>
+      )}
+
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">{t("board.settings.explicitStatuses", "Explicit statuses")}</Label>
         <div className="flex flex-wrap gap-1">

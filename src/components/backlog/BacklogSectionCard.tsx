@@ -110,9 +110,7 @@ export function BacklogSectionCard({
       >
         {panel.issues.length === 0 && dropIndex === null ? (
           <p className="px-1 py-4 text-center text-xs text-muted-foreground">
-            {section.kind === "backlog"
-              ? t("backlog.panel.empty", "Nothing waiting — every open issue is committed.")
-              : t("sprint.panel.empty", "Drag issues here to plan this sprint.")}
+            {resolveText(t, section.emptyMessage)}
           </p>
         ) : (
           panel.issues.map((issue, index) => (

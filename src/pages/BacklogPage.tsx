@@ -7,21 +7,20 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { MemberChip } from "@/components/MemberChip"
 import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
-import { plansInSprints } from "@/lib/projectStyle"
 import { listProjects } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Backlog index (Phase-3 ticket 02), mirroring the boards index: the member's projects, opening each
- * one's Backlog tab. Only projects whose board plans in sprints are listed — the filter is the board's
- * scope strategy, never the project's type (ADR-0012).
+ * one's Backlog tab. Every project is listed, because every project has a backlog (ADR-0016) — the
+ * scope-strategy filter that used to sit here would now hide screens that exist.
  */
 export function BacklogPage() {
   const { t } = useLanguage()
   const navigate = useNavigate()
   const { data: projects, isLoading } = useQuery({ queryKey: ["projects"], queryFn: listProjects })
 
-  const planningProjects = (projects ?? []).filter((project) => plansInSprints(project.boardScopeStrategy))
+  const backlogProjects = projects ?? []
 
   return (
     <>
@@ -38,18 +37,15 @@ export function BacklogPage() {
         </div>
       )}
 
-      {!isLoading && planningProjects.length === 0 && (
+      {!isLoading && backlogProjects.length === 0 && (
         <EmptyState
           icon={ListTodo}
-          title={t("backlog.index.empty.title", "No sprint planning yet")}
-          message={t(
-            "backlog.index.empty.message",
-            "A project appears here once its board is set to show the active sprint.",
-          )}
+          title={t("backlog.index.empty.title", "No projects yet")}
+          message={t("backlog.index.empty.message", "Create a project and its backlog appears here.")}
         />
       )}
 
-      {!isLoading && planningProjects.length > 0 && (
+      {!isLoading && backlogProjects.length > 0 && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -60,7 +56,7 @@ export function BacklogPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {planningProjects.map((project) => (
+            {backlogProjects.map((project) => (
               <TableRow
                 key={project.id}
                 className="cursor-pointer"

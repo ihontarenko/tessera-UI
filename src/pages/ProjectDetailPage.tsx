@@ -50,16 +50,17 @@ export function ProjectDetailPage() {
   }
 
   const canAdminister = project.myPermissions.includes(ADMINISTER_PROJECT)
-  // Both of these are derived from the board's scope strategy and nothing else (ADR-0015), so a team
-  // switched onto sprints gets the Backlog tab — and reads as Scrum — with no code change here.
+  // Derived from the board's scope strategy and nothing else (ADR-0015), so a team switched onto
+  // sprints reads as Scrum and gains its sprint screens with no code change here. Backlog is not among
+  // them: every project has one (ADR-0016), so only Reports is still sprint-only.
   const planningInSprints = plansInSprints(project.boardScopeStrategy)
   // The tab is a URL param so a board deep-link (?tab=board) still lands on the board.
   const defaultTab = defaultProjectTab(project.boardScopeStrategy)
-  const planningTabs = ["backlog", "reports"]
+  const sprintTabs = ["reports"]
   const requestedTab = searchParameters.get("tab") ?? defaultTab
-  // A link to a planning tab survives the board being switched back to all issues (ticket 08): the tab
+  // A link to a sprint tab survives the board being switched back to all issues (ticket 08): the tab
   // is simply gone, so fall back rather than leave the page on a trigger that no longer exists.
-  const activeTab = !planningInSprints && planningTabs.includes(requestedTab) ? defaultTab : requestedTab
+  const activeTab = !planningInSprints && sprintTabs.includes(requestedTab) ? defaultTab : requestedTab
 
   return (
     <>
@@ -77,7 +78,7 @@ export function ProjectDetailPage() {
         <TabsList>
           <TabsTrigger value="issues">{t("project.tab.issues", "Issues")}</TabsTrigger>
           <TabsTrigger value="board">{t("project.tab.board", "Board")}</TabsTrigger>
-          {planningInSprints && <TabsTrigger value="backlog">{t("project.tab.backlog", "Backlog")}</TabsTrigger>}
+          <TabsTrigger value="backlog">{t("project.tab.backlog", "Backlog")}</TabsTrigger>
           {planningInSprints && <TabsTrigger value="reports">{t("project.tab.reports", "Reports")}</TabsTrigger>}
           <TabsTrigger value="overview">{t("project.tab.overview", "Overview")}</TabsTrigger>
           <TabsTrigger value="settings">{t("project.tab.settings", "Settings")}</TabsTrigger>
@@ -92,11 +93,9 @@ export function ProjectDetailPage() {
           <BoardPanel projectId={project.id} permissions={project.myPermissions} />
         </TabsContent>
 
-        {planningInSprints && (
-          <TabsContent value="backlog">
-            <BacklogPanel projectId={project.id} permissions={project.myPermissions} />
-          </TabsContent>
-        )}
+        <TabsContent value="backlog">
+          <BacklogPanel projectId={project.id} permissions={project.myPermissions} />
+        </TabsContent>
 
         {planningInSprints && (
           <TabsContent value="reports">

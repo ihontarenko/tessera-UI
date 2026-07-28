@@ -27,7 +27,10 @@ interface ProjectStyle {
    * sprint happens to be running — and nothing at all between sprints.
    */
   defaultTab: ProjectTab
-  /** Whether the sprint-only screens (Backlog, Reports) apply at all. */
+  /**
+   * Whether sprints apply at all — the Reports tab, the sprint panels on the backlog and the controls
+   * that commit work to one. Not the backlog itself: every project has that (ADR-0016).
+   */
   plansInSprints: boolean
 }
 

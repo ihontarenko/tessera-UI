@@ -11,6 +11,7 @@ import { BacklogSectionCard } from "@/components/backlog/BacklogSectionCard"
 import { SprintFormDialog } from "@/components/backlog/SprintFormDialog"
 import { StartSprintDialog } from "@/components/backlog/StartSprintDialog"
 import { applyMove, toSections } from "@/components/backlog/backlogSections"
+import { plansInSprints } from "@/lib/projectStyle"
 import { useLanguage } from "@/context/LanguageContext"
 import {
   createSprint,
@@ -40,6 +41,11 @@ interface SprintFormState {
  * membership and rank together, applied optimistically here and rolled back if the server refuses —
  * the pattern the board already uses.
  *
+ * Every project has this screen (ADR-0016), so nothing here turns it away. What the scope strategy
+ * still decides is the *commitment* half: a project not running sprints gets no sprint panels from the
+ * server and no controls for planning or starting one, leaving the product backlog on its own — the
+ * open work its board does not render.
+ *
  * Permissions split the way the server's do: changing which list an issue is in needs
  * {@code MANAGE_SPRINT}, reordering within one needs {@code EDIT_ISSUE}. The client offers dragging
  * when either is held and lets the server have the final word, so a refusal surfaces as a readable
@@ -60,7 +66,14 @@ export function BacklogPanel({ projectId, permissions }: { projectId: string; pe
   const canDrag = canManageSprint || canEditIssue
 
   const { data: backlog, isLoading } = useQuery({ queryKey: backlogKey, queryFn: () => getBacklog(projectId) })
-  const { data: sprints = [] } = useQuery({ queryKey: ["sprints", projectId], queryFn: () => listSprints(projectId) })
+  // Sprints are the one thing the scope strategy still gates (ADR-0016), so a project without them
+  // never asks for the list its controls would have been built from.
+  const runsSprints = backlog ? plansInSprints(backlog.scopeStrategy) : false
+  const { data: sprints = [] } = useQuery({
+    queryKey: ["sprints", projectId],
+    queryFn: () => listSprints(projectId),
+    enabled: runsSprints,
+  })
 
   /** A membership change reshapes the board too, and a rank change reorders the issue list. */
   function refreshDependentViews() {
@@ -169,24 +182,10 @@ export function BacklogPanel({ projectId, permissions }: { projectId: string; pe
     )
   }
 
-  // The Backlog view belongs to a board that plans in sprints — never to a project type (ADR-0012).
-  if (backlog.scopeStrategy !== "ACTIVE_SPRINT") {
-    return (
-      <EmptyState
-        icon={ListTodo}
-        title={t("backlog.notScrum.title", "This project does not plan in sprints")}
-        message={t(
-          "backlog.notScrum.message",
-          "Switch the board to show the active sprint and the backlog appears here.",
-        )}
-      />
-    )
-  }
-
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {canManageSprint && (
+        {runsSprints && canManageSprint && (
           <Button size="sm" variant="outline" onClick={() => setSprintForm({ mode: "create", sprint: null })}>
             <Plus className="mr-1.5 size-3.5" /> {t("sprint.create.action", "Plan a sprint")}
           </Button>
