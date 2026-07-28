@@ -2,7 +2,9 @@ import { Rows3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { BoardFilter } from "@/components/board/boardFilters"
+import { BoardFilterPanel } from "@/components/board/BoardFilterPanel"
 import { SWIMLANE_LABEL } from "@/components/board/swimlanes"
+import type { SavedFilterView } from "@/api/savedFilters"
 import { useLanguage } from "@/context/LanguageContext"
 import type { SwimlaneStrategy } from "@/api/boards"
 import { cn } from "@/lib/helpers"
@@ -22,19 +24,29 @@ const SWIMLANE_STRATEGIES: SwimlaneStrategy[] = ["NONE", "ASSIGNEE", "EPIC", "PR
  * backend's to change.
  */
 export function BoardToolbar({
+  projectId,
   swimlaneStrategy,
   canChangeSwimlanes,
   onSwimlaneChange,
   filters,
   activeFilterIds,
   onToggleFilter,
+  appliedFilter,
+  toggleExpression,
+  onApplyFilter,
 }: {
+  projectId: string
   swimlaneStrategy: SwimlaneStrategy
   canChangeSwimlanes: boolean
   onSwimlaneChange: (strategy: SwimlaneStrategy) => void
   filters: BoardFilter[]
   activeFilterIds: string[]
   onToggleFilter: (filterId: string) => void
+  /** The saved filter currently applied, narrowing alongside the toggles. */
+  appliedFilter: SavedFilterView | null
+  /** The active toggles as one predicate, so the panel can offer to save what is on screen. */
+  toggleExpression: string | null
+  onApplyFilter: (savedFilter: SavedFilterView | null) => void
 }) {
   const { t } = useLanguage()
 
@@ -64,6 +76,13 @@ export function BoardToolbar({
           ))}
         </SelectContent>
       </Select>
+
+      <BoardFilterPanel
+        projectId={projectId}
+        appliedFilter={appliedFilter}
+        toggleExpression={toggleExpression}
+        onApply={onApplyFilter}
+      />
 
       <div className="flex flex-wrap items-center gap-1.5">
         {filters.map((filter) => {

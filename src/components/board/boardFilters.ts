@@ -51,7 +51,22 @@ export function composeFilterExpression(filters: BoardFilter[], activeFilterIds:
     return null
   }
 
-  return active.map((filter) => `(${filter.expression})`).join(" and ")
+  return andTogether(active.map((filter) => filter.expression))
+}
+
+/**
+ * Several predicates as one, each bracketed. Exported because the same rule governs combining a saved
+ * filter with the toggles, and getting the brackets wrong is silent: `in` binds looser than `and` in
+ * jME, so joining two correct predicates without them can quietly mean a third thing.
+ */
+export function andTogether(expressions: (string | null)[]): string | null {
+  const present = expressions.filter((expression): expression is string => expression !== null && expression.trim() !== "")
+
+  if (present.length === 0) {
+    return null
+  }
+
+  return present.map((expression) => `(${expression.trim()})`).join(" and ")
 }
 
 /**

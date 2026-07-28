@@ -15,6 +15,7 @@ import { BoardSettingsSheet } from "@/components/board/BoardSettingsSheet"
 import { BoardToolbar } from "@/components/board/BoardToolbar"
 import { SprintHeader } from "@/components/board/SprintHeader"
 import {
+  andTogether,
   applyMatchedCardIds,
   composeFilterExpression,
   toBoardFilters,
@@ -22,6 +23,7 @@ import {
 } from "@/components/board/boardFilters"
 import { groupIntoSwimlanes } from "@/components/board/swimlanes"
 import { fetchBoardFilters } from "@/api/boardFilters"
+import type { SavedFilterView } from "@/api/savedFilters"
 import { useLanguage } from "@/context/LanguageContext"
 import {
   getBoard,
@@ -56,6 +58,7 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   const [pendingMove, setPendingMove] = useState<BoardMoveRequest | null>(null)
   const [resolutionId, setResolutionId] = useState(CHOOSE)
   const [activeFilterIds, setActiveFilterIds] = useState<string[]>([])
+  const [appliedFilter, setAppliedFilter] = useState<SavedFilterView | null>(null)
 
   const canEdit = permissions.includes("EDIT_ISSUE")
   const canTransition = permissions.includes("TRANSITION_ISSUE")
@@ -64,9 +67,17 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
 
   const { data: filterCatalog } = useQuery({ queryKey: ["board-filters"], queryFn: fetchBoardFilters })
   const boardFilters = useMemo(() => toBoardFilters(filterCatalog ?? []), [filterCatalog])
-  const filterExpression = useMemo(
+
+  const toggleExpression = useMemo(
     () => composeFilterExpression(boardFilters, activeFilterIds),
     [boardFilters, activeFilterIds],
+  )
+
+  // A saved filter and the toggles narrow together rather than replacing each other — "my issues" on top
+  // of "Release blockers" is the obvious reading, and both sides are already bracketed predicates.
+  const filterExpression = useMemo(
+    () => andTogether([appliedFilter?.expression ?? null, toggleExpression]),
+    [appliedFilter, toggleExpression],
   )
 
   // The expression is part of the cache key: the server evaluates the predicate, so two filter
@@ -199,12 +210,16 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <BoardToolbar
+          projectId={projectId}
           swimlaneStrategy={board.swimlaneStrategy}
           canChangeSwimlanes={canAdminister && !swimlaneMutation.isPending}
           onSwimlaneChange={(strategy) => swimlaneMutation.mutate(strategy)}
           filters={boardFilters}
           activeFilterIds={activeFilterIds}
           onToggleFilter={toggleFilter}
+          appliedFilter={appliedFilter}
+          toggleExpression={toggleExpression}
+          onApplyFilter={setAppliedFilter}
         />
 
         {canAdminister && (
