@@ -6,7 +6,8 @@ import { EmptyState } from "@/components/EmptyState"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { MemberChip } from "@/components/MemberChip"
-import { ProjectTypeBadge } from "@/components/projects/ProjectTypeBadge"
+import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
+import { plansInSprints } from "@/lib/projectStyle"
 import { listProjects } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
 
@@ -20,7 +21,7 @@ export function BacklogPage() {
   const navigate = useNavigate()
   const { data: projects, isLoading } = useQuery({ queryKey: ["projects"], queryFn: listProjects })
 
-  const planningProjects = (projects ?? []).filter((project) => project.boardScopeStrategy === "ACTIVE_SPRINT")
+  const planningProjects = (projects ?? []).filter((project) => plansInSprints(project.boardScopeStrategy))
 
   return (
     <>
@@ -54,7 +55,7 @@ export function BacklogPage() {
             <TableRow>
               <TableHead className="w-24">{t("common.key", "Key")}</TableHead>
               <TableHead>{t("common.project", "Project")}</TableHead>
-              <TableHead className="w-28">{t("common.type", "Type")}</TableHead>
+              <TableHead className="w-28">{t("project.column.planning", "Planning")}</TableHead>
               <TableHead>{t("common.lead", "Lead")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -68,7 +69,7 @@ export function BacklogPage() {
                 <TableCell className="font-mono text-xs font-medium">{project.key}</TableCell>
                 <TableCell className="font-medium">{project.name}</TableCell>
                 <TableCell>
-                  <ProjectTypeBadge type={project.type} />
+                  <ProjectStyleBadge boardScopeStrategy={project.boardScopeStrategy} />
                 </TableCell>
                 <TableCell>
                   <MemberChip member={project.lead} />

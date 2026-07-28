@@ -2,7 +2,6 @@ import { httpClient } from "@/api/httpClient"
 import type { MemberSummary } from "@/api/members"
 import type { BoardScopeStrategy } from "@/api/sprints"
 
-export type ProjectType = "SCRUM" | "KANBAN" | "TODO"
 export type PermissionEffect = "ALLOW" | "DENY"
 
 export interface SchemeSummary {
@@ -14,8 +13,10 @@ export interface ProjectResponse {
   id: string
   key: string
   name: string
-  type: ProjectType
-  /** Whether this project plans in sprints — the Backlog view keys off this, never off `type` (ADR-0012). */
+  /**
+   * The only stored answer to "does this project do Scrum?" (ADR-0015). The Backlog view keys off it,
+   * and so do the Scrum/Kanban label and default tab — see `lib/projectStyle`. There is no `type`.
+   */
   boardScopeStrategy: BoardScopeStrategy
   lead: MemberSummary | null
   issueTypeScheme: SchemeSummary | null
@@ -30,7 +31,8 @@ export interface ProjectResponse {
 export interface CreateProjectRequest {
   name: string
   key: string
-  type: ProjectType
+  /** The "Scrum or Kanban?" answer, sent as the thing it actually sets: the new board's scope. */
+  boardScopeStrategy: BoardScopeStrategy
   leadMemberId?: string | null
 }
 
@@ -84,6 +86,30 @@ export function createProject(request: CreateProjectRequest) {
 
 export function updateProject(projectId: string, request: UpdateProjectRequest) {
   return httpClient.put<ProjectResponse>(`/projects/${projectId}`, request).then((response) => response.data)
+}
+
+/**
+ * The issue types this project may create, in its scheme's order, plus that scheme's default.
+ *
+ * Distinct from the global `fetchConfiguration` catalog on purpose: that one lists every type that
+ * exists, which is the wrong list to raise an issue from once a project's scheme narrows it.
+ */
+export interface ProjectIssueTypesResponse {
+  issueTypes: Array<{
+    id: string
+    name: string
+    hierarchyLevel: number
+    iconKey: string | null
+    description: string | null
+  }>
+  /** Always one of `issueTypes`, or null when the scheme grants none — safe to preselect as-is. */
+  defaultIssueTypeId: string | null
+}
+
+export function listProjectIssueTypes(projectId: string) {
+  return httpClient
+    .get<ProjectIssueTypesResponse>(`/projects/${projectId}/issue-types`)
+    .then((response) => response.data)
 }
 
 export function fetchConfiguration() {

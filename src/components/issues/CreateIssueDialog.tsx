@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { createIssue, fetchCatalog, listIssues } from "@/api/issues"
+import { listProjectIssueTypes } from "@/api/projects"
 import { searchMembers } from "@/api/members"
 import { apiErrorMessage } from "@/api/errors"
 import { memberName } from "@/lib/memberDisplay"
@@ -23,8 +24,9 @@ import { memberName } from "@/lib/memberDisplay"
 const UNASSIGNED = "__unassigned__"
 const NO_PARENT = "__none__"
 
-/** Create an issue in a project. Type/priority default to the first catalog entries; the key, initial
- *  status and reporter are assigned server-side. */
+/** Create an issue in a project. The type list is project-scoped — only what the project's issue type
+ *  scheme grants, preselected on that scheme's default — while priority still comes from the global
+ *  catalog, which genuinely is global. The key, initial status and reporter are assigned server-side. */
 export function CreateIssueDialog({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -37,6 +39,11 @@ export function CreateIssueDialog({ projectId }: { projectId: string }) {
   const [storyPoints, setStoryPoints] = useState("")
 
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog, enabled: open })
+  const { data: projectIssueTypes } = useQuery({
+    queryKey: ["project-issue-types", projectId],
+    queryFn: () => listProjectIssueTypes(projectId),
+    enabled: open,
+  })
   const { data: members = [] } = useQuery({ queryKey: ["members", "all"], queryFn: () => searchMembers(), enabled: open })
   const { data: issues = [] } = useQuery({
     queryKey: ["issues", projectId],
@@ -44,7 +51,10 @@ export function CreateIssueDialog({ projectId }: { projectId: string }) {
     enabled: open,
   })
 
-  const resolvedType = issueTypeId || catalog?.issueTypes[0]?.id || ""
+  // `defaultIssueTypeId` is guaranteed to be one of `issueTypes`, so it needs no re-checking here —
+  // the backend resolves the scheme's default against what the scheme actually grants.
+  const offeredTypes = projectIssueTypes?.issueTypes ?? []
+  const resolvedType = issueTypeId || projectIssueTypes?.defaultIssueTypeId || ""
   const resolvedPriority = priorityId || catalog?.priorities.find((entry) => entry.name === "Medium")?.id || catalog?.priorities[0]?.id || ""
   const canSubmit = summary.trim().length > 0 && resolvedType.length > 0 && resolvedPriority.length > 0
 
@@ -108,7 +118,7 @@ export function CreateIssueDialog({ projectId }: { projectId: string }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {catalog?.issueTypes.map((type) => (
+                  {offeredTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name}
                     </SelectItem>

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MemberChip } from "@/components/MemberChip"
-import { ProjectTypeBadge } from "@/components/projects/ProjectTypeBadge"
+import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
 import { ProjectSettingsForm } from "@/components/projects/ProjectSettingsForm"
 import { ProjectAccessPanel } from "@/components/projects/ProjectAccessPanel"
 import { IssuesPanel } from "@/components/issues/IssuesPanel"
@@ -14,6 +14,7 @@ import { BacklogPanel } from "@/components/backlog/BacklogPanel"
 import { ReportsPanel } from "@/components/reports/ReportsPanel"
 import { useLanguage } from "@/context/LanguageContext"
 import { ADMINISTER_PROJECT, getProject } from "@/api/projects"
+import { defaultProjectTab, plansInSprints, projectStyleLabel } from "@/lib/projectStyle"
 
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -49,17 +50,16 @@ export function ProjectDetailPage() {
   }
 
   const canAdminister = project.myPermissions.includes(ADMINISTER_PROJECT)
-  // Whether this project plans in sprints is a property of its board, never of its type (ADR-0012) —
-  // so a Kanban team switched onto sprints gets the Backlog tab with no code change here.
-  const plansInSprints = project.boardScopeStrategy === "ACTIVE_SPRINT"
-  // A KANBAN project opens on its board; every other type opens on the issue list (a TODO project keeps
-  // its checklist view). The tab is a URL param so a board deep-link (?tab=board) lands on the board.
-  const defaultTab = project.type === "KANBAN" ? "board" : "issues"
+  // Both of these are derived from the board's scope strategy and nothing else (ADR-0015), so a team
+  // switched onto sprints gets the Backlog tab — and reads as Scrum — with no code change here.
+  const planningInSprints = plansInSprints(project.boardScopeStrategy)
+  // The tab is a URL param so a board deep-link (?tab=board) still lands on the board.
+  const defaultTab = defaultProjectTab(project.boardScopeStrategy)
   const planningTabs = ["backlog", "reports"]
   const requestedTab = searchParameters.get("tab") ?? defaultTab
   // A link to a planning tab survives the board being switched back to all issues (ticket 08): the tab
   // is simply gone, so fall back rather than leave the page on a trigger that no longer exists.
-  const activeTab = !plansInSprints && planningTabs.includes(requestedTab) ? defaultTab : requestedTab
+  const activeTab = !planningInSprints && planningTabs.includes(requestedTab) ? defaultTab : requestedTab
 
   return (
     <>
@@ -70,15 +70,15 @@ export function ProjectDetailPage() {
             <span className="font-display text-lg font-semibold tracking-[-0.02em]">{project.name}</span>
           </span>
         }
-        description={`Project · ${project.type.charAt(0) + project.type.slice(1).toLowerCase()}`}
+        description={`Project · ${projectStyleLabel(project.boardScopeStrategy)}`}
       />
 
       <Tabs value={activeTab} onValueChange={(tab) => setSearchParameters({ tab }, { replace: true })}>
         <TabsList>
           <TabsTrigger value="issues">{t("project.tab.issues", "Issues")}</TabsTrigger>
           <TabsTrigger value="board">{t("project.tab.board", "Board")}</TabsTrigger>
-          {plansInSprints && <TabsTrigger value="backlog">{t("project.tab.backlog", "Backlog")}</TabsTrigger>}
-          {plansInSprints && <TabsTrigger value="reports">{t("project.tab.reports", "Reports")}</TabsTrigger>}
+          {planningInSprints && <TabsTrigger value="backlog">{t("project.tab.backlog", "Backlog")}</TabsTrigger>}
+          {planningInSprints && <TabsTrigger value="reports">{t("project.tab.reports", "Reports")}</TabsTrigger>}
           <TabsTrigger value="overview">{t("project.tab.overview", "Overview")}</TabsTrigger>
           <TabsTrigger value="settings">{t("project.tab.settings", "Settings")}</TabsTrigger>
           <TabsTrigger value="access">{t("project.tab.access", "Access")}</TabsTrigger>
@@ -92,13 +92,13 @@ export function ProjectDetailPage() {
           <BoardPanel projectId={project.id} permissions={project.myPermissions} />
         </TabsContent>
 
-        {plansInSprints && (
+        {planningInSprints && (
           <TabsContent value="backlog">
             <BacklogPanel projectId={project.id} permissions={project.myPermissions} />
           </TabsContent>
         )}
 
-        {plansInSprints && (
+        {planningInSprints && (
           <TabsContent value="reports">
             <ReportsPanel projectId={project.id} permissions={project.myPermissions} />
           </TabsContent>
@@ -109,8 +109,8 @@ export function ProjectDetailPage() {
             <DetailRow label="Key">
               <span className="font-mono">{project.key}</span>
             </DetailRow>
-            <DetailRow label="Type">
-              <ProjectTypeBadge type={project.type} />
+            <DetailRow label="Planning">
+              <ProjectStyleBadge boardScopeStrategy={project.boardScopeStrategy} />
             </DetailRow>
             <DetailRow label="Lead">
               <MemberChip member={project.lead} />

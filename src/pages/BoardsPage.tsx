@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { MemberChip } from "@/components/MemberChip"
-import { ProjectTypeBadge } from "@/components/projects/ProjectTypeBadge"
+import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
 import { listProjects } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
 
@@ -49,7 +49,7 @@ export function BoardsPage() {
             <TableRow>
               <TableHead className="w-24">Key</TableHead>
               <TableHead>Project</TableHead>
-              <TableHead className="w-28">Type</TableHead>
+              <TableHead className="w-28">Planning</TableHead>
               <TableHead>Lead</TableHead>
             </TableRow>
           </TableHeader>
@@ -63,7 +63,7 @@ export function BoardsPage() {
                 <TableCell className="font-mono text-xs font-medium">{project.key}</TableCell>
                 <TableCell className="font-medium">{project.name}</TableCell>
                 <TableCell>
-                  <ProjectTypeBadge type={project.type} />
+                  <ProjectStyleBadge boardScopeStrategy={project.boardScopeStrategy} />
                 </TableCell>
                 <TableCell>
                   <MemberChip member={project.lead} />

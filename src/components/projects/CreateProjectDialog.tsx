@@ -15,7 +15,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createProject, type ProjectType } from "@/api/projects"
+import { createProject } from "@/api/projects"
+import type { BoardScopeStrategy } from "@/api/sprints"
 import { searchMembers } from "@/api/members"
 import { apiErrorMessage } from "@/api/errors"
 import { memberName } from "@/lib/memberDisplay"
@@ -23,17 +24,22 @@ import { memberName } from "@/lib/memberDisplay"
 const KEY_PATTERN = /^[A-Z][A-Z0-9]*$/
 const SELF_LEAD = "__self__"
 
-const PROJECT_TYPES: Array<{ value: ProjectType; label: string; hint: string }> = [
-  { value: "SCRUM", label: "Scrum", hint: "Sprints, backlog and a full workflow." },
-  { value: "KANBAN", label: "Kanban", hint: "A continuous-flow board and full workflow." },
-  { value: "TODO", label: "Todo", hint: "A lightweight flat checklist." },
+/**
+ * The question is still asked in plain words; the answer is stored as the board's scope strategy and
+ * nothing else (ADR-0015), so the label the project shows later is derived from this same field rather
+ * than from a second one that could drift away from it. Switching later is a board setting, not a
+ * migration — which is why neither option reads as permanent.
+ */
+const PLANNING_STYLES: Array<{ value: BoardScopeStrategy; label: string; hint: string }> = [
+  { value: "ACTIVE_SPRINT", label: "Scrum", hint: "Plan in sprints, with a backlog and reports." },
+  { value: "ALL_ISSUES", label: "Kanban", hint: "Continuous flow — the board shows everything." },
 ]
 
 export function CreateProjectDialog() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [key, setKey] = useState("")
-  const [type, setType] = useState<ProjectType>("SCRUM")
+  const [boardScopeStrategy, setBoardScopeStrategy] = useState<BoardScopeStrategy>("ACTIVE_SPRINT")
   const [leadMemberId, setLeadMemberId] = useState<string>(SELF_LEAD)
 
   const navigate = useNavigate()
@@ -53,7 +59,7 @@ export function CreateProjectDialog() {
       createProject({
         name: name.trim(),
         key,
-        type,
+        boardScopeStrategy,
         leadMemberId: leadMemberId === SELF_LEAD ? null : leadMemberId,
       }),
     onSuccess: (project) => {
@@ -69,7 +75,7 @@ export function CreateProjectDialog() {
     setOpen(false)
     setName("")
     setKey("")
-    setType("SCRUM")
+    setBoardScopeStrategy("ACTIVE_SPRINT")
     setLeadMemberId(SELF_LEAD)
   }
 
@@ -126,19 +132,23 @@ export function CreateProjectDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="project-type">Type</Label>
-            <Select value={type} onValueChange={(value) => setType(value as ProjectType)}>
-              <SelectTrigger id="project-type">
+            <Label htmlFor="project-planning">Planning</Label>
+            <Select
+              value={boardScopeStrategy}
+              onValueChange={(value) => setBoardScopeStrategy(value as BoardScopeStrategy)}
+            >
+              <SelectTrigger id="project-planning">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PROJECT_TYPES.map((option) => (
+                {PLANNING_STYLES.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label} — {option.hint}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">You can switch this later in board settings.</p>
           </div>
 
           <div className="space-y-1.5">
