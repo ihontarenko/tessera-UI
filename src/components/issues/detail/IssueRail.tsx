@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { MemberChip } from "@/components/MemberChip"
+import { SegmentedControl } from "@/components/SegmentedControl"
 import { PriorityBadge, formatStoryPoints } from "@/components/issues/issueVisuals"
 import { InlineSelect } from "@/components/issues/detail/InlineSelect"
 import { InlineTextField } from "@/components/issues/detail/InlineTextField"
@@ -14,7 +15,6 @@ import { IssueTransitionAction } from "@/components/issues/detail/IssueTransitio
 import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"
 import { fetchCatalog, fetchLinkTypes, listIssues, type IssueDetail, type IssueRef } from "@/api/issues"
 import { searchMembers } from "@/api/members"
-import { cn } from "@/lib/helpers"
 import { memberName } from "@/lib/memberDisplay"
 
 const UNASSIGNED = "__unassigned__"
@@ -88,25 +88,16 @@ export function IssueRail({
 
       <Separator />
 
+      {/* The one place a segmented control does fill its container: the rail is the width of the
+          choice, and three panes sharing it evenly is the shape of the thing being chosen. */}
       {isQuick && (
-        <div className="flex rounded-md border p-0.5">
-          {PANES.map((entry) => (
-            <button
-              key={entry.pane}
-              type="button"
-              onClick={() => setPane(entry.pane)}
-              aria-pressed={pane === entry.pane}
-              className={cn(
-                "flex-1 rounded px-2 py-1 text-xs transition-colors",
-                pane === entry.pane
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          ariaLabel="Rail contents"
+          segments={PANES.map((entry) => ({ value: entry.pane, label: entry.label }))}
+          value={pane}
+          onChange={setPane}
+          fill
+        />
       )}
 
       {(!isQuick || pane === "details") && (

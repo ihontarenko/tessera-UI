@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { SegmentedControl } from "@/components/SegmentedControl"
 import type { MemberSummary } from "@/api/members"
 import { memberInitials, memberName } from "@/lib/memberDisplay"
 import {
@@ -130,24 +131,12 @@ export function IssueActivityStream({
         )}
         {/* Sized to its three words, not to the column it happens to sit in: a control stretched the
             width of a page reads as a navigation bar rather than as a filter on the list below it. */}
-        <div className="inline-flex gap-0.5 rounded-md border p-0.5">
-          {SCOPES.map((entry) => (
-            <button
-              key={entry.scope}
-              type="button"
-              onClick={() => setScope(entry.scope)}
-              aria-pressed={scope === entry.scope}
-              className={cn(
-                "rounded px-2 py-0.5 text-xs transition-colors",
-                scope === entry.scope
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          ariaLabel="Filter the activity"
+          segments={SCOPES.map((entry) => ({ value: entry.scope, label: entry.label }))}
+          value={scope}
+          onChange={setScope}
+        />
       </div>
 
       {canComment && (
