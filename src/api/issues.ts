@@ -174,6 +174,8 @@ export interface IssueSearchParameters {
   projectId?: string
   statusId?: string
   assigneeMemberId?: string
+  /** Open is `resolution IS NULL` — the invariant, not a status name (ADR-0004). */
+  openOnly?: boolean
   page?: number
   size?: number
 }
