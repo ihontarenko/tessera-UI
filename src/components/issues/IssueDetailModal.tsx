@@ -9,6 +9,7 @@ import { IssueTypeIcon } from "@/components/issues/issueVisuals"
 import { IssueDetailPanel } from "@/components/issues/detail/IssueDetailPanel"
 import { issueQueryKey } from "@/components/issues/detail/useIssueEditing"
 import { deleteIssue, getIssue } from "@/api/issues"
+import { DELETE_ISSUE } from "@/api/permissions"
 import { apiErrorMessage } from "@/api/errors"
 
 interface IssueDetailModalProperties {
@@ -78,7 +79,7 @@ export function IssueDetailModal({ issueId, projectId, permissions, open, onOpen
                   <ExternalLink className="mr-1 size-3.5" /> Open full page
                 </Link>
               </Button>
-              {permissions.includes("DELETE_ISSUE") && (
+              {permissions.includes(DELETE_ISSUE) && (
                 <Button
                   size="sm"
                   variant="ghost"

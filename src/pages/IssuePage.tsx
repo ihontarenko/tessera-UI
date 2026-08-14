@@ -9,6 +9,7 @@ import { IssueTypeIcon } from "@/components/issues/issueVisuals"
 import { IssueDetailPanel } from "@/components/issues/detail/IssueDetailPanel"
 import { issueByKeyQueryKey } from "@/components/issues/detail/useIssueEditing"
 import { deleteIssue, getIssueByKey } from "@/api/issues"
+import { DELETE_ISSUE } from "@/api/permissions"
 import { getProject } from "@/api/projects"
 import { apiErrorMessage } from "@/api/errors"
 
@@ -88,7 +89,7 @@ export function IssuePage() {
           )
         }
         actions={
-          permissions.includes("DELETE_ISSUE") && (
+          permissions.includes(DELETE_ISSUE) && (
             <Button
               size="sm"
               variant="ghost"

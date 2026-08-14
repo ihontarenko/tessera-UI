@@ -27,6 +27,7 @@ import {
   type SaveSprintRequest,
   type SprintSummary,
 } from "@/api/sprints"
+import { CREATE_ISSUE, EDIT_ISSUE } from "@/api/permissions"
 import { getIssue, updateIssue } from "@/api/issues"
 import { apiErrorMessage } from "@/api/errors"
 
@@ -61,8 +62,8 @@ export function BacklogPanel({ projectId, permissions }: { projectId: string; pe
   const [sprintToStart, setSprintToStart] = useState<SprintSummary | null>(null)
 
   const canManageSprint = permissions.includes(MANAGE_SPRINT)
-  const canEditIssue = permissions.includes("EDIT_ISSUE")
-  const canCreateIssue = permissions.includes("CREATE_ISSUE")
+  const canEditIssue = permissions.includes(EDIT_ISSUE)
+  const canCreateIssue = permissions.includes(CREATE_ISSUE)
   const canDrag = canManageSprint || canEditIssue
 
   const { data: backlog, isLoading } = useQuery({ queryKey: backlogKey, queryFn: () => getBacklog(projectId) })

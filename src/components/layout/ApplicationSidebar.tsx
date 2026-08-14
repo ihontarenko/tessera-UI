@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom"
-import { Palette } from "lucide-react"
+import { Palette, ShieldCheck } from "lucide-react"
 import { TesseraMark } from "@/components/icons/TesseraMark"
 import {
   Sidebar,
@@ -93,6 +93,22 @@ export function ApplicationSidebar() {
         {/* A page (AppearanceSettingsPage), not a dropdown — see the LanguageSwitcher comment above
             for why a popover this size doesn't survive fontScale zoom in this footer position. */}
         <SidebarMenu>
+          {/* ⚠️ Shown to everybody, and refused by the server to anybody without `access:administer`.
+              Hiding it would need the caller's installation-wide permissions in the shell, which is a
+              request per page load to save one 403 — and a link that is present and refused is a
+              clearer answer than one that silently is not there. */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              tooltip={t("common.access", "Access")}
+              isActive={isNavigationItemActive(pathname, "/settings/access")}
+            >
+              <NavLink to="/settings/access">
+                <ShieldCheck className="size-4" />
+                <span>{t("common.access", "Access")}</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild

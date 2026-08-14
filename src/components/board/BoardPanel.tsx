@@ -39,6 +39,7 @@ import {
 } from "@/api/boards"
 import { fetchCatalog } from "@/api/issues"
 import { completeSprint, listSprints, MANAGE_SPRINT, type CompleteSprintRequest } from "@/api/sprints"
+import { ADMINISTER_PROJECT, EDIT_ISSUE, TRANSITION_ISSUE } from "@/api/permissions"
 import { apiErrorMessage } from "@/api/errors"
 
 const CHOOSE = "__choose__"
@@ -65,9 +66,9 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   const [appliedFilter, setAppliedFilter] = useState<SavedFilterView | null>(null)
   const [completeOpen, setCompleteOpen] = useState(false)
 
-  const canEdit = permissions.includes("EDIT_ISSUE")
-  const canTransition = permissions.includes("TRANSITION_ISSUE")
-  const canAdminister = permissions.includes("ADMINISTER_PROJECT")
+  const canEdit = permissions.includes(EDIT_ISSUE)
+  const canTransition = permissions.includes(TRANSITION_ISSUE)
+  const canAdminister = permissions.includes(ADMINISTER_PROJECT)
   const canManageSprint = permissions.includes(MANAGE_SPRINT)
   const canDrag = canEdit || canTransition
 

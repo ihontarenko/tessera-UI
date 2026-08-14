@@ -136,4 +136,5 @@ export function completeSprint(projectId: string, sprintId: string, request: Com
     .then((response) => response.data)
 }
 
-export const MANAGE_SPRINT = "MANAGE_SPRINT"
+// Re-exported for the call sites that already import it from here; the name lives in `permissions.ts`.
+export { MANAGE_SPRINT } from "./permissions"

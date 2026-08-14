@@ -4,6 +4,7 @@ import { IssueActivityStream } from "@/components/issues/detail/IssueActivityStr
 import { IssueRail } from "@/components/issues/detail/IssueRail"
 import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"
 import type { IssueDetail } from "@/api/issues"
+import { ADD_COMMENT, EDIT_ISSUE, TRANSITION_ISSUE } from "@/api/permissions"
 
 /**
  * An issue, laid out as a document: what it is on the left, what is true about it on the right
@@ -29,8 +30,8 @@ export function IssueDetailPanel({
   variant?: "page" | "quick"
 }) {
   const editing = useIssueEditing(issue)
-  const canEdit = permissions.includes("EDIT_ISSUE")
-  const canComment = permissions.includes("ADD_COMMENT")
+  const canEdit = permissions.includes(EDIT_ISSUE)
+  const canComment = permissions.includes(ADD_COMMENT)
   const isPage = variant === "page"
 
   return (
@@ -72,7 +73,7 @@ export function IssueDetailPanel({
       <aside className="w-full lg:w-[290px] lg:flex-none">
         <IssueRail
           issue={issue}
-          permissions={{ canEdit, canTransition: permissions.includes("TRANSITION_ISSUE") }}
+          permissions={{ canEdit, canTransition: permissions.includes(TRANSITION_ISSUE) }}
           editing={editing}
           variant={variant}
           canComment={canComment}

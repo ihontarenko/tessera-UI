@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom"
 import { ApplicationLayout } from "@/components/layout/ApplicationLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { AppearanceSettingsPage } from "@/pages/AppearanceSettingsPage"
+import { AccessSettingsPage } from "@/pages/AccessSettingsPage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage"
 import { IssuePage } from "@/pages/IssuePage"
@@ -36,6 +37,10 @@ export function AppRoutes() {
         <Route path="/boards/*" element={<Navigate to="/projects" replace />} />
         <Route path="/backlog/*" element={<Navigate to="/projects" replace />} />
         <Route path="/settings/appearance" element={<AppearanceSettingsPage />} />
+        {/* ⚠️ Installation-wide, behind `access:administer` — a role is not a project's, so this is not
+            under /projects/:projectId. The server refuses anybody without it; the route is open because
+            a client-side guard is a courtesy and never the authorization. */}
+        <Route path="/settings/access" element={<AccessSettingsPage />} />
         {/* "soon" navigation items have no route yet — they land as their modules are built. */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

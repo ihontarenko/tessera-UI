@@ -17,6 +17,7 @@ import { CreateIssueDialog } from "@/components/issues/CreateIssueDialog"
 import { IssueDetailModal } from "@/components/issues/IssueDetailModal"
 import { IssueTypeIcon, PriorityBadge, StatusPill, formatStoryPoints } from "@/components/issues/issueVisuals"
 import { fetchCatalog, getIssue, listIssues, transitionIssue, type IssueRow } from "@/api/issues"
+import { CREATE_ISSUE, TRANSITION_ISSUE } from "@/api/permissions"
 import { apiErrorMessage } from "@/api/errors"
 
 const ANY = "__any__"
@@ -33,8 +34,8 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
   const { data: issues, isLoading } = useQuery({ queryKey: ["issues", projectId], queryFn: () => listIssues(projectId) })
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
 
-  const canCreate = permissions.includes("CREATE_ISSUE")
-  const canTransition = permissions.includes("TRANSITION_ISSUE")
+  const canCreate = permissions.includes(CREATE_ISSUE)
+  const canTransition = permissions.includes(TRANSITION_ISSUE)
 
   const assignees = useMemo(() => {
     const seen = new Map<string, { id: string; displayName: string | null; email: string | null }>()

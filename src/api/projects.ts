@@ -189,4 +189,6 @@ export function clearPermissionOverride(projectId: string, memberId: string, per
     .then((response) => response.data)
 }
 
-export const ADMINISTER_PROJECT = "ADMINISTER_PROJECT"
+// Re-exported so the many call sites that already import it from here keep working. The name itself
+// lives in `permissions.ts` now, beside the other nine — see that file for why.
+export { ADMINISTER_PROJECT } from "./permissions"
