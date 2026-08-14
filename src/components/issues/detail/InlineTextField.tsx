@@ -81,6 +81,8 @@ export function InlineTextField({
     onCommit(next)
   }
 
+  // Drawn as plain text until it is hovered or focused: the field is always the control, so there is
+  // nothing to switch into and nothing to save.
   const shared = {
     value: draft,
     placeholder,
@@ -98,6 +100,10 @@ export function InlineTextField({
       <Textarea
         {...shared}
         rows={6}
+        // The shared Textarea sizes itself to its content, which is right for a comment box and wrong
+        // for a description: a long one grew to a thousand pixels and pushed the rest of the issue off
+        // the screen. Here it is a panel of fixed height that scrolls inside itself.
+        className={cn(shared.className, "field-sizing-fixed max-h-56 min-h-28 overflow-y-auto")}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Escape") {

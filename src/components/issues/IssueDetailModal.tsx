@@ -48,7 +48,9 @@ export function IssueDetailModal({ issueId, projectId, permissions, open, onOpen
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      {/* 768px is a one-column dialog. Two columns need room, and the rail's 290px has to come out of
+          somewhere other than the description. */}
+      <DialogContent className="max-h-[88vh] gap-3 overflow-y-auto sm:max-w-[900px]">
         {isLoading || !issue ? (
           <>
             <DialogHeader>

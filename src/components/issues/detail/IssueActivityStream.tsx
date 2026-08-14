@@ -59,7 +59,16 @@ type StreamEntry =
  * sort over two arrays, not a reason for a new backend shape. Newest first, with the composer above the
  * stream, so the freshest thing and the place to answer it are both on screen without scrolling.
  */
-export function IssueActivityStream({ issueId, canComment }: { issueId: string; canComment: boolean }) {
+export function IssueActivityStream({
+  issueId,
+  canComment,
+  compact = false,
+}: {
+  issueId: string
+  canComment: boolean
+  /** The rail's arrangement: the same stream with the heading dropped and the composer shortened. */
+  compact?: boolean
+}) {
   const queryClient = useQueryClient()
   const [scope, setScope] = useState<StreamScope>("all")
   const [draft, setDraft] = useState("")
@@ -110,10 +119,12 @@ export function IssueActivityStream({ issueId, canComment }: { issueId: string; 
   })
 
   return (
-    <section className="space-y-4">
+    <section className={cn("space-y-4", compact && "space-y-2.5")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">Activity</h2>
-        <div className="flex gap-1 rounded-md border p-0.5">
+        {!compact && (
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">Activity</h2>
+        )}
+        <div className="flex w-full gap-1 rounded-md border p-0.5">
           {SCOPES.map((entry) => (
             <button
               key={entry.scope}
@@ -121,7 +132,7 @@ export function IssueActivityStream({ issueId, canComment }: { issueId: string; 
               onClick={() => setScope(entry.scope)}
               aria-pressed={scope === entry.scope}
               className={cn(
-                "rounded px-2.5 py-1 text-xs transition-colors",
+                "flex-1 rounded px-2.5 py-1 text-xs transition-colors",
                 scope === entry.scope
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -139,7 +150,7 @@ export function IssueActivityStream({ issueId, canComment }: { issueId: string; 
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Add a comment…"
-            rows={3}
+            rows={compact ? 2 : 3}
             maxLength={4000}
           />
           <div className="flex justify-end">

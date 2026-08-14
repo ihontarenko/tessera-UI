@@ -9,10 +9,12 @@ import { Separator } from "@/components/ui/separator"
 import { MemberChip } from "@/components/MemberChip"
 import { PriorityBadge, formatStoryPoints } from "@/components/issues/issueVisuals"
 import { InlineTextField } from "@/components/issues/detail/InlineTextField"
+import { IssueActivityStream } from "@/components/issues/detail/IssueActivityStream"
 import { IssueTransitionAction } from "@/components/issues/detail/IssueTransitionAction"
 import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"
 import { fetchCatalog, fetchLinkTypes, listIssues, type IssueDetail, type IssueRef } from "@/api/issues"
 import { searchMembers } from "@/api/members"
+import { cn } from "@/lib/helpers"
 import { memberName } from "@/lib/memberDisplay"
 
 const UNASSIGNED = "__unassigned__"
@@ -23,6 +25,15 @@ export interface IssuePermissions {
   canEdit: boolean
   canTransition: boolean
 }
+
+/** The three things a rail can be showing when it has to fit in a dialog. */
+type RailPane = "details" | "activity" | "relations"
+
+const PANES: Array<{ pane: RailPane; label: string }> = [
+  { pane: "details", label: "Details" },
+  { pane: "activity", label: "Activity" },
+  { pane: "relations", label: "Relations" },
+]
 
 /**
  * An estimate is blank or a non-negative number. Anything else is typing, not an estimate, and the
@@ -45,27 +56,29 @@ function isEstimate(value: string): boolean {
  * no edit mode and no Save button anywhere on an issue. A member without `EDIT_ISSUE` reads exactly the
  * same rail with the editors replaced by their values.
  *
- * `compact` is the modal's rail (ticket 11): the fields a glance needs, without the relationships that
- * want room and a page of their own to lead to. It is the same components either way — the modal is a
- * narrower arrangement of this, not a second implementation.
+ * Two arrangements, one set of components. On a **page** everything is visible at once, because there
+ * is room for it. In a **dialog** there is not, so the rail becomes three panes behind a segmented
+ * control — which also means only one region can ever want to scroll, the thing that made the old modal
+ * unusable. The panes are a display choice and hold no data of their own.
  */
 export function IssueRail({
   issue,
   permissions,
   editing,
-  compact = false,
+  variant = "page",
+  canComment = false,
 }: {
   issue: IssueDetail
   permissions: IssuePermissions
   editing: ReturnType<typeof useIssueEditing>
-  compact?: boolean
+  variant?: "page" | "quick"
+  canComment?: boolean
 }) {
-  const { canEdit } = permissions
-  const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
-  const { data: members = [] } = useQuery({ queryKey: ["members", "all"], queryFn: () => searchMembers() })
+  const [pane, setPane] = useState<RailPane>("details")
+  const isQuick = variant === "quick"
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <IssueTransitionAction
         issue={issue}
         canTransition={permissions.canTransition}
@@ -75,6 +88,72 @@ export function IssueRail({
 
       <Separator />
 
+      {isQuick && (
+        <div className="flex rounded-md border p-0.5">
+          {PANES.map((entry) => (
+            <button
+              key={entry.pane}
+              type="button"
+              onClick={() => setPane(entry.pane)}
+              aria-pressed={pane === entry.pane}
+              className={cn(
+                "flex-1 rounded px-2 py-1 text-xs transition-colors",
+                pane === entry.pane
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(!isQuick || pane === "details") && (
+        <PropertyRows issue={issue} canEdit={permissions.canEdit} editing={editing} />
+      )}
+
+      {isQuick && pane === "activity" && <IssueActivityStream issueId={issue.id} canComment={canComment} compact />}
+
+      {(!isQuick || pane === "relations") && (
+        <>
+          {!isQuick && <Separator />}
+          <HierarchyRows issue={issue} canEdit={permissions.canEdit} editing={editing} />
+          {!isQuick && <Separator />}
+          <LinkRows issue={issue} canEdit={permissions.canEdit} editing={editing} />
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * A property is a row — label left, value right — not a labelled input stacked above its control.
+ * Five stacked pairs cost 280px of height to carry five words; these cost a line each.
+ */
+function RailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[76px_minmax(0,1fr)] items-center gap-2">
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="min-w-0 text-sm">{children}</div>
+    </div>
+  )
+}
+
+function PropertyRows({
+  issue,
+  canEdit,
+  editing,
+}: {
+  issue: IssueDetail
+  canEdit: boolean
+  editing: ReturnType<typeof useIssueEditing>
+}) {
+  const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
+  const { data: members = [] } = useQuery({ queryKey: ["members", "all"], queryFn: () => searchMembers() })
+
+  return (
+    <div className="space-y-1.5">
       <RailRow label="Assignee">
         {canEdit ? (
           <Select
@@ -83,7 +162,7 @@ export function IssueRail({
               editing.fields.mutate({ assigneeMemberId: value === UNASSIGNED ? null : value })
             }
           >
-            <SelectTrigger className="h-8 w-full">
+            <SelectTrigger className="h-7 w-full border-transparent bg-transparent px-2 shadow-none hover:border-input">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -102,10 +181,14 @@ export function IssueRail({
         )}
       </RailRow>
 
+      <RailRow label="Reporter">
+        {issue.reporter ? <MemberChip member={issue.reporter} /> : <span className="text-muted-foreground">—</span>}
+      </RailRow>
+
       <RailRow label="Priority">
         {canEdit ? (
           <Select value={issue.priority?.id ?? ""} onValueChange={(value) => editing.fields.mutate({ priorityId: value })}>
-            <SelectTrigger className="h-8 w-full">
+            <SelectTrigger className="h-7 w-full border-transparent bg-transparent px-2 shadow-none hover:border-input">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -121,24 +204,20 @@ export function IssueRail({
         )}
       </RailRow>
 
-      <RailRow label="Story points">
+      <RailRow label="Points">
         {canEdit ? (
           <InlineTextField
             ariaLabel="Story points"
             value={issue.storyPoints != null ? String(issue.storyPoints) : ""}
             canEdit
             placeholder="—"
-            className="h-8"
+            className="h-7 tabular-nums"
             accepts={isEstimate}
             onCommit={(next) => editing.fields.mutate({ storyPoints: next.length === 0 ? null : Number(next) })}
           />
         ) : (
-          formatStoryPoints(issue.storyPoints)
+          <span className="tabular-nums">{formatStoryPoints(issue.storyPoints)}</span>
         )}
-      </RailRow>
-
-      <RailRow label="Reporter">
-        {issue.reporter ? <MemberChip member={issue.reporter} /> : <span className="text-muted-foreground">—</span>}
       </RailRow>
 
       <RailRow label="Labels">
@@ -149,7 +228,7 @@ export function IssueRail({
             canEdit
             placeholder="Add labels…"
             emptyText="—"
-            className="h-8"
+            className="h-7"
             onCommit={(next) =>
               editing.labels.mutate(next.split(",").map((label) => label.trim()).filter(Boolean))
             }
@@ -166,24 +245,6 @@ export function IssueRail({
           <span className="text-muted-foreground">—</span>
         )}
       </RailRow>
-
-      {!compact && (
-        <>
-          <Separator />
-          <HierarchyRows issue={issue} canEdit={canEdit} editing={editing} />
-          <Separator />
-          <LinkRows issue={issue} canEdit={canEdit} editing={editing} />
-        </>
-      )}
-    </div>
-  )
-}
-
-function RailRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-      <div className="text-sm">{children}</div>
     </div>
   )
 }
@@ -214,14 +275,14 @@ function HierarchyRows({
   const candidates = projectIssues.filter((row) => row.id !== issue.id)
 
   return (
-    <>
+    <div className="space-y-1.5">
       <RailRow label="Parent">
         {canEdit ? (
           <Select
             value={issue.parent?.id ?? NO_PARENT}
             onValueChange={(value) => editing.parent.mutate(value === NO_PARENT ? null : value)}
           >
-            <SelectTrigger className="h-8 w-full">
+            <SelectTrigger className="h-7 w-full border-transparent bg-transparent px-2 shadow-none hover:border-input">
               <SelectValue placeholder="None" />
             </SelectTrigger>
             <SelectContent>
@@ -241,17 +302,20 @@ function HierarchyRows({
       </RailRow>
 
       {issue.children.length > 0 && (
-        <RailRow label="Children">
+        <div className="space-y-1">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Children · {issue.children.length}
+          </span>
           <ul className="space-y-1">
             {issue.children.map((child) => (
-              <li key={child.id}>
+              <li key={child.id} className="rounded bg-muted/40 px-2 py-1 text-sm">
                 <IssueRefLink issue={child} />
               </li>
             ))}
           </ul>
-        </RailRow>
+        </div>
       )}
-    </>
+    </div>
   )
 }
 
@@ -274,19 +338,23 @@ function LinkRows({
   const candidates = projectIssues.filter((row) => row.id !== issue.id)
 
   return (
-    <RailRow label="Links">
-      {issue.links.length === 0 && <p className="text-muted-foreground">None</p>}
+    <div className="space-y-1.5">
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        Links · {issue.links.length}
+      </span>
+
+      {issue.links.length === 0 && <p className="text-sm text-muted-foreground">None</p>}
 
       <ul className="space-y-1">
         {issue.links.map((link) => (
-          <li key={link.id} className="flex items-baseline gap-1.5">
+          <li key={link.id} className="flex items-baseline gap-1.5 rounded bg-muted/40 px-2 py-1 text-sm">
             <Link2 className="size-3.5 shrink-0 self-center text-muted-foreground" />
             <span className="shrink-0 text-xs text-muted-foreground">{link.label}</span>
             <IssueRefLink issue={link.issue} />
             {canEdit && (
               <button
                 type="button"
-                className="shrink-0 self-center text-muted-foreground hover:text-destructive"
+                className="ml-auto shrink-0 self-center text-muted-foreground hover:text-destructive"
                 onClick={() => editing.removeLink.mutate(link.id)}
                 aria-label="Remove link"
               >
@@ -298,9 +366,9 @@ function LinkRows({
       </ul>
 
       {canEdit && candidates.length > 0 && (
-        <div className="mt-2 space-y-2">
+        <div className="space-y-1.5 pt-1">
           <Select value={linkTypeId} onValueChange={setLinkTypeId}>
-            <SelectTrigger className="h-8 w-full">
+            <SelectTrigger className="h-7 w-full">
               <SelectValue placeholder="Link type" />
             </SelectTrigger>
             <SelectContent>
@@ -315,7 +383,7 @@ function LinkRows({
             </SelectContent>
           </Select>
           <Select value={targetIssueId} onValueChange={setTargetIssueId}>
-            <SelectTrigger className="h-8 w-full">
+            <SelectTrigger className="h-7 w-full">
               <SelectValue placeholder="Target issue" />
             </SelectTrigger>
             <SelectContent>
@@ -332,7 +400,7 @@ function LinkRows({
           <Button
             size="sm"
             variant="outline"
-            className="w-full"
+            className="h-7 w-full text-xs"
             disabled={linkTypeId === CHOOSE || targetIssueId === CHOOSE || editing.addLink.isPending}
             onClick={() =>
               editing.addLink.mutate(
@@ -350,6 +418,6 @@ function LinkRows({
           </Button>
         </div>
       )}
-    </RailRow>
+    </div>
   )
 }

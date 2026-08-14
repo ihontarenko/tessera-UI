@@ -1,31 +1,30 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronDown } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { StatusPill } from "@/components/issues/issueVisuals"
 import { fetchCatalog, type IssueDetail } from "@/api/issues"
 
 const CHOOSE = "__choose__"
 
 /**
- * Where the issue is, and the one action that moves it (ticket 07).
+ * Where the issue is, and every legal way out of it (ticket 07).
  *
  * Moving work forward used to be a dropdown among the fields, indistinguishable from setting a
- * priority. It is the thing people open an issue to do, so it is the primary action at the top of the
- * rail. What it offers is still whatever the workflow engine says is legal from here — this control
- * decides nothing, it only asks.
+ * priority — and a dropdown hides its options until you open it, so the one thing people open an issue
+ * to do took two clicks and a guess. The legal moves are buttons now, laid out flat: the current status
+ * reads as a state, each move reads as an action, and what the workflow permits is visible without
+ * asking.
  *
- * A transition that resolves the issue still prompts for a resolution first, because the server refuses
- * one without it and guessing on the caller's behalf would be inventing an answer (ADR-0004).
+ * Only reachable statuses are shown, because that is all `availableTransitions` carries. Rendering the
+ * whole workflow greyed out would need the issue to know its workflow's statuses, which is a backend
+ * field this does not have.
+ *
+ * A transition that resolves the issue still prompts for a resolution first — the server refuses one
+ * without it, and guessing on the caller's behalf would be inventing an answer (ADR-0004).
  */
 export function IssueTransitionAction({
   issue,
@@ -64,21 +63,21 @@ export function IssueTransitionAction({
       </div>
 
       {canTransition && issue.availableTransitions.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" className="w-full justify-between" disabled={isPending}>
-              Move this issue
-              <ChevronDown className="size-3.5" />
+        <div className="flex flex-wrap gap-1.5">
+          {issue.availableTransitions.map((option) => (
+            <Button
+              key={option.transitionId}
+              size="sm"
+              variant={option.toCategory === "DONE" ? "default" : "outline"}
+              className="h-7 px-2.5 text-xs"
+              disabled={isPending}
+              onClick={() => choose(option.toStatusId)}
+            >
+              <ArrowRight className="size-3" />
+              {option.toStatusName}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            {issue.availableTransitions.map((option) => (
-              <DropdownMenuItem key={option.transitionId} onSelect={() => choose(option.toStatusId)}>
-                {option.name} → {option.toStatusName}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          ))}
+        </div>
       )}
 
       {pendingTransition && (
