@@ -12,13 +12,21 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
 import {
+  assignRole,
   getAccessOverview,
+  grantPermission,
+  revokePermission,
   setRoleBundle,
+  unassignRole,
   type AccessOverview,
   type BundleEntryView,
+  type DirectHoldingView,
+  type RoleHoldingView,
   type RoleView,
 } from "@/api/access"
+import { searchMembers } from "@/api/members"
 import { apiErrorMessage } from "@/api/errors"
 
 /**
@@ -181,15 +189,34 @@ function RoleCard({ role, permissions }: { role: RoleView; permissions: AccessOv
 }
 
 function RoleHoldings({ overview }: { overview: AccessOverview }) {
-  if (overview.roleHoldings.length === 0) {
-    return (
-      <EmptyState
-        icon={ShieldCheck}
-        title="Nobody holds a role yet"
-        message="A role is assigned when somebody is added to a project, or here for the installation-wide one."
-      />
-    )
-  }
+  return (
+    <div className="space-y-4">
+      <AssignRoleForm overview={overview} />
+      {overview.roleHoldings.length === 0 ? (
+        <EmptyState
+          icon={ShieldCheck}
+          title="Nobody holds a role yet"
+          message="A role is assigned when somebody is added to a project, or above for the installation-wide one."
+        />
+      ) : (
+        <RoleHoldingsTable overview={overview} />
+      )}
+    </div>
+  )
+}
+
+function RoleHoldingsTable({ overview }: { overview: AccessOverview }) {
+  const queryClient = useQueryClient()
+
+  const remove = useMutation({
+    mutationFn: (holding: RoleHoldingView) =>
+      unassignRole(holding.member!.id, holding.roleName, holding.project?.id ?? null),
+    onSuccess: () => {
+      toast.success("Taken back")
+      void queryClient.invalidateQueries({ queryKey: ["access", "overview"] })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error)),
+  })
 
   return (
     <Table>
@@ -198,7 +225,8 @@ function RoleHoldings({ overview }: { overview: AccessOverview }) {
           <TableHead>Member</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Where</TableHead>
-          <TableHead className="w-32">Source</TableHead>
+          <TableHead className="w-28">Source</TableHead>
+          <TableHead className="w-24" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -216,10 +244,105 @@ function RoleHoldings({ overview }: { overview: AccessOverview }) {
             <TableCell className="font-mono text-xs">{holding.roleName}</TableCell>
             <TableCell>{describePlace(holding)}</TableCell>
             <TableCell className="text-xs text-muted-foreground">{holding.source}</TableCell>
+            <TableCell>
+              {/* An orphaned holding has no member to name, so there is nothing to address a
+                  withdrawal to — clearing those is a database job, and saying so beats a button that
+                  cannot work. */}
+              {holding.member && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate(holding)}
+                >
+                  Take back
+                </Button>
+              )}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  )
+}
+
+/**
+ * Give somebody a role.
+ *
+ * ⚠️ **Where it may go is the role's own answer.** A role assignable at `PROJECT` needs a project and a
+ * role assignable at `GLOBAL` refuses one, so the project field appears and disappears with the choice
+ * rather than being always present and sometimes ignored. The server refuses both mistakes anyway; this
+ * is so nobody has to be refused to find out.
+ */
+function AssignRoleForm({ overview }: { overview: AccessOverview }) {
+  const queryClient = useQueryClient()
+  const [memberId, setMemberId] = useState("")
+  const [roleName, setRoleName] = useState("")
+  const [projectId, setProjectId] = useState("")
+
+  const { data: members } = useQuery({ queryKey: ["members"], queryFn: () => searchMembers() })
+
+  const role = overview.roles.find((candidate) => candidate.name === roleName)
+  const needsProject = role?.assignableAt === "PROJECT"
+  const projects = knownProjects(overview)
+
+  const assign = useMutation({
+    mutationFn: () => assignRole(memberId, roleName, needsProject ? projectId : null),
+    onSuccess: () => {
+      toast.success("Given — in force on the next request")
+      setMemberId("")
+      setRoleName("")
+      setProjectId("")
+      void queryClient.invalidateQueries({ queryKey: ["access", "overview"] })
+      void queryClient.invalidateQueries({ queryKey: ["projects"] })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error)),
+  })
+
+  const ready = memberId !== "" && roleName !== "" && (!needsProject || projectId !== "")
+
+  return (
+    <section className="rounded-lg border p-4">
+      <h3 className="mb-3 text-sm font-medium">Give a role</h3>
+      <div className="flex flex-wrap items-end gap-2">
+        <PickerField label="Member" value={memberId} onChange={setMemberId}>
+          {(members ?? []).map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.displayName ?? member.email ?? member.id}
+            </option>
+          ))}
+        </PickerField>
+
+        <PickerField label="Role" value={roleName} onChange={setRoleName}>
+          {overview.roles.map((candidate) => (
+            <option key={candidate.name} value={candidate.name}>
+              {candidate.name}
+            </option>
+          ))}
+        </PickerField>
+
+        {needsProject && (
+          <PickerField label="Project" value={projectId} onChange={setProjectId}>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.key} — {project.name}
+              </option>
+            ))}
+          </PickerField>
+        )}
+
+        <Button size="sm" disabled={!ready || assign.isPending} onClick={() => assign.mutate()}>
+          {assign.isPending ? "Giving…" : "Give"}
+        </Button>
+      </div>
+
+      {role && !needsProject && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          ⚠️ {role.name} is installation-wide — it applies everywhere, including projects nobody has
+          made yet.
+        </p>
+      )}
+    </section>
   )
 }
 
@@ -230,15 +353,132 @@ function RoleHoldings({ overview }: { overview: AccessOverview }) {
  * somebody insists they should be able to do something and cannot.
  */
 function DirectHoldings({ overview }: { overview: AccessOverview }) {
-  if (overview.directHoldings.length === 0) {
-    return (
-      <EmptyState
-        icon={ShieldCheck}
-        title="Nobody has a personal grant"
-        message="Everything anybody may do comes from a role. Personal allows and denies are set on a project's people screen."
-      />
-    )
-  }
+  return (
+    <div className="space-y-4">
+      <GrantPermissionForm overview={overview} />
+      {overview.directHoldings.length === 0 ? (
+        <EmptyState
+          icon={ShieldCheck}
+          title="Nobody has a personal grant"
+          message="Everything anybody may do comes from a role, which is the healthy state. A personal grant is for the exception a role should not be reshaped around."
+        />
+      ) : (
+        <DirectHoldingsTable overview={overview} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Hand one permission to one person, or take one away.
+ *
+ * ⚠️ **A deny wins over every role that grants it, from anywhere.** It is the sharpest instrument on
+ * this screen and the reason the reason field is required: somebody reading this table in a year has
+ * only that sentence to go on.
+ */
+function GrantPermissionForm({ overview }: { overview: AccessOverview }) {
+  const queryClient = useQueryClient()
+  const [memberId, setMemberId] = useState("")
+  const [permission, setPermission] = useState("")
+  const [projectId, setProjectId] = useState("")
+  const [allowed, setAllowed] = useState(false)
+  const [reason, setReason] = useState("")
+
+  const { data: members } = useQuery({ queryKey: ["members"], queryFn: () => searchMembers() })
+
+  const save = useMutation({
+    mutationFn: () =>
+      grantPermission(memberId, permission, allowed, projectId === "" ? null : projectId, reason),
+    onSuccess: () => {
+      toast.success(allowed ? "Allowed" : "Denied")
+      setMemberId("")
+      setPermission("")
+      setReason("")
+      void queryClient.invalidateQueries({ queryKey: ["access", "overview"] })
+      void queryClient.invalidateQueries({ queryKey: ["projects"] })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error)),
+  })
+
+  const ready = memberId !== "" && permission !== "" && reason.trim() !== ""
+
+  return (
+    <section className="rounded-lg border p-4">
+      <h3 className="mb-3 text-sm font-medium">Allow or deny one person</h3>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <PickerField label="Member" value={memberId} onChange={setMemberId}>
+          {(members ?? []).map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.displayName ?? member.email ?? member.id}
+            </option>
+          ))}
+        </PickerField>
+
+        <PickerField label="Permission" value={permission} onChange={setPermission}>
+          {overview.permissions.map((candidate) => (
+            <option key={candidate.name} value={candidate.name}>
+              {candidate.name}
+            </option>
+          ))}
+        </PickerField>
+
+        {/* ⚠️ A personal grant may be made at either floor, unlike a role — "may do X here" and "may do
+            X anywhere" are both sentences somebody legitimately wants to write. Empty means everywhere. */}
+        <PickerField label="Where" value={projectId} onChange={setProjectId} emptyLabel="Everywhere">
+          {knownProjects(overview).map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.key} — {project.name}
+            </option>
+          ))}
+        </PickerField>
+
+        <div className="flex items-center gap-2 pb-1">
+          <Switch checked={allowed} onCheckedChange={setAllowed} aria-label="allow" />
+          <span className="text-xs">{allowed ? "allow" : "deny"}</span>
+        </div>
+      </div>
+
+      <div className="mt-2 flex items-end gap-2">
+        <div className="flex-1">
+          <label className="mb-1 block text-xs text-muted-foreground" htmlFor="grant-reason">
+            Why — required, and read by whoever asks about this in a year
+          </label>
+          <Input
+            id="grant-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Contractor: read-only until the review"
+          />
+        </div>
+        <Button size="sm" disabled={!ready || save.isPending} onClick={() => save.mutate()}>
+          {save.isPending ? "Saving…" : allowed ? "Allow" : "Deny"}
+        </Button>
+      </div>
+
+      {!allowed && permission !== "" && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          ⚠️ A deny beats every role that grants {permission}. It is the only way to take it from one
+          person without editing the role that gives it to everybody else — and the only way to give it
+          back is to remove this row.
+        </p>
+      )}
+    </section>
+  )
+}
+
+function DirectHoldingsTable({ overview }: { overview: AccessOverview }) {
+  const queryClient = useQueryClient()
+
+  const remove = useMutation({
+    mutationFn: (holding: DirectHoldingView) =>
+      revokePermission(holding.member!.id, holding.permission, holding.project?.id ?? null),
+    onSuccess: () => {
+      toast.success("Removed — whatever the roles say applies again")
+      void queryClient.invalidateQueries({ queryKey: ["access", "overview"] })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error)),
+  })
 
   return (
     <Table>
@@ -249,6 +489,7 @@ function DirectHoldings({ overview }: { overview: AccessOverview }) {
           <TableHead className="w-24">Effect</TableHead>
           <TableHead>Where</TableHead>
           <TableHead>Reason</TableHead>
+          <TableHead className="w-24" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -271,10 +512,72 @@ function DirectHoldings({ overview }: { overview: AccessOverview }) {
             </TableCell>
             <TableCell>{describePlace(holding)}</TableCell>
             <TableCell className="text-xs text-muted-foreground">{holding.reason}</TableCell>
+            <TableCell>
+              {holding.member && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate(holding)}
+                >
+                  Remove
+                </Button>
+              )}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  )
+}
+
+/**
+ * Every project this screen knows about, from the holdings it is already showing.
+ *
+ * ⚠️ **Derived rather than fetched, and the limit is worth stating.** `GET /api/projects` answers with
+ * the *caller's* projects, which is the wrong list here — an access administrator need not belong to
+ * the project they are fixing. Every project has at least its creator holding a role in it, so the
+ * holdings cover all of them in practice; a project whose every holding was somehow removed would not
+ * appear, and putting somebody back into it is then a job for the project's own people screen.
+ */
+function knownProjects(overview: AccessOverview) {
+  const byId = new Map<string, { id: string; key: string; name: string }>()
+
+  for (const holding of [...overview.roleHoldings, ...overview.directHoldings]) {
+    if (holding.project) {
+      byId.set(holding.project.id, holding.project)
+    }
+  }
+
+  return [...byId.values()].sort((first, second) => first.key.localeCompare(second.key))
+}
+
+/** A labelled select with an explicit empty choice, so "not chosen" is never mistaken for the first option. */
+function PickerField({
+  label,
+  value,
+  onChange,
+  emptyLabel,
+  children,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  emptyLabel?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+      <select
+        className="h-9 rounded-md border bg-background px-2 text-sm"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">{emptyLabel ?? "Choose…"}</option>
+        {children}
+      </select>
+    </div>
   )
 }
 

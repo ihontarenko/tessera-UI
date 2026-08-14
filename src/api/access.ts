@@ -90,3 +90,50 @@ export function setRoleBundle(roleName: string, bundle: BundleEntryView[]) {
     .put<RoleView>(`/admin/access/roles/${roleName}/bundle`, { bundle })
     .then((response) => response.data)
 }
+
+/**
+ * Give somebody a role.
+ *
+ * ⚠️ `projectId` is null for an installation-wide role and required for a project one — the role's own
+ * `assignableAt` decides which, and the server refuses both mistakes rather than correcting them. A
+ * project role granted globally would apply to every project there will ever be.
+ */
+export function assignRole(memberId: string, roleName: string, projectId: string | null) {
+  return httpClient.post("/admin/access/assignments", { memberId, roleName, projectId })
+}
+
+export function unassignRole(memberId: string, roleName: string, projectId: string | null) {
+  return httpClient.delete("/admin/access/assignments", {
+    data: { memberId, roleName, projectId },
+  })
+}
+
+/**
+ * Hand one permission to one person, or take one away from them.
+ *
+ * ⚠️ **A deny beats every role that grants it, from anywhere.** This is how one person loses one power
+ * without the role that gives it to everybody else being touched — and it is why `reason` is required
+ * rather than optional: a denial nobody can explain outlives whoever made it.
+ */
+export function grantPermission(
+  memberId: string,
+  permission: string,
+  allowed: boolean,
+  projectId: string | null,
+  reason: string,
+) {
+  return httpClient.post("/admin/access/grants", {
+    memberId,
+    permission,
+    allowed,
+    projectId,
+    reason,
+  })
+}
+
+/** Take back a personal allow or deny, which restores whatever a role was already saying. */
+export function revokePermission(memberId: string, permission: string, projectId: string | null) {
+  return httpClient.delete("/admin/access/grants", {
+    data: { memberId, permission, projectId },
+  })
+}

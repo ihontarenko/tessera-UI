@@ -3,6 +3,7 @@ import { ApplicationLayout } from "@/components/layout/ApplicationLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { AppearanceSettingsPage } from "@/pages/AppearanceSettingsPage"
 import { AccessSettingsPage } from "@/pages/AccessSettingsPage"
+import { AccountSettingsPage } from "@/pages/AccountSettingsPage"
 import { AdministrationPage } from "@/pages/AdministrationPage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage"
@@ -42,6 +43,10 @@ export function AppRoutes() {
             under /projects/:projectId. The server refuses anybody without it; the route is open because
             a client-side guard is a courtesy and never the authorization. */}
         <Route path="/settings/access" element={<AccessSettingsPage />} />
+        {/* Yours, and open to everybody — it shows who you are and how to point a Model Context
+            Protocol client at this installation. Nothing on it is privileged: the only thing to copy
+            is a URL, and the client authenticates as the person reading the page. */}
+        <Route path="/settings/account" element={<AccountSettingsPage />} />
         {/* ⚠️ Installation-wide, behind `configuration:administer` — a status, a workflow and a scheme
             belong to every project that uses them, so this is not under /projects/:projectId either.
             The route is deliberately open: a member without the permission reads the screens, and every
