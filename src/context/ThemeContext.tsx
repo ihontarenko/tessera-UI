@@ -93,6 +93,19 @@ function isMobileDevice() {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ("ontouchstart" in window && window.innerWidth < 1024)
 }
 
+/**
+ * Text size, applied as a zoom on the body.
+ *
+ * Scaling the root font size instead was tried and reverted: rem-based lengths grow while the viewport
+ * does not, so at Extra large the layout stopped reflowing and simply overflowed sideways. `zoom`
+ * enlarges the CSS pixel itself, which shrinks the viewport in CSS pixels and lets every layout reflow
+ * as though it were on a smaller screen — that reflow is the whole reason this mechanism was chosen.
+ *
+ * Its cost is that Radix's popper positioning cannot be trusted inside the zoomed subtree, since
+ * `getBoundingClientRect()` and the transform that positions a panel do not agree about the scale.
+ * That is handled where it bites — see `SidebarPopover`, and the native `<select>` behind
+ * `InlineSelect` — rather than by giving up the reflow.
+ */
 function applyFontScale(scale: FontScale) {
   const value = FONT_SCALE_VALUES[scale]
   document.documentElement.style.setProperty("--font-scale", String(value))

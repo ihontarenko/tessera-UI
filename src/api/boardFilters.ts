@@ -15,6 +15,10 @@ export interface BoardFilterView {
   label: string
   /** The jME predicate, sent straight back to the board endpoint as `?filter=`. */
   expression: string
+  /** Whether the board opens with this one on. */
+  selectedByDefault: boolean
+  /** Whether choosing it clears the others — "everything and only my issues" is not a sentence. */
+  exclusive: boolean
 }
 
 export function fetchBoardFilters() {

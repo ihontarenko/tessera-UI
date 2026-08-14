@@ -44,7 +44,9 @@ export function BoardGrid({
   const countsByColumn = useMemo(() => {
     const counts = new Map<string, number>()
     for (const card of cardsOnBoard) {
-      if (card.columnId !== null) {
+      // `!= null`: a card whose status maps to no column is in the backlog (ADR-0016), and the field
+      // can arrive either absent or null depending on how the payload was serialised.
+      if (card.columnId != null) {
         counts.set(card.columnId, (counts.get(card.columnId) ?? 0) + 1)
       }
     }
@@ -56,7 +58,7 @@ export function BoardGrid({
     for (const lane of swimlanes) {
       const byColumn = new Map<string, BoardCard[]>()
       for (const card of lane.cards) {
-        if (card.columnId === null) {
+        if (card.columnId == null) {
           continue
         }
         const bucket = byColumn.get(card.columnId) ?? []

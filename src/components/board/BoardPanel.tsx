@@ -19,7 +19,9 @@ import {
   andTogether,
   applyMatchedCardIds,
   composeFilterExpression,
+  defaultFilterIds,
   toBoardFilters,
+  toggleFilterId,
   withoutAgedOutCards,
 } from "@/components/board/boardFilters"
 import { groupIntoSwimlanes } from "@/components/board/swimlanes"
@@ -72,9 +74,16 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   const { data: filterCatalog } = useQuery({ queryKey: ["board-filters"], queryFn: fetchBoardFilters })
   const boardFilters = useMemo(() => toBoardFilters(filterCatalog ?? []), [filterCatalog])
 
+  // An empty selection means "nobody has chosen yet", not "nothing is on": the catalog nominates the
+  // resting state, so a board opens on it without this component knowing which filter that is.
+  const effectiveFilterIds = useMemo(
+    () => (activeFilterIds.length > 0 ? activeFilterIds : defaultFilterIds(boardFilters)),
+    [activeFilterIds, boardFilters],
+  )
+
   const toggleExpression = useMemo(
-    () => composeFilterExpression(boardFilters, activeFilterIds),
-    [boardFilters, activeFilterIds],
+    () => composeFilterExpression(boardFilters, effectiveFilterIds),
+    [boardFilters, effectiveFilterIds],
   )
 
   // A saved filter and the toggles narrow together rather than replacing each other — "my issues" on top
@@ -184,9 +193,7 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   }
 
   function toggleFilter(filterId: string) {
-    setActiveFilterIds((current) =>
-      current.includes(filterId) ? current.filter((entry) => entry !== filterId) : [...current, filterId],
-    )
+    setActiveFilterIds(toggleFilterId(boardFilters, effectiveFilterIds, filterId))
   }
 
   function dismissResolutionPrompt() {
@@ -271,7 +278,7 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
           canChangeSwimlanes={canAdminister && !swimlaneMutation.isPending}
           onSwimlaneChange={(strategy) => swimlaneMutation.mutate(strategy)}
           filters={boardFilters}
-          activeFilterIds={activeFilterIds}
+          activeFilterIds={effectiveFilterIds}
           onToggleFilter={toggleFilter}
           appliedFilter={appliedFilter}
           toggleExpression={toggleExpression}

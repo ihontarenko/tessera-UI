@@ -25,6 +25,10 @@ export interface BoardFilter {
   label: TranslatableText
   /** The jME predicate, authored server-side (ADR-0008) and handed straight back through `?filter=`. */
   expression: string
+  /** On when nobody has chosen anything. */
+  selectedByDefault: boolean
+  /** Cannot be combined: choosing it clears the rest, and choosing another clears it. */
+  exclusive: boolean
 }
 
 /** The backend's catalog in the shape the toolbar wants, with its translation key rebuilt. */
@@ -33,7 +37,45 @@ export function toBoardFilters(catalog: BoardFilterView[]): BoardFilter[] {
     id: filter.id,
     label: { key: filter.labelKey, text: filter.label },
     expression: filter.expression,
+    selectedByDefault: filter.selectedByDefault,
+    exclusive: filter.exclusive,
   }))
+}
+
+/** What is on before anyone has chosen — whichever filters the catalog marks as the resting state. */
+export function defaultFilterIds(filters: BoardFilter[]): string[] {
+  return filters.filter((filter) => filter.selectedByDefault).map((filter) => filter.id)
+}
+
+/**
+ * The selection after a toggle is clicked.
+ *
+ * The rules live here and the catalog says which filter they apply to, so neither side hard-codes the
+ * other's business: an exclusive filter replaces the selection, choosing anything else drops the
+ * exclusive ones, and a selection that empties falls back to the default rather than to nothing —
+ * "no filter at all" is not a state the toolbar can show, which is what made an unfiltered board look
+ * like a board with a broken filter.
+ */
+export function toggleFilterId(filters: BoardFilter[], activeFilterIds: string[], filterId: string): string[] {
+  const chosen = filters.find((filter) => filter.id === filterId)
+
+  if (!chosen) {
+    return activeFilterIds
+  }
+
+  if (activeFilterIds.includes(filterId)) {
+    const remaining = activeFilterIds.filter((entry) => entry !== filterId)
+
+    return remaining.length > 0 ? remaining : defaultFilterIds(filters)
+  }
+
+  if (chosen.exclusive) {
+    return [filterId]
+  }
+
+  const exclusiveIds = new Set(filters.filter((filter) => filter.exclusive).map((filter) => filter.id))
+
+  return [...activeFilterIds.filter((entry) => !exclusiveIds.has(entry)), filterId]
 }
 
 /**
@@ -74,8 +116,10 @@ export function andTogether(expressions: (string | null)[]): string | null {
  * hidden — distinct from an empty list, which means the filter matched nothing and the board should
  * look empty rather than unfiltered.
  */
-export function applyMatchedCardIds(cards: BoardCard[], matchedCardIds: string[] | null): BoardCard[] {
-  if (matchedCardIds === null) {
+export function applyMatchedCardIds(cards: BoardCard[], matchedCardIds: string[] | null | undefined): BoardCard[] {
+  // `== null`, not `=== null`: an absent field and a null one mean the same thing here — no predicate
+  // was evaluated — and treating a missing one as "nothing matched" empties the whole board.
+  if (matchedCardIds == null) {
     return cards
   }
 
@@ -97,17 +141,19 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000
  */
 export function withoutAgedOutCards(
   cards: BoardCard[],
-  hideDoneOlderThanDays: number | null,
+  hideDoneOlderThanDays: number | null | undefined,
   now: number,
 ): BoardCard[] {
-  if (hideDoneOlderThanDays === null) {
+  // `== null` for the same reason as above: an unset threshold that arrives absent rather than null
+  // would otherwise compute a NaN cutoff, and every completed card would fail the comparison.
+  if (hideDoneOlderThanDays == null) {
     return cards
   }
 
   const cutoff = now - hideDoneOlderThanDays * MILLISECONDS_PER_DAY
 
   return cards.filter((card) => {
-    if (card.status?.category !== "DONE" || card.resolvedAt === null) {
+    if (card.status?.category !== "DONE" || card.resolvedAt == null) {
       return true
     }
     return new Date(card.resolvedAt).getTime() >= cutoff

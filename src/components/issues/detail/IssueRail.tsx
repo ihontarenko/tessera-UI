@@ -4,10 +4,10 @@ import { Link } from "react-router-dom"
 import { Link2, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { MemberChip } from "@/components/MemberChip"
 import { PriorityBadge, formatStoryPoints } from "@/components/issues/issueVisuals"
+import { InlineSelect } from "@/components/issues/detail/InlineSelect"
 import { InlineTextField } from "@/components/issues/detail/InlineTextField"
 import { IssueActivityStream } from "@/components/issues/detail/IssueActivityStream"
 import { IssueTransitionAction } from "@/components/issues/detail/IssueTransitionAction"
@@ -156,24 +156,15 @@ function PropertyRows({
     <div className="space-y-1.5">
       <RailRow label="Assignee">
         {canEdit ? (
-          <Select
+          <InlineSelect
+            ariaLabel="Assignee"
             value={issue.assignee?.id ?? UNASSIGNED}
-            onValueChange={(value) =>
-              editing.fields.mutate({ assigneeMemberId: value === UNASSIGNED ? null : value })
-            }
-          >
-            <SelectTrigger className="h-7 w-full border-transparent bg-transparent px-2 shadow-none hover:border-input">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-              {members.map((member) => (
-                <SelectItem key={member.id} value={member.id}>
-                  {memberName(member)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={[
+              { value: UNASSIGNED, label: "Unassigned" },
+              ...members.map((member) => ({ value: member.id, label: memberName(member) })),
+            ]}
+            onChange={(value) => editing.fields.mutate({ assigneeMemberId: value === UNASSIGNED ? null : value })}
+          />
         ) : issue.assignee ? (
           <MemberChip member={issue.assignee} />
         ) : (
@@ -187,18 +178,12 @@ function PropertyRows({
 
       <RailRow label="Priority">
         {canEdit ? (
-          <Select value={issue.priority?.id ?? ""} onValueChange={(value) => editing.fields.mutate({ priorityId: value })}>
-            <SelectTrigger className="h-7 w-full border-transparent bg-transparent px-2 shadow-none hover:border-input">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {catalog?.priorities.map((priority) => (
-                <SelectItem key={priority.id} value={priority.id}>
-                  {priority.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <InlineSelect
+            ariaLabel="Priority"
+            value={issue.priority?.id ?? ""}
+            options={(catalog?.priorities ?? []).map((priority) => ({ value: priority.id, label: priority.name }))}
+            onChange={(value) => editing.fields.mutate({ priorityId: value })}
+          />
         ) : (
           <PriorityBadge priority={issue.priority} />
         )}
@@ -278,22 +263,15 @@ function HierarchyRows({
     <div className="space-y-1.5">
       <RailRow label="Parent">
         {canEdit ? (
-          <Select
+          <InlineSelect
+            ariaLabel="Parent issue"
             value={issue.parent?.id ?? NO_PARENT}
-            onValueChange={(value) => editing.parent.mutate(value === NO_PARENT ? null : value)}
-          >
-            <SelectTrigger className="h-7 w-full border-transparent bg-transparent px-2 shadow-none hover:border-input">
-              <SelectValue placeholder="None" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_PARENT}>None</SelectItem>
-              {candidates.map((row) => (
-                <SelectItem key={row.id} value={row.id}>
-                  {row.issueKey} · {row.summary}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={[
+              { value: NO_PARENT, label: "None" },
+              ...candidates.map((row) => ({ value: row.id, label: `${row.issueKey} · ${row.summary}` })),
+            ]}
+            onChange={(value) => editing.parent.mutate(value === NO_PARENT ? null : value)}
+          />
         ) : issue.parent ? (
           <IssueRefLink issue={issue.parent} />
         ) : (
@@ -367,36 +345,26 @@ function LinkRows({
 
       {canEdit && candidates.length > 0 && (
         <div className="space-y-1.5 pt-1">
-          <Select value={linkTypeId} onValueChange={setLinkTypeId}>
-            <SelectTrigger className="h-7 w-full">
-              <SelectValue placeholder="Link type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={CHOOSE} disabled>
-                Link type
-              </SelectItem>
-              {linkTypes.map((linkType) => (
-                <SelectItem key={linkType.id} value={linkType.id}>
-                  {linkType.outwardLabel}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={targetIssueId} onValueChange={setTargetIssueId}>
-            <SelectTrigger className="h-7 w-full">
-              <SelectValue placeholder="Target issue" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={CHOOSE} disabled>
-                Target issue
-              </SelectItem>
-              {candidates.map((row) => (
-                <SelectItem key={row.id} value={row.id}>
-                  {row.issueKey} · {row.summary}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <InlineSelect
+            ariaLabel="Link type"
+            className="rounded-md border"
+            value={linkTypeId}
+            options={[
+              { value: CHOOSE, label: "Link type…" },
+              ...linkTypes.map((linkType) => ({ value: linkType.id, label: linkType.outwardLabel })),
+            ]}
+            onChange={setLinkTypeId}
+          />
+          <InlineSelect
+            ariaLabel="Target issue"
+            className="rounded-md border"
+            value={targetIssueId}
+            options={[
+              { value: CHOOSE, label: "Target issue…" },
+              ...candidates.map((row) => ({ value: row.id, label: `${row.issueKey} · ${row.summary}` })),
+            ]}
+            onChange={setTargetIssueId}
+          />
           <Button
             size="sm"
             variant="outline"

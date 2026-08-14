@@ -1,10 +1,14 @@
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { formatDistanceToNow } from "date-fns"
+import { MessageSquare, PencilLine } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { MemberChip } from "@/components/MemberChip"
+import type { MemberSummary } from "@/api/members"
+import { memberInitials, memberName } from "@/lib/memberDisplay"
 import {
   addComment,
   deleteComment,
@@ -124,7 +128,9 @@ export function IssueActivityStream({
         {!compact && (
           <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">Activity</h2>
         )}
-        <div className="flex w-full gap-1 rounded-md border p-0.5">
+        {/* Sized to its three words, not to the column it happens to sit in: a control stretched the
+            width of a page reads as a navigation bar rather than as a filter on the list below it. */}
+        <div className="inline-flex gap-0.5 rounded-md border p-0.5">
           {SCOPES.map((entry) => (
             <button
               key={entry.scope}
@@ -132,7 +138,7 @@ export function IssueActivityStream({
               onClick={() => setScope(entry.scope)}
               aria-pressed={scope === entry.scope}
               className={cn(
-                "flex-1 rounded px-2.5 py-1 text-xs transition-colors",
+                "rounded px-2 py-0.5 text-xs transition-colors",
                 scope === entry.scope
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -171,88 +177,104 @@ export function IssueActivityStream({
         <p className="text-sm text-muted-foreground">Nothing here yet.</p>
       )}
 
-      <ol className="space-y-3">
+      {/* A gutter of avatars with the text beside it — not a stack of cards. A card draws a box around
+          whatever is inside it, and "Test" in a box reads as an empty box; a line of text reads as a
+          short remark, which is what it is. */}
+      <ol className="space-y-2.5">
         {entries.map((entry) =>
           entry.kind === "comment" ? (
-            <li key={entry.id} className="rounded-md border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <MemberChip member={entry.comment.author} />
-                <span className="text-xs text-muted-foreground">{formatTimestamp(entry.at)}</span>
-              </div>
+            <li key={entry.id} className="group grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5">
+              <StreamAvatar member={entry.comment.author} />
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="truncate text-sm font-medium">{memberName(entry.comment.author)}</span>
+                  <KindBadge kind="comment" />
+                  <Timestamp at={entry.at} />
+                  {entry.comment.editable && editingId !== entry.comment.id && (
+                    // Present but quiet until the row is under the pointer or holds focus: two controls
+                    // per comment, always drawn, is most of what made the old card so tall.
+                    <span className="ml-auto flex shrink-0 gap-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setEditingId(entry.comment.id)
+                          setEditingBody(entry.comment.body)
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteMutation.mutate(entry.comment.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Delete
+                      </button>
+                    </span>
+                  )}
+                </div>
 
-              {editingId === entry.comment.id ? (
-                <div className="mt-2 space-y-2">
-                  <Textarea
-                    value={editingBody}
-                    onChange={(event) => setEditingBody(event.target.value)}
-                    rows={3}
-                    maxLength={4000}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={editingBody.trim().length === 0 || editMutation.isPending}
-                      onClick={() => editMutation.mutate()}
-                    >
-                      Save
-                    </Button>
+                {editingId === entry.comment.id ? (
+                  <div className="mt-1.5 space-y-2">
+                    <Textarea
+                      value={editingBody}
+                      onChange={(event) => setEditingBody(event.target.value)}
+                      rows={3}
+                      maxLength={4000}
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={editingBody.trim().length === 0 || editMutation.isPending}
+                        onClick={() => editMutation.mutate()}
+                      >
+                        Save
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <p className="mt-2 whitespace-pre-wrap text-sm">{entry.comment.body}</p>
-              )}
-
-              {entry.comment.editable && editingId !== entry.comment.id && (
-                <div className="mt-2 flex justify-end gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setEditingId(entry.comment.id)
-                      setEditingBody(entry.comment.body)
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => deleteMutation.mutate(entry.comment.id)}
-                    disabled={deleteMutation.isPending}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              )}
+                ) : (
+                  // Capped at a readable measure so a long comment does not run the width of a wide
+                  // page, and a short one does not sit alone in a field of nothing.
+                  <p className="max-w-[68ch] whitespace-pre-wrap text-sm text-foreground/90">
+                    {entry.comment.body}
+                  </p>
+                )}
+              </div>
             </li>
           ) : (
-            <li key={entry.id} className="rounded-md border border-dashed p-3">
-              <div className="flex items-center justify-between gap-2">
-                <MemberChip member={entry.event.actor} />
-                <span className="text-xs text-muted-foreground">{formatTimestamp(entry.at)}</span>
-              </div>
-              {/* One edit touching several fields is one event with its items — the shape the activity
-                  log already records (ADR-0007), so it reads as one act rather than three. */}
-              <ul className="mt-2 space-y-1">
+            // A field change is one line. It has no body to give it height, so giving it a box only
+            // gave it emptiness — and the changes are the entries there are most of.
+            <li key={entry.id} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5">
+              <StreamAvatar member={entry.event.actor} />
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{memberName(entry.event.actor)}</span>{" "}
+                <KindBadge kind="change" />{" "}
+                {/* One edit touching several fields is one event with its items — the shape the
+                    activity log already records (ADR-0007) — so it reads as one act, on one line. */}
                 {entry.event.items.map((item, index) => (
-                  <li key={index} className="text-sm">
-                    <span className="font-medium">{FIELD_LABELS[item.field] ?? item.field}</span>{" "}
+                  <span key={index}>
+                    {index > 0 && <span className="text-muted-foreground/60"> · </span>}
+                    <span className="text-foreground/80">{FIELD_LABELS[item.field] ?? item.field}</span>{" "}
                     {item.field === "created" ? (
-                      <span className="text-muted-foreground">{item.newValue}</span>
+                      <span>{item.newValue}</span>
                     ) : (
-                      <span className="text-muted-foreground">
+                      <>
                         <span className="line-through opacity-70">{item.oldValue ?? "—"}</span>
                         {" → "}
-                        <span className="text-foreground">{item.newValue ?? "—"}</span>
-                      </span>
+                        <span className="text-foreground/80">{item.newValue ?? "—"}</span>
+                      </>
                     )}
-                  </li>
+                  </span>
                 ))}
-              </ul>
+                <span className="text-muted-foreground/60"> · </span>
+                <Timestamp at={entry.at} />
+              </p>
             </li>
           ),
         )}
@@ -261,8 +283,54 @@ export function IssueActivityStream({
   )
 }
 
-function formatTimestamp(value: string): string {
-  return new Date(value).toLocaleString()
+/**
+ * What kind of entry this is, said rather than implied.
+ *
+ * The two are already shaped differently — a comment has a body, a change is one line — but that only
+ * reads once you know the convention, and a one-word comment looks a great deal like a change. The
+ * badge is the label the convention was standing in for.
+ */
+function KindBadge({ kind }: { kind: "comment" | "change" }) {
+  const Icon = kind === "comment" ? MessageSquare : PencilLine
+
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 translate-y-px items-center gap-1 rounded px-1.5 py-px text-[10px] font-medium tracking-wide uppercase",
+        kind === "comment" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+      )}
+    >
+      <Icon className="size-2.5" />
+      {kind === "comment" ? "Comment" : "Change"}
+    </span>
+  )
+}
+
+/** The stream's gutter: an avatar and nothing else, since the name is already on the line beside it. */
+function StreamAvatar({ member }: { member: MemberSummary | null }) {
+  return (
+    <Avatar className="mt-0.5 size-6 shrink-0">
+      <AvatarFallback className="text-[10px]">{memberInitials(member)}</AvatarFallback>
+    </Avatar>
+  )
+}
+
+/**
+ * "2 hours ago", with the exact moment on hover. A stream is read for its order and its recency;
+ * "8/13/2026, 10:44:41 PM" answers a question nobody asked and takes a third of the line to do it.
+ */
+function Timestamp({ at }: { at: string }) {
+  const moment = new Date(at)
+
+  return (
+    <time
+      dateTime={at}
+      title={moment.toLocaleString()}
+      className="shrink-0 whitespace-nowrap text-xs text-muted-foreground"
+    >
+      {formatDistanceToNow(moment, { addSuffix: true })}
+    </time>
+  )
 }
 
 /** The merge itself: two lists into one, newest first, filtered by what the reader asked to see. */
