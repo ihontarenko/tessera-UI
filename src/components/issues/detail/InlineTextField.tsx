@@ -10,8 +10,9 @@ import { cn } from "@/lib/helpers"
  * it is hovered or focused, and it commits when it loses focus. Escape abandons the edit, which is the
  * one thing a form's Cancel button did that nothing else covers.
  *
- * A value the server refuses to store — an empty summary — is not sent. The field reverts to what the
- * server still holds instead of leaving the screen disagreeing with the database.
+ * A value the field cannot send — an empty summary, or anything `accepts` rejects — is not sent. The
+ * field reverts to what the server still holds instead of leaving the screen showing a value the
+ * database never took.
  */
 export function InlineTextField({
   value,
@@ -19,7 +20,9 @@ export function InlineTextField({
   canEdit,
   multiline = false,
   required = false,
+  accepts,
   placeholder,
+  emptyText,
   maximumLength,
   className,
   ariaLabel,
@@ -29,7 +32,12 @@ export function InlineTextField({
   canEdit: boolean
   multiline?: boolean
   required?: boolean
+  /** Rejects a value before it is sent — the field reverts rather than posting something refusable. */
+  accepts?: (next: string) => boolean
+  /** What an empty field invites you to do. */
   placeholder?: string
+  /** What an empty field says to someone who cannot edit it — an invitation would be a lie. */
+  emptyText?: string
   maximumLength?: number
   className?: string
   ariaLabel: string
@@ -48,7 +56,7 @@ export function InlineTextField({
     return value.length > 0 ? (
       <p className={cn("whitespace-pre-wrap", className)}>{value}</p>
     ) : (
-      <p className={cn("italic text-muted-foreground", className)}>{placeholder ?? "—"}</p>
+      <p className={cn("italic text-muted-foreground", className)}>{emptyText ?? "—"}</p>
     )
   }
 
@@ -65,7 +73,7 @@ export function InlineTextField({
       return
     }
 
-    if (required && next.length === 0) {
+    if ((required && next.length === 0) || (accepts && !accepts(next))) {
       setDraft(value)
       return
     }

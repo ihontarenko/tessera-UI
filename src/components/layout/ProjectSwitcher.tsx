@@ -31,6 +31,9 @@ export function ProjectSwitcher() {
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: listProjects })
 
   const routeProjectId = projectRoute?.params.projectId ?? null
+  // Read once, on mount. After that the route is the answer, and re-reading storage every render would
+  // be a side effect in a render for a value that cannot have changed under us.
+  const [rememberedProjectId, setRememberedProjectId] = useState(readLastProjectId)
 
   // Being in a project is what makes it the last one — not opening the switcher, and not a project
   // that has since been deleted or left, which is why the remembered id is only ever used to look one
@@ -38,10 +41,11 @@ export function ProjectSwitcher() {
   useEffect(() => {
     if (routeProjectId) {
       writeLastProjectId(routeProjectId)
+      setRememberedProjectId(routeProjectId)
     }
   }, [routeProjectId])
 
-  const currentProjectId = routeProjectId ?? readLastProjectId()
+  const currentProjectId = routeProjectId ?? rememberedProjectId
   const currentProject = projects.find((project) => project.id === currentProjectId) ?? null
 
   const matches = useMemo(() => {

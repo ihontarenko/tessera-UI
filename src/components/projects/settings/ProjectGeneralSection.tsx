@@ -13,7 +13,8 @@ import { searchMembers } from "@/api/members"
 import type { ProjectResponse } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
 import { memberName } from "@/lib/memberDisplay"
-import { defaultProjectTab } from "@/lib/projectStyle"
+import { PROJECT_TAB_LABELS, defaultProjectTab } from "@/lib/projectStyle"
+import { resolveText } from "@/lib/translatableText"
 
 /**
  * What a project *is*: its name, its key, who leads it, and the facts the Overview tab used to show on
@@ -98,7 +99,7 @@ export function ProjectGeneralSection({
         {/* Derived, not stored: the opening view follows from how the project plans, so it is reported
             here rather than offered as a second thing to set and keep in agreement (ADR-0015). */}
         <DetailRow label={t("project.settings.general.defaultView", "Opens on")}>
-          {t(`project.tab.${defaultProjectTab(project.boardScopeStrategy)}`, defaultProjectTab(project.boardScopeStrategy))}
+          {resolveText(t, PROJECT_TAB_LABELS[defaultProjectTab(project.boardScopeStrategy)])}
         </DetailRow>
         <DetailRow label={t("project.settings.general.issueTypeScheme", "Issue type scheme")}>
           {project.issueTypeScheme?.name ?? "—"}

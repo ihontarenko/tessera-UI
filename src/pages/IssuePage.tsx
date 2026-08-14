@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PageHeader } from "@/components/PageHeader"
+import { IssueTypeIcon } from "@/components/issues/issueVisuals"
 import { IssueDetailPanel } from "@/components/issues/detail/IssueDetailPanel"
 import { issueByKeyQueryKey } from "@/components/issues/detail/useIssueEditing"
 import { deleteIssue, getIssueByKey } from "@/api/issues"
@@ -70,17 +71,19 @@ export function IssuePage() {
 
   return (
     <>
+      {/* The key and where it lives — not the summary, which the content column below owns and which
+          is editable there. One screen saying the same sentence twice is one of them being wrong. */}
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <span className="font-mono text-sm text-muted-foreground">{issue.issueKey}</span>
-            <span className="font-display text-lg font-semibold tracking-[-0.02em]">{issue.summary}</span>
+            <IssueTypeIcon type={issue.type} />
+            <span className="font-display text-lg font-semibold tracking-[-0.02em]">{issue.issueKey}</span>
           </span>
         }
         description={
           project && (
             <Link to={`/projects/${project.id}`} className="hover:underline">
-              {project.name}
+              {project.key} · {project.name}
             </Link>
           )
         }

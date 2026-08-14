@@ -17,8 +17,13 @@ export function issueQueryKey(issueId: string) {
   return ["issue", issueId]
 }
 
+/**
+ * Uppercased, because the key can arrive from a hand-typed URL in any case while the server always
+ * answers with the canonical one. Without this, `/issues/tes-12` would read one cache entry and every
+ * edit would write another, and the page would stop updating as you edited it.
+ */
 export function issueByKeyQueryKey(issueKey: string) {
-  return ["issue", "by-key", issueKey]
+  return ["issue", "by-key", issueKey.toUpperCase()]
 }
 
 /**

@@ -25,6 +25,20 @@ export interface IssuePermissions {
 }
 
 /**
+ * An estimate is blank or a non-negative number. Anything else is typing, not an estimate, and the
+ * field reverts rather than posting a `NaN` the server would store as "no estimate".
+ */
+function isEstimate(value: string): boolean {
+  if (value.length === 0) {
+    return true
+  }
+
+  const points = Number(value)
+
+  return Number.isFinite(points) && points >= 0
+}
+
+/**
  * The properties rail: where the issue is, who has it, and what it is attached to (ticket 07).
  *
  * Every field edits where it is read — a select commits on change, a text field on blur — so there is
@@ -115,13 +129,8 @@ export function IssueRail({
             canEdit
             placeholder="—"
             className="h-8"
-            onCommit={(next) => {
-              const points = next.length === 0 ? null : Number(next)
-              if (points !== null && !Number.isFinite(points)) {
-                return
-              }
-              editing.fields.mutate({ storyPoints: points })
-            }}
+            accepts={isEstimate}
+            onCommit={(next) => editing.fields.mutate({ storyPoints: next.length === 0 ? null : Number(next) })}
           />
         ) : (
           formatStoryPoints(issue.storyPoints)
@@ -139,6 +148,7 @@ export function IssueRail({
             value={issue.labels.join(", ")}
             canEdit
             placeholder="Add labels…"
+            emptyText="—"
             className="h-8"
             onCommit={(next) =>
               editing.labels.mutate(next.split(",").map((label) => label.trim()).filter(Boolean))

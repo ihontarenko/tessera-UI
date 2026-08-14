@@ -1,4 +1,5 @@
 import type { BoardScopeStrategy } from "@/api/sprints"
+import type { TranslatableText } from "@/lib/translatableText"
 
 /**
  * Everything the interface says about a project's *shape* — the word Scrum or Kanban, which tabs it
@@ -93,6 +94,19 @@ export function resolveProjectTab(requestedTab: string | null, boardScopeStrateg
   const available = projectTabs(boardScopeStrategy)
 
   return available.includes(candidate as ProjectTab) ? (candidate as ProjectTab) : defaultProjectTab(boardScopeStrategy)
+}
+
+/**
+ * What each tab is called. Beside the list that decides which tabs exist, so a tab cannot be added in
+ * one place and left unnamed in the other — and so the page header can say which view a project opens
+ * on using the same word the tab strip uses.
+ */
+export const PROJECT_TAB_LABELS: Record<ProjectTab, TranslatableText> = {
+  issues: { key: "project.tab.issues", text: "Issues" },
+  board: { key: "project.tab.board", text: "Board" },
+  backlog: { key: "project.tab.backlog", text: "Backlog" },
+  reports: { key: "project.tab.reports", text: "Reports" },
+  settings: { key: "project.tab.settings", text: "Settings" },
 }
 
 /**

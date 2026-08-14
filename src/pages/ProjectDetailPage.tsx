@@ -11,22 +11,14 @@ import { ReportsPanel } from "@/components/reports/ReportsPanel"
 import { useLanguage } from "@/context/LanguageContext"
 import { ADMINISTER_PROJECT, getProject } from "@/api/projects"
 import {
+  PROJECT_TAB_LABELS,
   projectStyleLabel,
   projectTabs,
   resolveProjectSettingsSection,
   resolveProjectTab,
   type ProjectSettingsSection,
-  type ProjectTab,
 } from "@/lib/projectStyle"
-
-/** The label for each tab. The list itself comes from `projectTabs`, so this only names them. */
-const TAB_LABELS: Record<ProjectTab, { key: string; text: string }> = {
-  issues: { key: "project.tab.issues", text: "Issues" },
-  board: { key: "project.tab.board", text: "Board" },
-  backlog: { key: "project.tab.backlog", text: "Backlog" },
-  reports: { key: "project.tab.reports", text: "Reports" },
-  settings: { key: "project.tab.settings", text: "Settings" },
-}
+import { resolveText } from "@/lib/translatableText"
 
 export function ProjectDetailPage() {
   const { t } = useLanguage()
@@ -84,7 +76,7 @@ export function ProjectDetailPage() {
         <TabsList>
           {tabs.map((tab) => (
             <TabsTrigger key={tab} value={tab}>
-              {t(TAB_LABELS[tab].key, TAB_LABELS[tab].text)}
+              {resolveText(t, PROJECT_TAB_LABELS[tab])}
             </TabsTrigger>
           ))}
         </TabsList>

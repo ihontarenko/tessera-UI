@@ -51,7 +51,8 @@ export function IssueDetailPanel({
             canEdit={canEdit}
             multiline
             maximumLength={4000}
-            placeholder="No description."
+            placeholder="Add a description…"
+            emptyText="No description."
             className="px-2 py-1.5 text-sm"
             onCommit={(description) => editing.fields.mutate({ description: description || null })}
           />

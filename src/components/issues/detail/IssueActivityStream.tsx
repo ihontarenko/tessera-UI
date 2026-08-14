@@ -270,5 +270,7 @@ function mergeStream(comments: Comment[], events: ActivityLog[], scope: StreamSc
     }
   }
 
-  return entries.sort((first, second) => second.at.localeCompare(first.at))
+  // Compared as instants, not as strings: the backend serialises LocalDateTime with however many
+  // fractional digits the value needs, so "…:20.5" and "…:20.45" sort the wrong way round as text.
+  return entries.sort((first, second) => Date.parse(second.at) - Date.parse(first.at))
 }
