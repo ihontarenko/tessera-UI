@@ -1,5 +1,6 @@
 import { IssueTypeLabel } from "@/components/issues/issueVisuals"
 import { InlineTextField } from "@/components/inline/InlineTextField"
+import { MarkdownField } from "@/components/markdown/MarkdownField"
 import { IssueActivityStream } from "@/components/issues/detail/IssueActivityStream"
 import { IssueRail } from "@/components/issues/detail/IssueRail"
 import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"
@@ -52,15 +53,15 @@ export function IssueDetailPanel({
 
         <div className="space-y-1">
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Description</span>
-          <InlineTextField
-            ariaLabel="Description"
+          {/* ⚠️ Markdown, so it is shown rendered rather than as the source somebody typed. A table, a
+              ;;;mermaid diagram and a TES-42 reference are the rendered thing — a field that stayed a
+              textarea would mean nobody ever saw them. */}
+          <MarkdownField
             value={issue.description ?? ""}
             canEdit={canEdit}
-            multiline
-            maximumLength={4000}
             placeholder="Add a description…"
             emptyText="No description."
-            className="px-2 py-1.5 text-sm"
+            className="text-sm"
             onCommit={(description) => editing.fields.mutate({ description: description || null })}
           />
         </div>

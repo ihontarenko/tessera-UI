@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { TesseraMarkdown } from "@/components/markdown/TesseraMarkdown"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import type { MemberSummary } from "@/api/members"
 import { memberInitials, memberName } from "@/lib/memberDisplay"
@@ -230,9 +231,14 @@ export function IssueActivityStream({
                 ) : (
                   // Capped at a readable measure so a long comment does not run the width of a wide
                   // page, and a short one does not sit alone in a field of nothing.
-                  <p className="max-w-[68ch] whitespace-pre-wrap text-sm text-foreground/90">
-                    {entry.comment.body}
-                  </p>
+                  //
+                  // ⚠️ Rendered rather than printed. A comment is where somebody writes "blocked by
+                  // TES-42" or pastes a table, and `whitespace-pre-wrap` showed both as the characters
+                  // they typed — which is the difference between a tracker people write in and one
+                  // they write around.
+                  <div className="max-w-[68ch] text-sm text-foreground/90">
+                    <TesseraMarkdown markdown={entry.comment.body} />
+                  </div>
                 )}
               </div>
             </li>
