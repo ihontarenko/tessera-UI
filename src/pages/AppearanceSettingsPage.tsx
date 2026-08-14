@@ -39,9 +39,10 @@ const MODES: Array<{ value: "light" | "dark" | "system"; label: string }> = [
  * one-choice settings (mode, text size, contrast) on a single row, and swatches sized to their labels
  * so the eye can take a palette in at a glance instead of scanning.
  *
- * A page rather than the dropdown it started as — that content is tall enough that positioning it in a
- * popover was a fight (see `SidebarPopover` for what the font-scale zoom does to a measured panel),
- * and a page has no positioning to get wrong.
+ * A page rather than the dropdown it started as, and it stays one: mode, twenty-seven themes, seasonal
+ * effects, text size and contrast is a screenful, not a menu. (The positioning that made it a page in
+ * the first place is no longer an argument — overlays are anchored by the browser now — but the amount
+ * of content still is.)
  */
 export function AppearanceSettingsPage() {
   const {

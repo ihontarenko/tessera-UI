@@ -4,7 +4,11 @@ import { useMatch, useNavigate } from "react-router-dom"
 import { Check, FolderKanban } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
-import { SidebarPopover } from "@/components/layout/SidebarPopover"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { listProjects } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
 import { readLastProjectId, writeLastProjectId } from "@/lib/lastProject"
@@ -18,9 +22,9 @@ import { readLastProjectId, writeLastProjectId } from "@/lib/lastProject"
  * work was.
  *
  * It lives in the sidebar header rather than an application header because this shell deliberately has
- * no desktop header (see `ApplicationLayout`), and it is built on `SidebarPopover` for the same reason
- * the language switcher is: a Radix-positioned panel anchors to the wrong point under the font-scale
- * zoom this sidebar supports.
+ * no desktop header (see `ApplicationLayout`). It uses the ordinary `DropdownMenu` like everything else
+ * — the hand-rolled `SidebarPopover` it used to need is gone, now that overlays are anchored by the
+ * browser rather than by a positioning library that could not survive the font-scale zoom.
  */
 export function ProjectSwitcher() {
   const { t } = useLanguage()
@@ -64,47 +68,53 @@ export function ProjectSwitcher() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarPopover
-          trigger={({ onClick, open }) => (
-            <SidebarMenuButton onClick={onClick} isActive={open} tooltip={t("nav.switchProject", "Switch project")}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton tooltip={t("nav.switchProject", "Switch project")}>
               <FolderKanban className="size-4" />
               <span className="truncate">
                 {currentProject?.name ?? t("nav.switchProject", "Switch project")}
               </span>
             </SidebarMenuButton>
-          )}
-        >
-          {/* The filter earns its place well before a member has many projects: typing a key is faster
-              than reading a list, and the list only grows. */}
-          <div className="p-1" onClick={(event) => event.stopPropagation()}>
-            <Input
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              placeholder={t("nav.filterProjects", "Filter projects…")}
-              className="h-8"
-              aria-label={t("nav.filterProjects", "Filter projects…")}
-            />
-          </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-(--sidebar-width) max-w-[16rem]">
+            {/* The filter earns its place well before a member has many projects: typing a key is
+                faster than reading a list, and the list only grows. */}
+            <div className="p-1">
+              <Input
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+                placeholder={t("nav.filterProjects", "Filter projects…")}
+                className="h-8"
+                aria-label={t("nav.filterProjects", "Filter projects…")}
+                // The panel closes on any click that lands on a menu item; typing in the filter is
+                // neither, but the keyboard handler above still has to leave the field alone.
+                onKeyDown={(event) => event.stopPropagation()}
+              />
+            </div>
 
-          {matches.length === 0 && (
-            <p className="px-2 py-1.5 text-sm text-muted-foreground">
-              {t("nav.noProjects", "No projects match.")}
-            </p>
-          )}
+            {matches.length === 0 && (
+              <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                {t("nav.noProjects", "No projects match.")}
+              </p>
+            )}
 
-          {matches.map((project) => (
-            <button
-              key={project.id}
-              type="button"
-              onClick={() => navigate(`/projects/${project.id}`)}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-            >
-              <span className="font-mono text-xs text-muted-foreground">{project.key}</span>
-              <span className="truncate">{project.name}</span>
-              {project.id === currentProjectId && <Check className="ml-auto size-4 shrink-0" />}
-            </button>
-          ))}
-        </SidebarPopover>
+            {matches.map((project) => (
+              <div
+                key={project.id}
+                data-slot="dropdown-menu-item"
+                role="menuitem"
+                tabIndex={-1}
+                onClick={() => navigate(`/projects/${project.id}`)}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+              >
+                <span className="font-mono text-xs text-muted-foreground">{project.key}</span>
+                <span className="truncate">{project.name}</span>
+                {project.id === currentProjectId && <Check className="ml-auto size-4 shrink-0" />}
+              </div>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
   )

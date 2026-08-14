@@ -1,6 +1,11 @@
 import { Check, Languages } from "lucide-react"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
-import { SidebarPopover } from "@/components/layout/SidebarPopover"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useLanguage, type Language } from "@/context/LanguageContext"
 
 const LANGUAGE_LABELS: Record<Language, string> = {
@@ -8,32 +13,37 @@ const LANGUAGE_LABELS: Record<Language, string> = {
   uk: "Українська",
 }
 
+/**
+ * The language, as a sidebar row of its own.
+ *
+ * ⚠️ **Nothing renders this today** — the shell's language choice moved into `AccountMenu`, with the
+ * rest of the settings that are about the person rather than the work. It is kept because a sidebar
+ * that wants the choice back as its own row should find it here rather than rebuild it, and it was
+ * moved onto the ordinary `DropdownMenu` with everything else so that it cannot rot into the one
+ * component still using a mechanism this application has retired.
+ */
 export function LanguageSwitcher() {
   const { language, setLanguage, t } = useLanguage()
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarPopover
-          trigger={({ onClick, open }) => (
-            <SidebarMenuButton onClick={onClick} isActive={open} tooltip={t("common.language", "Language")}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton tooltip={t("common.language", "Language")}>
               <Languages className="size-4" />
               <span>{LANGUAGE_LABELS[language]}</span>
             </SidebarMenuButton>
-          )}
-        >
-          {(Object.keys(LANGUAGE_LABELS) as Language[]).map((languageOption) => (
-            <button
-              key={languageOption}
-              type="button"
-              onClick={() => setLanguage(languageOption)}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-            >
-              {LANGUAGE_LABELS[languageOption]}
-              {language === languageOption && <Check className="ml-auto size-4" />}
-            </button>
-          ))}
-        </SidebarPopover>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-(--sidebar-width) max-w-[16rem]">
+            {(Object.keys(LANGUAGE_LABELS) as Language[]).map((option) => (
+              <DropdownMenuItem key={option} onClick={() => setLanguage(option)}>
+                {LANGUAGE_LABELS[option]}
+                {language === option && <Check className="ml-auto size-4" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
   )

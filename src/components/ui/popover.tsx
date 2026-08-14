@@ -1,48 +1,117 @@
-"use client"
-
 import * as React from "react"
-import { Popover as PopoverPrimitive } from "radix-ui"
+import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/helpers"
+import { AnchoredPanel, anchorProperties, useAnchorName, type AnchoredAlign } from "@/components/ui/anchored"
+
+/**
+ * A popover, positioned by the browser rather than by a library — see `components/ui/anchored.tsx`.
+ *
+ * ⚠️ **Nothing in this application uses it today.** It is here because it was here, and because the
+ * next screen that wants a panel next to a control should find one rather than reach for the library
+ * that opens it in the wrong place. It was moved onto the anchored primitive with everything else
+ * precisely so that it cannot be the one that reintroduces the bug.
+ */
+
+interface PopoverContextValue {
+  open: boolean
+  setOpen: (open: boolean) => void
+  anchorName: string
+}
+
+const PopoverContext = React.createContext<PopoverContextValue | null>(null)
+
+function usePopover(component: string): PopoverContextValue {
+  const context = React.useContext(PopoverContext)
+
+  if (context === null) {
+    throw new Error(`${component} has to be used inside a <Popover>`)
+  }
+
+  return context
+}
 
 function Popover({
-  ...properties
-}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...properties} />
+  open: openProperty,
+  onOpenChange,
+  children,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  children: React.ReactNode
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const anchorName = useAnchorName()
+  const open = openProperty ?? uncontrolledOpen
+
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      setUncontrolledOpen(next)
+      onOpenChange?.(next)
+    },
+    [onOpenChange],
+  )
+
+  const context = React.useMemo(() => ({ open, setOpen, anchorName }), [open, setOpen, anchorName])
+
+  return (
+    <PopoverContext.Provider value={context}>
+      <div data-slot="popover" className="relative inline-flex">
+        {children}
+      </div>
+    </PopoverContext.Provider>
+  )
 }
 
 function PopoverTrigger({
+  asChild = false,
+  style,
   ...properties
-}: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...properties} />
+}: React.ComponentProps<"button"> & { asChild?: boolean }) {
+  const { open, setOpen, anchorName } = usePopover("PopoverTrigger")
+  const Component = asChild ? Slot.Root : "button"
+
+  return (
+    <Component
+      data-slot="popover-trigger"
+      data-state={open ? "open" : "closed"}
+      aria-expanded={open}
+      onClick={() => setOpen(!open)}
+      {...properties}
+      {...anchorProperties(anchorName, style)}
+    />
+  )
 }
 
 function PopoverContent({
   className,
   align = "center",
-  sideOffset = 4,
+  sideOffset: _sideOffset,
   ...properties
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: React.ComponentProps<"div"> & { align?: AnchoredAlign; sideOffset?: number }) {
+  const { open, setOpen, anchorName } = usePopover("PopoverContent")
+
   return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content
-        data-slot="popover-content"
-        align={align}
-        sideOffset={sideOffset}
-        className={cn(
-          "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          className
-        )}
-        {...properties}
-      />
-    </PopoverPrimitive.Portal>
+    <AnchoredPanel
+      anchorName={anchorName}
+      open={open}
+      onClose={() => setOpen(false)}
+      side="bottom"
+      align={align}
+      data-slot="popover-content"
+      className={cn("w-72 p-4", className)}
+      {...properties}
+    />
   )
 }
 
-function PopoverAnchor({
-  ...properties
-}: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
-  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...properties} />
+/**
+ * ⚠️ Kept as a passthrough. Radix's anchor let a panel be positioned against something other than its
+ * trigger; the anchored primitive would express that as a second `anchor-name`, and nothing here needs
+ * one. Removing the export would be a rename dressed as a cleanup.
+ */
+function PopoverAnchor({ children }: { children: React.ReactNode }) {
+  return <>{children}</>
 }
 
 function PopoverHeader({ className, ...properties }: React.ComponentProps<"div">) {
@@ -55,26 +124,13 @@ function PopoverHeader({ className, ...properties }: React.ComponentProps<"div">
   )
 }
 
-function PopoverTitle({ className, ...properties }: React.ComponentProps<"h2">) {
-  return (
-    <div
-      data-slot="popover-title"
-      className={cn("font-medium", className)}
-      {...properties}
-    />
-  )
+function PopoverTitle({ className, ...properties }: React.ComponentProps<"div">) {
+  return <div data-slot="popover-title" className={cn("font-medium", className)} {...properties} />
 }
 
-function PopoverDescription({
-  className,
-  ...properties
-}: React.ComponentProps<"p">) {
+function PopoverDescription({ className, ...properties }: React.ComponentProps<"p">) {
   return (
-    <p
-      data-slot="popover-description"
-      className={cn("text-muted-foreground", className)}
-      {...properties}
-    />
+    <p data-slot="popover-description" className={cn("text-muted-foreground", className)} {...properties} />
   )
 }
 

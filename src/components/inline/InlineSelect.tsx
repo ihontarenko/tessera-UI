@@ -9,12 +9,14 @@ export interface InlineSelectOption {
 /**
  * A field you pick from, drawn as plain text until hovered — and backed by a native `<select>`.
  *
- * Native, deliberately. Text size is applied as `body.style.zoom` (see `ThemeContext`), and inside a
- * zoomed subtree Radix's popper positions its panel from a `getBoundingClientRect()` that no longer
- * describes where the trigger really is: at the larger scales the list opens outside the viewport and
- * the control reads as broken — click it, nothing happens. A native select's list is drawn by the
- * browser outside the document entirely, so there is no coordinate to get wrong, and it stays keyboard
- * and screen-reader correct for free.
+ * Native, deliberately — though no longer for the reason it started as. It was native because the
+ * positioning library opened its panel outside the viewport under the font-scale zoom, and the control
+ * read as broken: click it, nothing happens. That is fixed for everything now (`components/ui/anchored
+ * .tsx`), so the styled `Select` would work here too.
+ *
+ * It stays native because of what this control is: one field in a rail of short, frequently-changed
+ * fields, edited in place. The platform's list opens faster than anything drawn in the document, and it
+ * is keyboard and screen-reader correct without being asked.
  *
  * The trade is that the option list takes the platform's styling rather than the theme's. For a rail of
  * short, frequently-changed fields that is a good trade; the styled `Select` stays everywhere the list

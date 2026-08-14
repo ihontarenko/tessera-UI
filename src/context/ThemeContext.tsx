@@ -101,10 +101,15 @@ function isMobileDevice() {
  * enlarges the CSS pixel itself, which shrinks the viewport in CSS pixels and lets every layout reflow
  * as though it were on a smaller screen — that reflow is the whole reason this mechanism was chosen.
  *
- * Its cost is that Radix's popper positioning cannot be trusted inside the zoomed subtree, since
- * `getBoundingClientRect()` and the transform that positions a panel do not agree about the scale.
- * That is handled where it bites — see `SidebarPopover`, and the native `<select>` behind
- * `InlineSelect` — rather than by giving up the reflow.
+ * ⚠️ <strong>Its cost was every dropdown in the application, and that cost is now paid once.</strong>
+ * A JavaScript positioner cannot survive this: floating-ui divides a trigger's measured rect by the
+ * scale it detects — which for a zoomed element is the zoom — and then cannot reconcile a
+ * `position: fixed` containing block. Measured at 1.5×, a trigger at y=18 opened its panel at y=654;
+ * moving this zoom onto the application root instead moved it to y=436. Wrong either way.
+ *
+ * So no overlay in this application is positioned by JavaScript any more. `components/ui/anchored.tsx`
+ * hands the job to the browser's own anchor positioning, which resolves during normal layout where
+ * every length already agrees. This zoom is free to keep buying the reflow it was chosen for.
  */
 function applyFontScale(scale: FontScale) {
   const value = FONT_SCALE_VALUES[scale]
