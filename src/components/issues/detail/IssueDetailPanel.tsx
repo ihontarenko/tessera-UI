@@ -1,5 +1,5 @@
 import { IssueTypeLabel } from "@/components/issues/issueVisuals"
-import { InlineTextField } from "@/components/issues/detail/InlineTextField"
+import { InlineTextField } from "@/components/inline/InlineTextField"
 import { IssueActivityStream } from "@/components/issues/detail/IssueActivityStream"
 import { IssueRail } from "@/components/issues/detail/IssueRail"
 import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"

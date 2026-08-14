@@ -23,7 +23,9 @@ export function BoardSettingsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-xl">
+      {/* Wider than the default sheet: a column is a row now, and a row of name, contents and bounds
+          needs the width or it wraps back into the stack this replaced. */}
+      <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-3xl">
         <SheetHeader>
           <SheetTitle>{t("board.settings.title", "Board settings")}</SheetTitle>
           <SheetDescription>
