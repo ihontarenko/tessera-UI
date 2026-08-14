@@ -8,6 +8,15 @@ export interface CurrentMember {
   displayName: string | null
   email: string | null
   systemRole: SystemRole
+  /**
+   * What this member holds **installation-wide** — not in any project.
+   *
+   * ⚠️ This is what lets the shell decide whether to render Administration before anything is clicked.
+   * Never the authority: every route it leads to is gated server-side and refuses independently. Project
+   * permissions are a different question with a different answer per project, and travel on
+   * `ProjectResponse.myPermissions`.
+   */
+  globalPermissions: string[]
 }
 
 export interface MemberSummary {

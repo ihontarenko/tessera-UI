@@ -38,3 +38,12 @@ export const ADMINISTER_PROJECT = "project:administer"
  * ⚠️ Installation-wide, not a project's: changing what Developer carries changes it everywhere at once.
  */
 export const ADMINISTER_ACCESS = "access:administer"
+
+/**
+ * Editing the catalogs every project runs on — statuses, workflows, issue types, schemes.
+ *
+ * ⚠️ Installation-wide, and therefore compared against `currentMember.globalPermissions` rather than
+ * against a project's `myPermissions`. The configuration is shared by design: adding a transition
+ * changes what every project on that workflow may do, which no project's administrator can own.
+ */
+export const ADMINISTER_CONFIGURATION = "configuration:administer"

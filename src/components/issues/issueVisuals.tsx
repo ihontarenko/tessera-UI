@@ -1,16 +1,69 @@
 import type { ReactNode } from "react"
-import { Bookmark, Bug, CheckSquare, ChevronsUp, Layers, ListChecks, SquareStack } from "lucide-react"
+import {
+  BadgeCheck,
+  Bookmark,
+  Brush,
+  Bug,
+  CheckSquare,
+  ChevronsUp,
+  CircleHelp,
+  Compass,
+  FileText,
+  Flag,
+  Flame,
+  LifeBuoy,
+  Layers,
+  ListChecks,
+  Microscope,
+  Rocket,
+  ShieldAlert,
+  Sparkles,
+  SquareStack,
+  TrendingUp,
+  Wrench,
+} from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { IssueTypeSummary, PrioritySummary, StatusCategory, StatusSummary } from "@/api/issues"
 import { cn } from "@/lib/helpers"
 
-// Icon per seeded issue-type key (falls back to a generic checkbox for unknown/custom types).
+/**
+ * The drawing for each issue-type icon key.
+ *
+ * ⚠️ **This map and `IssueTypeIcons.ALL` on the server are two halves of one list**, and they have to
+ * agree: the server refuses a key it does not know, and a key it allows that is missing here draws the
+ * generic fallback — which is an invisible typo, since a type with the wrong icon looks exactly like a
+ * type with the right one. Adding an icon is both edits. The Administration picker is built from the
+ * server's list and renders each option through `IssueTypeIcon`, so a mismatch is visible there
+ * immediately rather than after somebody creates a type.
+ *
+ * The keys name what a type *is*, never what it looks like — `incident`, not `siren` — so that
+ * changing the drawing later is a change to this file and to nothing else.
+ */
 const TYPE_ICONS: Record<string, LucideIcon> = {
+  // The seeded five.
   epic: Layers,
   story: Bookmark,
   task: CheckSquare,
   bug: Bug,
   "sub-task": SquareStack,
+  // Wider containers.
+  initiative: Rocket,
+  milestone: Flag,
+  // Kinds of work a team distinguishes.
+  improvement: TrendingUp,
+  feature: Sparkles,
+  spike: Compass,
+  chore: Wrench,
+  documentation: FileText,
+  design: Brush,
+  research: Microscope,
+  // Things that arrive rather than get planned.
+  incident: Flame,
+  support: LifeBuoy,
+  question: CircleHelp,
+  risk: ShieldAlert,
+  security: BadgeCheck,
+  debt: ListChecks,
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -19,6 +72,21 @@ const TYPE_COLORS: Record<string, string> = {
   task: "text-sky-600 dark:text-sky-400",
   bug: "text-rose-600 dark:text-rose-400",
   "sub-task": "text-slate-500 dark:text-slate-400",
+  initiative: "text-violet-600 dark:text-violet-400",
+  milestone: "text-amber-600 dark:text-amber-400",
+  improvement: "text-emerald-600 dark:text-emerald-400",
+  feature: "text-fuchsia-600 dark:text-fuchsia-400",
+  spike: "text-cyan-600 dark:text-cyan-400",
+  chore: "text-slate-500 dark:text-slate-400",
+  documentation: "text-blue-600 dark:text-blue-400",
+  design: "text-pink-600 dark:text-pink-400",
+  research: "text-teal-600 dark:text-teal-400",
+  incident: "text-red-600 dark:text-red-400",
+  support: "text-orange-600 dark:text-orange-400",
+  question: "text-indigo-600 dark:text-indigo-400",
+  risk: "text-amber-600 dark:text-amber-400",
+  security: "text-lime-600 dark:text-lime-400",
+  debt: "text-stone-500 dark:text-stone-400",
 }
 
 export function IssueTypeIcon({ type, className }: { type: IssueTypeSummary | null; className?: string }) {

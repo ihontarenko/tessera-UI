@@ -1,4 +1,5 @@
-import { CircleDot, FolderKanban, LayoutDashboard, type LucideIcon } from "lucide-react"
+import { CircleDot, FolderKanban, LayoutDashboard, SlidersHorizontal, type LucideIcon } from "lucide-react"
+import { ADMINISTER_CONFIGURATION } from "@/api/permissions"
 
 export interface NavigationItem {
   title: string
@@ -7,6 +8,18 @@ export interface NavigationItem {
   icon: LucideIcon
   isBuilt: boolean
   description: string
+  /**
+   * An **installation-wide** permission this entry needs, compared against
+   * `currentMember.globalPermissions`. Absent means everybody signed in sees it.
+   *
+   * ⚠️ Deliberately not a project permission. Those differ per project, so an entry gated on one would
+   * appear and disappear as somebody switched projects — which is why the entries that vary that way
+   * live inside a project rather than here.
+   *
+   * ⚠️ A courtesy, never the authorization: the route is open and the server refuses. Hiding a control
+   * somebody cannot use is about not teasing them, and it is not a security boundary.
+   */
+  requiredGlobalPermission?: string
 }
 
 export interface NavigationGroup {
@@ -48,6 +61,24 @@ export const navigationGroups: NavigationGroup[] = [
         icon: CircleDot,
         isBuilt: true,
         description: "",
+      },
+    ],
+  },
+  {
+    // A group of its own rather than a fourth entry under Work, because it is not work: everything
+    // above is about issues, and this is about the catalogs issues are made of. The group disappears
+    // entirely for a member without the permission — an empty heading is worse than no heading.
+    title: "Configure",
+    translationKey: "nav.group.configure",
+    items: [
+      {
+        title: "Administration",
+        translationKey: "nav.administration",
+        path: "/administration",
+        icon: SlidersHorizontal,
+        isBuilt: true,
+        description: "",
+        requiredGlobalPermission: ADMINISTER_CONFIGURATION,
       },
     ],
   },

@@ -1,5 +1,4 @@
 import { NavLink, useLocation } from "react-router-dom"
-import { Palette, ShieldCheck } from "lucide-react"
 import { TesseraMark } from "@/components/icons/TesseraMark"
 import {
   Sidebar,
@@ -15,11 +14,10 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { navigationGroups } from "@/navigation"
-import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
+import { AccountMenu } from "@/components/layout/AccountMenu"
 import { ProjectSwitcher } from "@/components/layout/ProjectSwitcher"
-import { SignOutButton } from "@/components/layout/SignOutButton"
-import { CurrentMemberCard } from "@/components/layout/CurrentMemberCard"
 import { useLanguage } from "@/context/LanguageContext"
+import { useCurrentMember } from "@/hooks/useCurrentMember"
 
 function isNavigationItemActive(pathname: string, itemPath: string) {
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
@@ -28,6 +26,21 @@ function isNavigationItemActive(pathname: string, itemPath: string) {
 export function ApplicationSidebar() {
   const { pathname } = useLocation()
   const { t } = useLanguage()
+  const { data: currentMember } = useCurrentMember()
+
+  // ⚠️ A courtesy, not the authorization — every route below is gated server-side and refuses on its
+  // own. What it buys is that somebody who cannot edit the configuration is not offered a screen full
+  // of controls that will all say no. A group whose every entry is hidden goes with them: an empty
+  // heading reads as something broken rather than as something absent.
+  const held = currentMember?.globalPermissions ?? []
+  const visibleGroups = navigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.requiredGlobalPermission || held.includes(item.requiredGlobalPermission),
+      ),
+    }))
+    .filter((group) => group.items.length > 0)
 
   return (
     // No collapsible="icon" mode — Innoventa's own sidebar is always fully expanded on desktop and
@@ -57,14 +70,13 @@ export function ApplicationSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
         {/* No PersonaSwitcher here — there's no persona concept in this app. The project switcher
-            (ticket 09) takes the slot Innoventa's space switcher occupies, and LanguageSwitcher moved
-            up from the footer for the same fontScale-zoom / Radix-positioning reason it was moved in
-            Moneta — see the SidebarPopover comment. */}
+            (ticket 09) takes the slot Innoventa's space switcher occupies, and it is the only thing
+            beside the brand: it is about the work, which is what the top of a sidebar is for.
+            Language moved down into the account menu, where the rest of the personal settings are. */}
         <ProjectSwitcher />
-        <LanguageSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        {navigationGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <SidebarGroup key={group.title}>
             <SidebarGroupLabel>{t(group.translationKey, group.title)}</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -89,41 +101,11 @@ export function ApplicationSidebar() {
           </SidebarGroup>
         ))}
       </SidebarContent>
+      {/* One row, holding everything that is about the person rather than about the work — language,
+          appearance, access, sign out. It used to be five permanent rows for things nobody clicks
+          during a working day, which is a footer competing with the navigation above it. */}
       <SidebarFooter>
-        {/* A page (AppearanceSettingsPage), not a dropdown — see the LanguageSwitcher comment above
-            for why a popover this size doesn't survive fontScale zoom in this footer position. */}
-        <SidebarMenu>
-          {/* ⚠️ Shown to everybody, and refused by the server to anybody without `access:administer`.
-              Hiding it would need the caller's installation-wide permissions in the shell, which is a
-              request per page load to save one 403 — and a link that is present and refused is a
-              clearer answer than one that silently is not there. */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              tooltip={t("common.access", "Access")}
-              isActive={isNavigationItemActive(pathname, "/settings/access")}
-            >
-              <NavLink to="/settings/access">
-                <ShieldCheck className="size-4" />
-                <span>{t("common.access", "Access")}</span>
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              tooltip={t("common.appearance", "Appearance")}
-              isActive={isNavigationItemActive(pathname, "/settings/appearance")}
-            >
-              <NavLink to="/settings/appearance">
-                <Palette className="size-4" />
-                <span>{t("common.appearance", "Appearance")}</span>
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <CurrentMemberCard />
-        <SignOutButton />
+        <AccountMenu />
       </SidebarFooter>
     </Sidebar>
   )

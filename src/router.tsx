@@ -3,6 +3,7 @@ import { ApplicationLayout } from "@/components/layout/ApplicationLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { AppearanceSettingsPage } from "@/pages/AppearanceSettingsPage"
 import { AccessSettingsPage } from "@/pages/AccessSettingsPage"
+import { AdministrationPage } from "@/pages/AdministrationPage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage"
 import { IssuePage } from "@/pages/IssuePage"
@@ -41,6 +42,11 @@ export function AppRoutes() {
             under /projects/:projectId. The server refuses anybody without it; the route is open because
             a client-side guard is a courtesy and never the authorization. */}
         <Route path="/settings/access" element={<AccessSettingsPage />} />
+        {/* ⚠️ Installation-wide, behind `configuration:administer` — a status, a workflow and a scheme
+            belong to every project that uses them, so this is not under /projects/:projectId either.
+            The route is deliberately open: a member without the permission reads the screens, and every
+            write route refuses them on its own. */}
+        <Route path="/administration" element={<AdministrationPage />} />
         {/* "soon" navigation items have no route yet — they land as their modules are built. */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
