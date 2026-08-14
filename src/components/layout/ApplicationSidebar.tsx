@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sidebar"
 import { navigationGroups } from "@/navigation"
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher"
+import { ProjectSwitcher } from "@/components/layout/ProjectSwitcher"
 import { SignOutButton } from "@/components/layout/SignOutButton"
 import { CurrentMemberCard } from "@/components/layout/CurrentMemberCard"
 import { useLanguage } from "@/context/LanguageContext"
@@ -55,9 +56,11 @@ export function ApplicationSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {/* No PersonaSwitcher here — there's no persona concept in this app. LanguageSwitcher moved
+        {/* No PersonaSwitcher here — there's no persona concept in this app. The project switcher
+            (ticket 09) takes the slot Innoventa's space switcher occupies, and LanguageSwitcher moved
             up from the footer for the same fontScale-zoom / Radix-positioning reason it was moved in
             Moneta — see the SidebarPopover comment. */}
+        <ProjectSwitcher />
         <LanguageSwitcher />
       </SidebarHeader>
       <SidebarContent>

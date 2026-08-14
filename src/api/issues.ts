@@ -154,6 +154,34 @@ export function getIssueByKey(issueKey: string) {
   return httpClient.get<IssueDetail>(`/issues/by-key/${issueKey}`).then((response) => response.data)
 }
 
+// ── Cross-project search (ticket 10) ─────────────────────────────────────────────────────────────
+
+export interface IssueSearchItem {
+  /** Named per row because a result is only meaningful once you know which project it came from. */
+  project: { id: string; key: string; name: string }
+  issue: IssueRow
+}
+
+export interface IssueSearchPage {
+  items: IssueSearchItem[]
+  page: number
+  size: number
+  total: number
+}
+
+export interface IssueSearchParameters {
+  text?: string
+  projectId?: string
+  statusId?: string
+  assigneeMemberId?: string
+  page?: number
+  size?: number
+}
+
+export function searchIssues(parameters: IssueSearchParameters) {
+  return httpClient.get<IssueSearchPage>("/issues/search", { params: parameters }).then((response) => response.data)
+}
+
 export function createIssue(projectId: string, request: CreateIssueRequest) {
   return httpClient.post<IssueDetail>(`/projects/${projectId}/issues`, request).then((response) => response.data)
 }

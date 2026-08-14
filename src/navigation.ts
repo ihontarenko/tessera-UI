@@ -1,4 +1,4 @@
-import { CircleDot, Columns3, FolderKanban, LayoutDashboard, ListTodo, type LucideIcon } from "lucide-react"
+import { CircleDot, FolderKanban, LayoutDashboard, type LucideIcon } from "lucide-react"
 
 export interface NavigationItem {
   title: string
@@ -15,10 +15,11 @@ export interface NavigationGroup {
   items: NavigationItem[]
 }
 
-// Phase 0 shipped the shell with only the Dashboard actually built; anything still unbuilt carries a
-// "soon" badge so the sidebar reads as a real tracker from day one (dense, not empty — Ivan's ask)
-// while staying honest about what exists. Projects, Issues-in-project, Boards and now Backlog have
-// landed; Issues (the cross-project search) is what remains.
+// Only things that exist on their own (ticket 09). Boards and Backlog used to be entries here, and
+// both were the same list of the member's projects, existing only to be clicked through — a board and
+// a backlog belong to a project and are reached inside it, with the switcher covering the hop they
+// were there to provide. Issues — the cross-project search — was the last entry carrying a "soon"
+// badge and is now built (ticket 10), so nothing here is a promise any more.
 export const navigationGroups: NavigationGroup[] = [
   {
     title: "Work",
@@ -41,27 +42,11 @@ export const navigationGroups: NavigationGroup[] = [
         description: "",
       },
       {
-        title: "Boards",
-        translationKey: "nav.boards",
-        path: "/boards",
-        icon: Columns3,
-        isBuilt: true,
-        description: "",
-      },
-      {
-        title: "Backlog",
-        translationKey: "nav.backlog",
-        path: "/backlog",
-        icon: ListTodo,
-        isBuilt: true,
-        description: "",
-      },
-      {
         title: "Issues",
         translationKey: "nav.issues",
         path: "/issues",
         icon: CircleDot,
-        isBuilt: false,
+        isBuilt: true,
         description: "",
       },
     ],
