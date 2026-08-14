@@ -56,7 +56,8 @@ function Popover({
 
   return (
     <PopoverContext.Provider value={context}>
-      <div data-slot="popover" className="relative inline-flex">
+      {/* `contents` — see `dropdown-menu.tsx` for why this imposes no layout. */}
+      <div data-slot="popover" className="contents">
         {children}
       </div>
     </PopoverContext.Provider>

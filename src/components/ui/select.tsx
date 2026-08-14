@@ -128,7 +128,9 @@ function Select({
 
   return (
     <SelectContext.Provider value={context}>
-      <div data-slot="select" className="relative inline-flex w-full">
+      {/* `contents` — no layout of its own; the trigger sizes as a direct child of its container.
+          See `dropdown-menu.tsx` for why this is not `relative`. */}
+      <div data-slot="select" className="contents">
         {children}
       </div>
     </SelectContext.Provider>

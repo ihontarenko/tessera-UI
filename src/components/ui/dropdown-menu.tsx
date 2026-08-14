@@ -60,7 +60,13 @@ function DropdownMenu({
 
   return (
     <MenuContext.Provider value={context}>
-      <div data-slot="dropdown-menu" className="relative inline-flex">
+      {/* ⚠️ `contents`, so this wrapper imposes no layout of its own — the trigger sizes exactly as it
+          would if it were a direct child of whatever contains the menu. It briefly was
+          `relative inline-flex`, carried over from the hand-rolled panel that needed a positioned
+          ancestor, and it shrank every full-width trigger to its text (the sidebar's account button
+          being the visible one). The panel is in the top layer and anchored by `anchor-name`, so
+          there is nothing left for this element to do. */}
+      <div data-slot="dropdown-menu" className="contents">
         {children}
       </div>
     </MenuContext.Provider>
