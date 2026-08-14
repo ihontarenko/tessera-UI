@@ -29,7 +29,7 @@ export const ADD_COMMENT = "comment:write"
 
 export const MANAGE_SPRINT = "sprint:manage"
 
-/** Settings, membership, roles and personal overrides — the project's own administration. */
+/** Settings, and which of the three roles each member holds here — the project's own administration. */
 export const ADMINISTER_PROJECT = "project:administer"
 
 /**

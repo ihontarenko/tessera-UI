@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RoleToggleGroup } from "@/components/projects/RoleToggleGroup"
-import { addProjectMember, fetchProjectRoles, type ProjectMember } from "@/api/projects"
+import { ProjectRolePicker } from "@/components/projects/ProjectRolePicker"
+import { addProjectMember, type ProjectMember } from "@/api/projects"
 import { searchMembers } from "@/api/members"
 import { apiErrorMessage } from "@/api/errors"
 import { memberName } from "@/lib/memberDisplay"
@@ -27,7 +27,7 @@ interface AddMemberDialogProperties {
 export function AddMemberDialog({ projectId, existingMemberIds }: AddMemberDialogProperties) {
   const [open, setOpen] = useState(false)
   const [memberId, setMemberId] = useState("")
-  const [roleIds, setRoleIds] = useState<string[]>([])
+  const [roleNames, setRoleNames] = useState<string[]>([])
 
   const queryClient = useQueryClient()
 
@@ -36,7 +36,6 @@ export function AddMemberDialog({ projectId, existingMemberIds }: AddMemberDialo
     queryFn: () => searchMembers(),
     enabled: open,
   })
-  const { data: roles = [] } = useQuery({ queryKey: ["project-roles"], queryFn: fetchProjectRoles, enabled: open })
 
   const selectableMembers = useMemo(
     () => allMembers.filter((member) => !existingMemberIds.includes(member.id)),
@@ -44,7 +43,7 @@ export function AddMemberDialog({ projectId, existingMemberIds }: AddMemberDialo
   )
 
   const mutation = useMutation({
-    mutationFn: () => addProjectMember(projectId, memberId, roleIds),
+    mutationFn: () => addProjectMember(projectId, memberId, roleNames),
     onSuccess: (members: ProjectMember[]) => {
       queryClient.setQueryData(["project-members", projectId], members)
       toast.success("Member added")
@@ -56,16 +55,16 @@ export function AddMemberDialog({ projectId, existingMemberIds }: AddMemberDialo
   function reset() {
     setOpen(false)
     setMemberId("")
-    setRoleIds([])
+    setRoleNames([])
   }
 
-  function toggleRole(roleId: string) {
-    setRoleIds((current) =>
-      current.includes(roleId) ? current.filter((id) => id !== roleId) : [...current, roleId],
+  function toggleRole(roleName: string) {
+    setRoleNames((current) =>
+      current.includes(roleName) ? current.filter((held) => held !== roleName) : [...current, roleName],
     )
   }
 
-  const canSubmit = memberId.length > 0 && roleIds.length > 0
+  const canSubmit = memberId.length > 0 && roleNames.length > 0
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : reset())}>
@@ -102,7 +101,7 @@ export function AddMemberDialog({ projectId, existingMemberIds }: AddMemberDialo
 
           <div className="space-y-1.5">
             <Label>Roles</Label>
-            <RoleToggleGroup roles={roles} selectedIds={roleIds} onToggle={toggleRole} />
+            <ProjectRolePicker selected={roleNames} onToggle={toggleRole} />
           </div>
         </div>
 

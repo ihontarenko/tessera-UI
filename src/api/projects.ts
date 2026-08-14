@@ -3,8 +3,6 @@ import type { StatusCategory } from "@/api/issues"
 import type { MemberSummary } from "@/api/members"
 import type { BoardScopeStrategy } from "@/api/sprints"
 
-export type PermissionEffect = "ALLOW" | "DENY"
-
 export interface SchemeSummary {
   id: string
   name: string
@@ -44,27 +42,17 @@ export interface UpdateProjectRequest {
   workflowSchemeId: string
 }
 
-export interface RoleSummary {
-  id: string
-  name: string
-}
-
-export interface PermissionCatalogEntry {
-  id: string
-  name: string
-  description: string | null
-}
-
-export interface OverrideSummary {
-  permissionId: string
-  permissionName: string
-  effect: PermissionEffect
-}
-
+/**
+ * A member of one project, and the roles they hold there.
+ *
+ * ⚠️ **Roles are names now** — `PROJECT_DEVELOPER`, the name the engine stores and the access screen
+ * shows — because the table that handed out identifiers is gone. And there is no `overrides` field:
+ * a per-person allow or deny was a second answer to what somebody may do, invisible to whoever
+ * maintains the roles. Permissions come from roles, edited once, installation-wide.
+ */
 export interface ProjectMember {
   member: MemberSummary
-  roles: RoleSummary[]
-  overrides: OverrideSummary[]
+  roles: string[]
 }
 
 /**
@@ -144,49 +132,24 @@ export function fetchConfiguration() {
   return httpClient.get<Configuration>("/configuration").then((response) => response.data)
 }
 
-export function fetchProjectRoles() {
-  return httpClient.get<RoleSummary[]>("/project-roles").then((response) => response.data)
-}
-
-export function fetchPermissions() {
-  return httpClient.get<PermissionCatalogEntry[]>("/permissions").then((response) => response.data)
-}
-
 export function listProjectMembers(projectId: string) {
   return httpClient.get<ProjectMember[]>(`/projects/${projectId}/members`).then((response) => response.data)
 }
 
-export function addProjectMember(projectId: string, memberId: string, roleIds: string[]) {
+export function addProjectMember(projectId: string, memberId: string, roleNames: string[]) {
   return httpClient
-    .post<ProjectMember[]>(`/projects/${projectId}/members`, { memberId, roleIds })
+    .post<ProjectMember[]>(`/projects/${projectId}/members`, { memberId, roleNames })
     .then((response) => response.data)
 }
 
-export function setMemberRoles(projectId: string, memberId: string, roleIds: string[]) {
+export function setMemberRoles(projectId: string, memberId: string, roleNames: string[]) {
   return httpClient
-    .put<ProjectMember>(`/projects/${projectId}/members/${memberId}/roles`, { roleIds })
+    .put<ProjectMember>(`/projects/${projectId}/members/${memberId}/roles`, { roleNames })
     .then((response) => response.data)
 }
 
 export function removeProjectMember(projectId: string, memberId: string) {
   return httpClient.delete<void>(`/projects/${projectId}/members/${memberId}`).then((response) => response.data)
-}
-
-export function setPermissionOverride(
-  projectId: string,
-  memberId: string,
-  permissionId: string,
-  effect: PermissionEffect,
-) {
-  return httpClient
-    .put<ProjectMember>(`/projects/${projectId}/members/${memberId}/overrides`, { permissionId, effect })
-    .then((response) => response.data)
-}
-
-export function clearPermissionOverride(projectId: string, memberId: string, permissionId: string) {
-  return httpClient
-    .delete<ProjectMember>(`/projects/${projectId}/members/${memberId}/overrides/${permissionId}`)
-    .then((response) => response.data)
 }
 
 // Re-exported so the many call sites that already import it from here keep working. The name itself
