@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MemberChip } from "@/components/MemberChip"
 import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
 import { DetailRow, SettingsSection } from "@/components/projects/settings/SettingsSection"
+import { IssueKeyFormatEditor } from "@/components/projects/settings/IssueKeyFormatEditor"
 import { useProjectUpdate } from "@/components/projects/settings/useProjectUpdate"
 import { searchMembers } from "@/api/members"
 import type { ProjectResponse } from "@/api/projects"
@@ -80,6 +81,11 @@ export function ProjectGeneralSection({
               {mutation.isPending ? t("common.saving", "Saving…") : t("common.saveChanges", "Save changes")}
             </Button>
           </form>
+
+          <Separator />
+
+          {/* The shape of the next key, and only the next one — see IssueKeyFormatEditor. */}
+          <IssueKeyFormatEditor project={project} canAdminister={canAdminister} />
 
           <Separator />
         </>

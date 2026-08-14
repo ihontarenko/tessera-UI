@@ -44,6 +44,10 @@ export interface UpdateProjectRequest {
   workflowSchemeId: string
   /** ⚠️ Null is "does not estimate", not a scale named None. */
   estimationSchemeId?: string | null
+  /** One of the shipped formats or CUSTOM — decides the NEXT key, never an existing one. */
+  keyStrategy?: string
+  /** ⚠️ Read only by CUSTOM, and refused server-side unless it contains a `sequence` placeholder. */
+  keyPattern?: string | null
 }
 
 /**
@@ -182,3 +186,24 @@ export function removeProjectMember(projectId: string, memberId: string) {
 // Re-exported so the many call sites that already import it from here keep working. The name itself
 // lives in `permissions.ts` now, beside the other nine — see that file for why.
 export { ADMINISTER_PROJECT } from "./permissions"
+
+/**
+ * What the next issue key would look like under a format nobody has saved yet.
+ *
+ * ⚠️ **Built from the project's real next sequence**, not a made-up example — the question is "what
+ * will my keys look like", and a number this project is not on answers a different one.
+ */
+export interface IssueKeyPreview {
+  nextKey: string
+  /** A key the project already holds, or null. ⚠️ Existing keys are never regenerated. */
+  existingKey: string | null
+  formats: Array<{ name: string; example: string | null }>
+}
+
+export function fetchIssueKeyPreview(projectId: string, keyStrategy: string, keyPattern: string | null) {
+  return httpClient
+    .get<IssueKeyPreview>(`/projects/${projectId}/key-preview`, {
+      params: keyPattern ? { keyStrategy, keyPattern } : { keyStrategy },
+    })
+    .then((response) => response.data)
+}

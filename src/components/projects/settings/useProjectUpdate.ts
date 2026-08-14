@@ -25,6 +25,8 @@ export function useProjectUpdate(project: ProjectResponse, successMessage: strin
         // ⚠️ Null is a value here, not a missing one — `?? ""` would turn "does not estimate"
         // into a scheme id of "" and refuse on the next save from any other section.
         estimationSchemeId: project.estimationScheme?.id ?? null,
+        keyStrategy: project.keyStrategy,
+        keyPattern: project.keyPattern,
         ...changes,
       }),
     onSuccess: (updated) => {
