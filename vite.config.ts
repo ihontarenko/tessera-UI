@@ -3,22 +3,17 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
-// The production build lands directly in the backend's static resource folder
-// (../BE/src/main/resources/static), so `mvn spring-boot:run` serves the freshly built SPA — see
-// Tessera/BE/pom.xml's frontend-maven-plugin. `emptyOutDir: true` is required because that folder is
-// outside this UI project's own root. During day-to-day UI work you still use `npm run dev` (HMR)
-// instead; the bundle is the production-like one-command run, an additive convenience, not a
-// replacement for the standalone dev server.
+// Tessera's UI is a standalone application: it builds into its own dist/ and is served on its own
+// origin, exactly like Innoventa/UI. The backend has no idea this project exists — it answers /api
+// and nothing else — so the two build, run and deploy independently and neither waits for the other.
+// `npm run dev` is the only way this app is run in development; the proxy below is what makes the
+// backend look same-origin to the browser.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-  },
-  build: {
-    outDir: '../BE/src/main/resources/static',
-    emptyOutDir: true,
   },
   server: {
     port: 5050,

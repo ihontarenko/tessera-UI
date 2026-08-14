@@ -8,8 +8,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-# frontend-maven-plugin downloads a pinned Node/npm here (see BE/pom.xml)
-node
 dist
 dist-ssr
 *.local
