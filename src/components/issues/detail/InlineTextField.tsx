@@ -1,0 +1,119 @@
+import { useEffect, useRef, useState } from "react"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/helpers"
+
+/**
+ * A field that is read and written in the same place (ticket 07).
+ *
+ * There is no edit mode and no Save button: the control is always the input, drawn as plain text until
+ * it is hovered or focused, and it commits when it loses focus. Escape abandons the edit, which is the
+ * one thing a form's Cancel button did that nothing else covers.
+ *
+ * A value the server refuses to store — an empty summary — is not sent. The field reverts to what the
+ * server still holds instead of leaving the screen disagreeing with the database.
+ */
+export function InlineTextField({
+  value,
+  onCommit,
+  canEdit,
+  multiline = false,
+  required = false,
+  placeholder,
+  maximumLength,
+  className,
+  ariaLabel,
+}: {
+  value: string
+  onCommit: (next: string) => void
+  canEdit: boolean
+  multiline?: boolean
+  required?: boolean
+  placeholder?: string
+  maximumLength?: number
+  className?: string
+  ariaLabel: string
+}) {
+  const [draft, setDraft] = useState(value)
+  const abandoned = useRef(false)
+
+  // A commit elsewhere — the modal, another tab, a transition that rewrote the field — has to win over
+  // a draft nobody is typing into. Re-syncing on the server's value is what makes the two surfaces one
+  // issue rather than two copies.
+  useEffect(() => {
+    setDraft(value)
+  }, [value])
+
+  if (!canEdit) {
+    return value.length > 0 ? (
+      <p className={cn("whitespace-pre-wrap", className)}>{value}</p>
+    ) : (
+      <p className={cn("italic text-muted-foreground", className)}>{placeholder ?? "—"}</p>
+    )
+  }
+
+  function commit() {
+    if (abandoned.current) {
+      abandoned.current = false
+      setDraft(value)
+      return
+    }
+
+    const next = draft.trim()
+
+    if (next === value.trim()) {
+      return
+    }
+
+    if (required && next.length === 0) {
+      setDraft(value)
+      return
+    }
+
+    onCommit(next)
+  }
+
+  const shared = {
+    value: draft,
+    placeholder,
+    maxLength: maximumLength,
+    "aria-label": ariaLabel,
+    onBlur: commit,
+    className: cn(
+      "border-transparent bg-transparent shadow-none hover:border-input focus-visible:border-input",
+      className,
+    ),
+  }
+
+  if (multiline) {
+    return (
+      <Textarea
+        {...shared}
+        rows={6}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            abandoned.current = true
+            event.currentTarget.blur()
+          }
+        }}
+      />
+    )
+  }
+
+  return (
+    <Input
+      {...shared}
+      onChange={(event) => setDraft(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          abandoned.current = true
+          event.currentTarget.blur()
+        }
+        if (event.key === "Enter") {
+          event.currentTarget.blur()
+        }
+      }}
+    />
+  )
+}

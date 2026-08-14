@@ -1,14 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Link } from "react-router-dom"
 import { toast } from "sonner"
-import { Trash2 } from "lucide-react"
+import { ExternalLink, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IssueTypeIcon } from "@/components/issues/issueVisuals"
-import { IssueDetailsTab } from "@/components/issues/IssueDetailsTab"
-import { IssueCommentsTab } from "@/components/issues/IssueCommentsTab"
-import { IssueHistoryTab } from "@/components/issues/IssueHistoryTab"
+import { IssueDetailPanel } from "@/components/issues/detail/IssueDetailPanel"
+import { issueQueryKey } from "@/components/issues/detail/useIssueEditing"
 import { deleteIssue, getIssue } from "@/api/issues"
 import { apiErrorMessage } from "@/api/errors"
 
@@ -20,20 +19,22 @@ interface IssueDetailModalProperties {
   onOpenChange: (open: boolean) => void
 }
 
-/** The issue detail modal (ticket 07): a header with the key/type and tabs for Details, Comments and
- *  History. Controls are gated by the caller's project permissions; the backend enforces them too. */
+/**
+ * A glance at an issue without losing the board behind it (ticket 11).
+ *
+ * It used to be the only way to see an issue at all, which made it three tabs and an edit mode inside a
+ * dialog. The issue now has a page, so this is the short version: summary, description, the transition
+ * action and the fields a glance needs, with everything that wants room — the activity stream, links,
+ * children — one click away on the page. It renders the page's own components in their compact
+ * arrangement, so a field edited here behaves exactly as it does there.
+ */
 export function IssueDetailModal({ issueId, projectId, permissions, open, onOpenChange }: IssueDetailModalProperties) {
   const queryClient = useQueryClient()
   const { data: issue, isLoading } = useQuery({
-    queryKey: ["issue", issueId],
+    queryKey: issueQueryKey(issueId ?? ""),
     queryFn: () => getIssue(issueId as string),
     enabled: open && issueId !== null,
   })
-
-  const canEdit = permissions.includes("EDIT_ISSUE")
-  const canTransition = permissions.includes("TRANSITION_ISSUE")
-  const canComment = permissions.includes("ADD_COMMENT")
-  const canDelete = permissions.includes("DELETE_ISSUE")
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteIssue(issueId as string),
@@ -62,41 +63,33 @@ export function IssueDetailModal({ issueId, projectId, permissions, open, onOpen
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <IssueTypeIcon type={issue.type} />
-                <span className="font-mono text-sm text-muted-foreground">{issue.issueKey}</span>
+                <Link to={`/issues/${issue.issueKey}`} className="font-mono text-sm text-muted-foreground hover:underline">
+                  {issue.issueKey}
+                </Link>
                 <span className="truncate">{issue.summary}</span>
               </DialogTitle>
             </DialogHeader>
 
-            <Tabs defaultValue="details">
-              <div className="flex items-center justify-between gap-2">
-                <TabsList>
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="comments">Comments</TabsTrigger>
-                  <TabsTrigger value="history">History</TabsTrigger>
-                </TabsList>
-                {canDelete && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => deleteMutation.mutate()}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="mr-1 size-3.5" /> Delete
-                  </Button>
-                )}
-              </div>
+            <div className="flex items-center justify-between gap-2">
+              <Button size="sm" variant="outline" asChild>
+                <Link to={`/issues/${issue.issueKey}`}>
+                  <ExternalLink className="mr-1 size-3.5" /> Open full page
+                </Link>
+              </Button>
+              {permissions.includes("DELETE_ISSUE") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="mr-1 size-3.5" /> Delete
+                </Button>
+              )}
+            </div>
 
-              <TabsContent value="details">
-                <IssueDetailsTab issue={issue} permissions={{ canEdit, canTransition }} />
-              </TabsContent>
-              <TabsContent value="comments">
-                <IssueCommentsTab issueId={issue.id} canComment={canComment} />
-              </TabsContent>
-              <TabsContent value="history">
-                <IssueHistoryTab issueId={issue.id} />
-              </TabsContent>
-            </Tabs>
+            <IssueDetailPanel issue={issue} permissions={permissions} variant="quick" />
           </>
         )}
       </DialogContent>

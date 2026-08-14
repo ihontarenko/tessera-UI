@@ -145,6 +145,15 @@ export function getIssue(issueId: string) {
   return httpClient.get<IssueDetail>(`/issues/${issueId}`).then((response) => response.data)
 }
 
+/**
+ * The same issue addressed the way people address it to each other. The issue page's URL carries the
+ * key, so it is the key the page asks for — resolving one to an id on the client would mean listing
+ * issues just to look one up.
+ */
+export function getIssueByKey(issueKey: string) {
+  return httpClient.get<IssueDetail>(`/issues/by-key/${issueKey}`).then((response) => response.data)
+}
+
 export function createIssue(projectId: string, request: CreateIssueRequest) {
   return httpClient.post<IssueDetail>(`/projects/${projectId}/issues`, request).then((response) => response.data)
 }
