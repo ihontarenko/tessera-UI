@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { IssueTypeIcon } from "@/components/issues/issueVisuals"
+import { EditSchemeLink } from "@/components/projects/settings/EditSchemeLink"
 import { SettingsSection } from "@/components/projects/settings/SettingsSection"
 import { useProjectUpdate } from "@/components/projects/settings/useProjectUpdate"
 import { fetchConfiguration, type Configuration, type ProjectResponse } from "@/api/projects"
@@ -51,7 +52,10 @@ export function ProjectIssueTypesSection({
       )}
     >
       <div className="max-w-xl space-y-1.5">
-        <Label htmlFor="settings-issue-type-scheme">{t("project.settings.issueTypes.scheme", "Issue type scheme")}</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="settings-issue-type-scheme">{t("project.settings.issueTypes.scheme", "Issue type scheme")}</Label>
+          <EditSchemeLink />
+        </div>
         <Select value={schemeId} onValueChange={setSchemeId} disabled={!canAdminister}>
           <SelectTrigger id="settings-issue-type-scheme">
             <SelectValue placeholder={t("project.settings.selectScheme", "Select a scheme")} />

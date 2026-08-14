@@ -88,7 +88,7 @@ export function AdministrationPage() {
           {section === "statuses" && <StatusesSection canAdminister={canAdminister} />}
           {section === "workflows" && <WorkflowsSection canAdminister={canAdminister} />}
           {section === "issue-types" && <IssueTypesSection canAdminister={canAdminister} />}
-          {section === "schemes" && <SchemesSection />}
+          {section === "schemes" && <SchemesSection canAdminister={canAdminister} />}
           {section === "priorities" && <PrioritiesSection canAdminister={canAdminister} />}
           {section === "resolutions" && <ResolutionsSection canAdminister={canAdminister} />}
           {section === "link-types" && <LinkTypesSection canAdminister={canAdminister} />}

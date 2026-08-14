@@ -417,3 +417,128 @@ export function removeTransition(workflowId: string, transitionId: string) {
     .delete<WorkflowChangeResponse>(`${BASE}/workflows/${workflowId}/transitions/${transitionId}`)
     .then((response) => response.data)
 }
+
+// ── Schemes ───────────────────────────────────────────────────────────────────
+
+/** A project as the scheme screens name it — enough to print, enough to link to. */
+export interface ProjectReference {
+  id: string
+  key: string
+  name: string
+}
+
+/**
+ * Which projects are on which scheme, both kinds at once, plus the two a new project starts on.
+ *
+ * ⚠️ **The blast radius is on the screen permanently, not behind a confirmation.** Editing a scheme is
+ * editing every project on it, and a dialog that says so once Delete is pressed says it after the
+ * decision was made.
+ *
+ * ⚠️ A scheme nothing uses is **absent** from the maps, not an empty array — readers default.
+ */
+export interface SchemeUsageReport {
+  byIssueTypeScheme: Record<string, ProjectReference[]>
+  byWorkflowScheme: Record<string, ProjectReference[]>
+  defaultIssueTypeSchemeId: string
+  defaultWorkflowSchemeId: string
+}
+
+export interface IssueTypeSchemeRequest {
+  name: string
+  description: string | null
+  defaultIssueTypeId: string
+  /** ⚠️ Position **is** the order the pickers offer them in — there is no separate sequence. */
+  issueTypeIds: string[]
+}
+
+export interface WorkflowSchemeRequest {
+  name: string
+  description: string | null
+  defaultWorkflowId: string
+  /** A type with no entry runs the default; an empty list is an ordinary scheme, not a broken one. */
+  mappings: { issueTypeId: string; workflowId: string }[]
+}
+
+/**
+ * What removing a type from a scheme would mean.
+ *
+ * ⚠️ Reported, never a refusal: those issues keep their type and stay readable — what stops is raising
+ * new ones on this scheme.
+ */
+export interface SchemeMemberImpact {
+  issueTypeId: string
+  issueTypeName: string
+  issues: number
+  projects: number
+}
+
+/** What a new project starts on. ⚠️ Changing it touches the **next** project and no existing one. */
+export interface InstanceDefaults {
+  defaultIssueTypeSchemeId: string
+  defaultIssueTypeSchemeName: string | null
+  defaultWorkflowSchemeId: string
+  defaultWorkflowSchemeName: string | null
+}
+
+export function fetchSchemeUsage() {
+  return httpClient.get<SchemeUsageReport>(`${BASE}/scheme-usage`).then((response) => response.data)
+}
+
+export function fetchIssueTypeSchemeUsage(schemeId: string) {
+  return httpClient
+    .get<UsageReport>(`${BASE}/issue-type-schemes/${schemeId}/usage`)
+    .then((response) => response.data)
+}
+
+export function fetchSchemeRemovalImpact(schemeId: string, issueTypeId: string) {
+  return httpClient
+    .get<SchemeMemberImpact>(`${BASE}/issue-type-schemes/${schemeId}/removal-impact`, {
+      params: { issueTypeId },
+    })
+    .then((response) => response.data)
+}
+
+export function createIssueTypeScheme(request: IssueTypeSchemeRequest) {
+  return httpClient.post<void>(`${BASE}/issue-type-schemes`, request).then((response) => response.data)
+}
+
+export function updateIssueTypeScheme(schemeId: string, request: IssueTypeSchemeRequest) {
+  return httpClient
+    .put<void>(`${BASE}/issue-type-schemes/${schemeId}`, request)
+    .then((response) => response.data)
+}
+
+export function deleteIssueTypeScheme(schemeId: string) {
+  return httpClient.delete<void>(`${BASE}/issue-type-schemes/${schemeId}`).then((response) => response.data)
+}
+
+export function fetchWorkflowSchemeUsage(schemeId: string) {
+  return httpClient
+    .get<UsageReport>(`${BASE}/workflow-schemes/${schemeId}/usage`)
+    .then((response) => response.data)
+}
+
+export function createWorkflowScheme(request: WorkflowSchemeRequest) {
+  return httpClient.post<void>(`${BASE}/workflow-schemes`, request).then((response) => response.data)
+}
+
+export function updateWorkflowScheme(schemeId: string, request: WorkflowSchemeRequest) {
+  return httpClient
+    .put<void>(`${BASE}/workflow-schemes/${schemeId}`, request)
+    .then((response) => response.data)
+}
+
+export function deleteWorkflowScheme(schemeId: string) {
+  return httpClient.delete<void>(`${BASE}/workflow-schemes/${schemeId}`).then((response) => response.data)
+}
+
+export function fetchInstanceDefaults() {
+  return httpClient.get<InstanceDefaults>(`${BASE}/defaults`).then((response) => response.data)
+}
+
+export function setInstanceDefaults(request: {
+  defaultIssueTypeSchemeId: string
+  defaultWorkflowSchemeId: string
+}) {
+  return httpClient.put<InstanceDefaults>(`${BASE}/defaults`, request).then((response) => response.data)
+}

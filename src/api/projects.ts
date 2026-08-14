@@ -63,29 +63,37 @@ export interface ProjectMember {
  * statuses and transitions a workflow scheme grants. All of it already came back from
  * `GET /api/configuration` — the client simply used to throw it away.
  */
+export interface WorkflowSummary {
+  id: string
+  name: string
+  description: string | null
+  transitions: Array<{ id: string; name: string; fromStatusId: string | null; toStatusId: string }>
+}
+
+/** ⚠️ `issueTypeIds` is ordered — position **is** the order every picker offers them in. */
+export interface IssueTypeSchemeSummary {
+  id: string
+  name: string
+  description: string | null
+  defaultIssueTypeId: string | null
+  issueTypeIds: string[]
+}
+
+/** ⚠️ A type absent from `mappings` runs `defaultWorkflowId` — an empty list is a complete scheme. */
+export interface WorkflowSchemeSummary {
+  id: string
+  name: string
+  description: string | null
+  defaultWorkflowId: string | null
+  mappings: Array<{ issueTypeId: string; workflowId: string }>
+}
+
 export interface Configuration {
   issueTypes: Array<{ id: string; name: string; hierarchyLevel: number; iconKey: string | null; description: string | null }>
   statuses: Array<{ id: string; name: string; category: StatusCategory }>
-  workflows: Array<{
-    id: string
-    name: string
-    description: string | null
-    transitions: Array<{ id: string; name: string; fromStatusId: string | null; toStatusId: string }>
-  }>
-  issueTypeSchemes: Array<{
-    id: string
-    name: string
-    description: string | null
-    defaultIssueTypeId: string | null
-    issueTypeIds: string[]
-  }>
-  workflowSchemes: Array<{
-    id: string
-    name: string
-    description: string | null
-    defaultWorkflowId: string | null
-    mappings: Array<{ issueTypeId: string; workflowId: string }>
-  }>
+  workflows: WorkflowSummary[]
+  issueTypeSchemes: IssueTypeSchemeSummary[]
+  workflowSchemes: WorkflowSchemeSummary[]
 }
 
 export function listProjects() {

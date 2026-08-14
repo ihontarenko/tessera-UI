@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StatusPill } from "@/components/issues/issueVisuals"
+import { EditSchemeLink } from "@/components/projects/settings/EditSchemeLink"
 import { SettingsSection } from "@/components/projects/settings/SettingsSection"
 import { useProjectUpdate } from "@/components/projects/settings/useProjectUpdate"
 import { fetchConfiguration, type Configuration, type ProjectResponse } from "@/api/projects"
@@ -45,7 +46,10 @@ export function ProjectWorkflowSection({
       )}
     >
       <div className="max-w-xl space-y-1.5">
-        <Label htmlFor="settings-workflow-scheme">{t("project.settings.workflow.scheme", "Workflow scheme")}</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="settings-workflow-scheme">{t("project.settings.workflow.scheme", "Workflow scheme")}</Label>
+          <EditSchemeLink />
+        </div>
         <Select value={schemeId} onValueChange={setSchemeId} disabled={!canAdminister}>
           <SelectTrigger id="settings-workflow-scheme">
             <SelectValue placeholder={t("project.settings.selectScheme", "Select a scheme")} />
