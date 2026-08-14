@@ -4,12 +4,20 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCatalogMutation } from "@/components/administration/AdministrationPieces"
 import { setInstanceDefaults, type InstanceDefaults } from "@/api/configurationAdministration"
-import type { IssueTypeSchemeSummary, WorkflowSchemeSummary } from "@/api/projects"
+import type {
+  EstimationSchemeSummary,
+  IssueTypeSchemeSummary,
+  WorkflowSchemeSummary,
+} from "@/api/projects"
+
+/** The select cannot hold null, and "" is falsy — so "does not estimate" needs a token of its own. */
+const NOT_ESTIMATED = "__not_estimated__"
 
 interface InstanceDefaultsCardProperties {
   defaults: InstanceDefaults | undefined
   issueTypeSchemes: IssueTypeSchemeSummary[]
   workflowSchemes: WorkflowSchemeSummary[]
+  estimationSchemes: EstimationSchemeSummary[]
   canAdminister: boolean
 }
 
@@ -30,30 +38,40 @@ export function InstanceDefaultsCard({
   defaults,
   issueTypeSchemes,
   workflowSchemes,
+  estimationSchemes,
   canAdminister,
 }: InstanceDefaultsCardProperties) {
   const [issueTypeSchemeId, setIssueTypeSchemeId] = useState<string | null>(null)
   const [workflowSchemeId, setWorkflowSchemeId] = useState<string | null>(null)
+  // ⚠️ Two nulls with different meanings, so the pending edit is tracked as the token.
+  const [estimationSchemeId, setEstimationSchemeId] = useState<string | null>(null)
 
   const chosenIssueTypeScheme = issueTypeSchemeId ?? defaults?.defaultIssueTypeSchemeId ?? ""
   const chosenWorkflowScheme = workflowSchemeId ?? defaults?.defaultWorkflowSchemeId ?? ""
 
+  const chosenEstimationScheme =
+    estimationSchemeId ?? defaults?.defaultEstimationSchemeId ?? NOT_ESTIMATED
+
   const changed =
     Boolean(defaults) &&
     (chosenIssueTypeScheme !== defaults!.defaultIssueTypeSchemeId ||
-      chosenWorkflowScheme !== defaults!.defaultWorkflowSchemeId)
+      chosenWorkflowScheme !== defaults!.defaultWorkflowSchemeId ||
+      chosenEstimationScheme !== (defaults!.defaultEstimationSchemeId ?? NOT_ESTIMATED))
 
   const save = useCatalogMutation({
     mutationFn: () =>
       setInstanceDefaults({
         defaultIssueTypeSchemeId: chosenIssueTypeScheme,
         defaultWorkflowSchemeId: chosenWorkflowScheme,
+        defaultEstimationSchemeId:
+          chosenEstimationScheme === NOT_ESTIMATED ? null : chosenEstimationScheme,
       }),
     success: "New projects will start on these",
     failure: "Could not change the defaults",
     onDone: () => {
       setIssueTypeSchemeId(null)
       setWorkflowSchemeId(null)
+      setEstimationSchemeId(null)
     },
   })
 
@@ -67,7 +85,7 @@ export function InstanceDefaultsCard({
         </p>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label>Issue-type scheme</Label>
           <Select
@@ -96,6 +114,28 @@ export function InstanceDefaultsCard({
             </SelectTrigger>
             <SelectContent>
               {workflowSchemes.map((scheme) => (
+                <SelectItem key={scheme.id} value={scheme.id}>
+                  {scheme.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Estimation scale</Label>
+          <Select
+            value={chosenEstimationScheme}
+            onValueChange={setEstimationSchemeId}
+            disabled={!canAdminister}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {/* ⚠️ First, and a real answer: an installation may simply not estimate. */}
+              <SelectItem value={NOT_ESTIMATED}>Not estimated</SelectItem>
+              {estimationSchemes.map((scheme) => (
                 <SelectItem key={scheme.id} value={scheme.id}>
                   {scheme.name}
                 </SelectItem>

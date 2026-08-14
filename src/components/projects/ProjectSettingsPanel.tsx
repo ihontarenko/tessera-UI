@@ -2,6 +2,7 @@ import { ProjectAccessPanel } from "@/components/projects/ProjectAccessPanel"
 import { ProjectBoardSection } from "@/components/projects/settings/ProjectBoardSection"
 import { ProjectGeneralSection } from "@/components/projects/settings/ProjectGeneralSection"
 import { ProjectIssueTypesSection } from "@/components/projects/settings/ProjectIssueTypesSection"
+import { ProjectEstimationSection } from "@/components/projects/settings/ProjectEstimationSection"
 import { ProjectWorkflowSection } from "@/components/projects/settings/ProjectWorkflowSection"
 import { SettingsSection } from "@/components/projects/settings/SettingsSection"
 import type { ProjectResponse } from "@/api/projects"
@@ -14,6 +15,7 @@ const SECTION_LABELS: Record<ProjectSettingsSection, { key: string; text: string
   general: { key: "project.settings.nav.general", text: "General" },
   "issue-types": { key: "project.settings.nav.issueTypes", text: "Issue types" },
   workflow: { key: "project.settings.nav.workflow", text: "Workflow" },
+  estimation: { key: "project.settings.nav.estimation", text: "Estimation" },
   board: { key: "project.settings.nav.board", text: "Board" },
   access: { key: "project.settings.nav.access", text: "Access" },
 }
@@ -66,6 +68,9 @@ export function ProjectSettingsPanel({
         {section === "general" && <ProjectGeneralSection project={project} canAdminister={canAdminister} />}
         {section === "issue-types" && <ProjectIssueTypesSection project={project} canAdminister={canAdminister} />}
         {section === "workflow" && <ProjectWorkflowSection project={project} canAdminister={canAdminister} />}
+        {section === "estimation" && (
+          <ProjectEstimationSection project={project} canAdminister={canAdminister} />
+        )}
         {section === "board" && <ProjectBoardSection projectId={project.id} canAdminister={canAdminister} />}
         {section === "access" && (
           <SettingsSection

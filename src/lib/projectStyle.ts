@@ -115,12 +115,19 @@ export const PROJECT_TAB_LABELS: Record<ProjectTab, TranslatableText> = {
  * administered is a permission question, not a shape question, and a section that turns out to be
  * read-only still belongs in the list.
  */
-export type ProjectSettingsSection = "general" | "issue-types" | "workflow" | "board" | "access"
+export type ProjectSettingsSection =
+  | "general"
+  | "issue-types"
+  | "workflow"
+  | "estimation"
+  | "board"
+  | "access"
 
 export const PROJECT_SETTINGS_SECTIONS: ProjectSettingsSection[] = [
   "general",
   "issue-types",
   "workflow",
+  "estimation",
   "board",
   "access",
 ]

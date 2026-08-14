@@ -6,7 +6,7 @@ import { apiErrorMessage } from "@/api/errors"
 /**
  * Save one project setting.
  *
- * `PUT /api/projects/{id}` takes the whole editable project — name, lead and both schemes — while
+ * `PUT /api/projects/{id}` takes the whole editable project — name, lead and every scheme — while
  * Settings is now several sections each owning one of them (ticket 06). Rather than have every section
  * remember to resend the three fields it is not editing, they pass only what they changed and this fills
  * the rest from the project as last read. One place knows the endpoint's shape, so a section cannot
@@ -22,6 +22,9 @@ export function useProjectUpdate(project: ProjectResponse, successMessage: strin
         leadMemberId: project.lead?.id ?? "",
         issueTypeSchemeId: project.issueTypeScheme?.id ?? "",
         workflowSchemeId: project.workflowScheme?.id ?? "",
+        // ⚠️ Null is a value here, not a missing one — `?? ""` would turn "does not estimate"
+        // into a scheme id of "" and refuse on the next save from any other section.
+        estimationSchemeId: project.estimationScheme?.id ?? null,
         ...changes,
       }),
     onSuccess: (updated) => {

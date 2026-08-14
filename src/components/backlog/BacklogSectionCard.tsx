@@ -3,6 +3,7 @@ import type { DragEvent, ReactNode } from "react"
 import { MemberChip } from "@/components/MemberChip"
 import { IssueTypeIcon, PriorityBadge } from "@/components/issues/issueVisuals"
 import { StoryPointsField } from "@/components/backlog/StoryPointsField"
+import type { EstimationSchemeSummary } from "@/api/projects"
 import type { BacklogSection } from "@/components/backlog/backlogSections"
 import { useLanguage } from "@/context/LanguageContext"
 import type { BacklogIssue, BacklogMoveRequest } from "@/api/sprints"
@@ -20,6 +21,7 @@ import { resolveText } from "@/lib/translatableText"
  */
 export function BacklogSectionCard({
   section,
+  estimationScheme,
   canDrag,
   canEditStoryPoints,
   onSelectIssue,
@@ -28,6 +30,8 @@ export function BacklogSectionCard({
   actions,
 }: {
   section: BacklogSection
+  /** The project's scale, or null where it does not estimate — then the column is simply absent. */
+  estimationScheme: EstimationSchemeSummary | null
   canDrag: boolean
   canEditStoryPoints: boolean
   onSelectIssue: (issueId: string) => void
@@ -119,6 +123,7 @@ export function BacklogSectionCard({
               <BacklogRow
                 issue={issue}
                 draggable={canDrag}
+                estimationScheme={estimationScheme}
                 canEditStoryPoints={canEditStoryPoints}
                 onSelect={onSelectIssue}
                 onChangeStoryPoints={onChangeStoryPoints}
@@ -152,6 +157,7 @@ function DropPlaceholder() {
 function BacklogRow({
   issue,
   draggable,
+  estimationScheme,
   canEditStoryPoints,
   onSelect,
   onChangeStoryPoints,
@@ -160,6 +166,7 @@ function BacklogRow({
 }: {
   issue: BacklogIssue
   draggable: boolean
+  estimationScheme: EstimationSchemeSummary | null
   canEditStoryPoints: boolean
   onSelect: (issueId: string) => void
   onChangeStoryPoints: (issueId: string, storyPoints: number | null) => void
@@ -193,6 +200,7 @@ function BacklogRow({
         <PriorityBadge priority={issue.priority} />
         {issue.assignee ? <MemberChip member={issue.assignee} className="[&_.text-sm]:hidden" /> : null}
         <StoryPointsField
+          scheme={estimationScheme}
           storyPoints={issue.storyPoints}
           editable={canEditStoryPoints}
           onCommit={(storyPoints) => onChangeStoryPoints(issue.id, storyPoints)}

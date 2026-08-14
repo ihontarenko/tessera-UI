@@ -4,6 +4,7 @@ import {
   ReadOnlyNotice,
 } from "@/components/administration/AdministrationPieces"
 import { InstanceDefaultsCard } from "@/components/administration/schemes/InstanceDefaultsCard"
+import { EstimationSchemePanel } from "@/components/administration/schemes/EstimationSchemePanel"
 import { IssueTypeSchemePanel } from "@/components/administration/schemes/IssueTypeSchemePanel"
 import { WorkflowSchemePanel } from "@/components/administration/schemes/WorkflowSchemePanel"
 import { fetchInstanceDefaults, fetchSchemeUsage } from "@/api/configurationAdministration"
@@ -38,6 +39,7 @@ export function SchemesSection({ canAdminister }: { canAdminister: boolean }) {
   const issueTypes = configuration?.issueTypes ?? []
   const issueTypeSchemes = configuration?.issueTypeSchemes ?? []
   const workflowSchemes = configuration?.workflowSchemes ?? []
+  const estimationSchemes = configuration?.estimationSchemes ?? []
 
   return (
     <AdministrationSection
@@ -50,6 +52,7 @@ export function SchemesSection({ canAdminister }: { canAdminister: boolean }) {
         defaults={defaults}
         issueTypeSchemes={issueTypeSchemes}
         workflowSchemes={workflowSchemes}
+        estimationSchemes={estimationSchemes}
         canAdminister={canAdminister}
       />
 
@@ -67,6 +70,12 @@ export function SchemesSection({ canAdminister }: { canAdminister: boolean }) {
         issueTypes={issueTypes}
         projectsByScheme={usage?.byWorkflowScheme ?? {}}
         defaultSchemeId={defaults?.defaultWorkflowSchemeId}
+        canAdminister={canAdminister}
+      />
+
+      <EstimationSchemePanel
+        schemes={estimationSchemes}
+        defaultSchemeId={defaults?.defaultEstimationSchemeId}
         canAdminister={canAdminister}
       />
     </AdministrationSection>

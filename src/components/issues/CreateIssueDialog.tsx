@@ -20,6 +20,8 @@ import { listProjectIssueTypes } from "@/api/projects"
 import { searchMembers } from "@/api/members"
 import { apiErrorMessage } from "@/api/errors"
 import { memberName } from "@/lib/memberDisplay"
+import { StoryPointsSelect } from "@/components/issues/StoryPointsSelect"
+import { useEstimationScheme } from "@/hooks/useEstimationScheme"
 
 const UNASSIGNED = "__unassigned__"
 const NO_PARENT = "__none__"
@@ -36,7 +38,8 @@ export function CreateIssueDialog({ projectId }: { projectId: string }) {
   const [priorityId, setPriorityId] = useState("")
   const [assigneeMemberId, setAssigneeMemberId] = useState(UNASSIGNED)
   const [parentId, setParentId] = useState(NO_PARENT)
-  const [storyPoints, setStoryPoints] = useState("")
+  const [storyPoints, setStoryPoints] = useState<number | null>(null)
+  const estimationScheme = useEstimationScheme(projectId)
 
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog, enabled: open })
   const { data: projectIssueTypes } = useQuery({
@@ -67,7 +70,7 @@ export function CreateIssueDialog({ projectId }: { projectId: string }) {
         priorityId: resolvedPriority,
         assigneeMemberId: assigneeMemberId === UNASSIGNED ? null : assigneeMemberId,
         parentId: parentId === NO_PARENT ? null : parentId,
-        storyPoints: storyPoints.trim() ? Number(storyPoints) : null,
+        storyPoints,
       }),
     onSuccess: (issue) => {
       void queryClient.invalidateQueries({ queryKey: ["issues", projectId] })
@@ -87,7 +90,7 @@ export function CreateIssueDialog({ projectId }: { projectId: string }) {
     setPriorityId("")
     setAssigneeMemberId(UNASSIGNED)
     setParentId(NO_PARENT)
-    setStoryPoints("")
+    setStoryPoints(null)
   }
 
   return (
@@ -184,18 +187,18 @@ export function CreateIssueDialog({ projectId }: { projectId: string }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="issue-points">Story points</Label>
-              <Input
-                id="issue-points"
-                type="number"
-                min={0}
-                step="0.5"
-                value={storyPoints}
-                onChange={(event) => setStoryPoints(event.target.value)}
-                placeholder="—"
-              />
-            </div>
+            {/* ⚠️ Absent, not empty, where the project does not estimate — the same rule the rail
+                and the backlog row follow (ADR-0019). */}
+            {estimationScheme && (
+              <div className="space-y-1.5">
+                <Label>Estimate</Label>
+                <StoryPointsSelect
+                  scheme={estimationScheme}
+                  storyPoints={storyPoints}
+                  onChange={setStoryPoints}
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

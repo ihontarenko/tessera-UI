@@ -20,6 +20,8 @@ export interface ProjectResponse {
   lead: MemberSummary | null
   issueTypeScheme: SchemeSummary | null
   workflowScheme: SchemeSummary | null
+  /** ⚠️ Null means the project does not estimate — the story-points control disappears entirely. */
+  estimationScheme: EstimationSchemeSummary | null
   keyStrategy: string
   keyPattern: string | null
   myPermissions: string[]
@@ -40,6 +42,8 @@ export interface UpdateProjectRequest {
   leadMemberId: string
   issueTypeSchemeId: string
   workflowSchemeId: string
+  /** ⚠️ Null is "does not estimate", not a scale named None. */
+  estimationSchemeId?: string | null
 }
 
 /**
@@ -56,13 +60,19 @@ export interface ProjectMember {
 }
 
 /**
- * The subset of the global configuration the project screens need.
+ * An estimation scale and its options, in the order the picker offers them.
  *
- * It grew from two scheme lists to this when Settings stopped showing a scheme as a bare name and
- * started showing what selecting one *does* (ticket 06): the issue types a scheme grants, and the
- * statuses and transitions a workflow scheme grants. All of it already came back from
- * `GET /api/configuration` — the client simply used to throw it away.
+ * ⚠️ **An item is a (label, weight) pair and the issue stores the weight** (ADR-0019) — `XL` is
+ * stored as `8`. Both halves travel because rendering a stored number as the word somebody picked needs
+ * the pairs, and `lib/estimation` is the only place that does it.
  */
+export interface EstimationSchemeSummary {
+  id: string
+  name: string
+  description: string | null
+  items: Array<{ label: string; weight: number }>
+}
+
 export interface WorkflowSummary {
   id: string
   name: string
@@ -88,12 +98,21 @@ export interface WorkflowSchemeSummary {
   mappings: Array<{ issueTypeId: string; workflowId: string }>
 }
 
+/**
+ * The subset of the global configuration the project screens need.
+ *
+ * It grew from two scheme lists to this when Settings stopped showing a scheme as a bare name and
+ * started showing what selecting one *does* (ticket 06): the issue types a scheme grants, and the
+ * statuses and transitions a workflow scheme grants. All of it already came back from
+ * `GET /api/configuration` — the client simply used to throw it away.
+ */
 export interface Configuration {
   issueTypes: Array<{ id: string; name: string; hierarchyLevel: number; iconKey: string | null; description: string | null }>
   statuses: Array<{ id: string; name: string; category: StatusCategory }>
   workflows: WorkflowSummary[]
   issueTypeSchemes: IssueTypeSchemeSummary[]
   workflowSchemes: WorkflowSchemeSummary[]
+  estimationSchemes: EstimationSchemeSummary[]
 }
 
 export function listProjects() {

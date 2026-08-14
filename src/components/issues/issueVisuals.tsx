@@ -25,6 +25,8 @@ import {
 import type { LucideIcon } from "lucide-react"
 import type { IssueTypeSummary, PrioritySummary, StatusCategory, StatusSummary } from "@/api/issues"
 import { cn } from "@/lib/helpers"
+import { estimationLabel } from "@/lib/estimation"
+import type { EstimationSchemeSummary } from "@/api/projects"
 
 /**
  * The drawing for each issue-type icon key.
@@ -140,9 +142,17 @@ export function StatusPill({ status, children }: { status: StatusSummary | null;
 }
 
 /** Story points as a compact string, or an em dash when unset. */
-export function formatStoryPoints(storyPoints: number | null | undefined): string {
-  if (storyPoints === null || storyPoints === undefined) {
-    return "—"
-  }
-  return String(storyPoints)
+/**
+ * An estimate as a person reads it.
+ *
+ * ⚠️ **Given the project's scale it prints the label; without one it prints the number.** An
+ * estimate is stored as a weight (ADR-0019), so `8` is what a T-shirt team's `XL` looks like in the
+ * column — and a list that shows the number while the issue's own rail shows the word is a list
+ * nobody trusts. The resolution itself lives in `lib/estimation` and only there.
+ */
+export function formatStoryPoints(
+  storyPoints: number | null | undefined,
+  scheme?: EstimationSchemeSummary | null,
+): string {
+  return estimationLabel(storyPoints, scheme)
 }

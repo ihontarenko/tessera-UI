@@ -12,6 +12,7 @@ import { SprintFormDialog } from "@/components/backlog/SprintFormDialog"
 import { StartSprintDialog } from "@/components/backlog/StartSprintDialog"
 import { applyMove, toSections } from "@/components/backlog/backlogSections"
 import { plansInSprints } from "@/lib/projectStyle"
+import { useEstimationScheme } from "@/hooks/useEstimationScheme"
 import { useLanguage } from "@/context/LanguageContext"
 import {
   createSprint,
@@ -55,6 +56,7 @@ interface SprintFormState {
 export function BacklogPanel({ projectId, permissions }: { projectId: string; permissions: string[] }) {
   const { t } = useLanguage()
   const queryClient = useQueryClient()
+  const estimationScheme = useEstimationScheme(projectId)
   const backlogKey = ["backlog", projectId]
 
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
@@ -201,6 +203,7 @@ export function BacklogPanel({ projectId, permissions }: { projectId: string; pe
           <BacklogSectionCard
             key={section.id}
             section={section}
+            estimationScheme={estimationScheme}
             canDrag={canDrag}
             canEditStoryPoints={canEditIssue}
             onSelectIssue={setSelectedIssueId}

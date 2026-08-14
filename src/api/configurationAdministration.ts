@@ -478,6 +478,9 @@ export interface InstanceDefaults {
   defaultIssueTypeSchemeName: string | null
   defaultWorkflowSchemeId: string
   defaultWorkflowSchemeName: string | null
+  /** ⚠️ Null where new projects do not estimate — an answer, not an absence to be filled in. */
+  defaultEstimationSchemeId: string | null
+  defaultEstimationSchemeName: string | null
 }
 
 export function fetchSchemeUsage() {
@@ -539,6 +542,42 @@ export function fetchInstanceDefaults() {
 export function setInstanceDefaults(request: {
   defaultIssueTypeSchemeId: string
   defaultWorkflowSchemeId: string
+  defaultEstimationSchemeId: string | null
 }) {
   return httpClient.put<InstanceDefaults>(`${BASE}/defaults`, request).then((response) => response.data)
+}
+
+// ── Estimation scales ─────────────────────────────────────────────────────────
+
+/**
+ * A scale and its options.
+ *
+ * ⚠️ **An item is a `(label, weight)` pair and the issue stores the weight** (ADR-0019) — `XL` lives in
+ * `story_points` as `8`, which is why burndown, velocity and every filter were untouched by this.
+ */
+export interface EstimationSchemeRequest {
+  name: string
+  description: string | null
+  /** ⚠️ Position **is** the order the picker offers them in. Labels are unique; weights need not be. */
+  items: { label: string; weight: number }[]
+}
+
+export function fetchEstimationSchemeUsage(schemeId: string) {
+  return httpClient
+    .get<UsageReport>(`${BASE}/estimation-schemes/${schemeId}/usage`)
+    .then((response) => response.data)
+}
+
+export function createEstimationScheme(request: EstimationSchemeRequest) {
+  return httpClient.post<void>(`${BASE}/estimation-schemes`, request).then((response) => response.data)
+}
+
+export function updateEstimationScheme(schemeId: string, request: EstimationSchemeRequest) {
+  return httpClient
+    .put<void>(`${BASE}/estimation-schemes/${schemeId}`, request)
+    .then((response) => response.data)
+}
+
+export function deleteEstimationScheme(schemeId: string) {
+  return httpClient.delete<void>(`${BASE}/estimation-schemes/${schemeId}`).then((response) => response.data)
 }

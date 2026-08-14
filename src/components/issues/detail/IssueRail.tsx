@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { MemberChip } from "@/components/MemberChip"
 import { SegmentedControl } from "@/components/SegmentedControl"
-import { PriorityBadge, formatStoryPoints } from "@/components/issues/issueVisuals"
+import { PriorityBadge } from "@/components/issues/issueVisuals"
+import { StoryPointsControl } from "@/components/issues/StoryPointsSelect"
 import { InlineSelect } from "@/components/inline/InlineSelect"
 import { InlineTextField } from "@/components/inline/InlineTextField"
 import { IssueActivityStream } from "@/components/issues/detail/IssueActivityStream"
@@ -16,6 +17,7 @@ import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"
 import { fetchCatalog, fetchLinkTypes, listIssues, type IssueDetail, type IssueRef } from "@/api/issues"
 import { searchMembers } from "@/api/members"
 import { memberName } from "@/lib/memberDisplay"
+import { useEstimationScheme } from "@/hooks/useEstimationScheme"
 
 const UNASSIGNED = "__unassigned__"
 const NO_PARENT = "__none__"
@@ -34,20 +36,6 @@ const PANES: Array<{ pane: RailPane; label: string }> = [
   { pane: "activity", label: "Activity" },
   { pane: "relations", label: "Relations" },
 ]
-
-/**
- * An estimate is blank or a non-negative number. Anything else is typing, not an estimate, and the
- * field reverts rather than posting a `NaN` the server would store as "no estimate".
- */
-function isEstimate(value: string): boolean {
-  if (value.length === 0) {
-    return true
-  }
-
-  const points = Number(value)
-
-  return Number.isFinite(points) && points >= 0
-}
 
 /**
  * The properties rail: where the issue is, who has it, and what it is attached to (ticket 07).
@@ -142,6 +130,7 @@ function PropertyRows({
 }) {
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
   const { data: members = [] } = useQuery({ queryKey: ["members", "all"], queryFn: () => searchMembers() })
+  const estimationScheme = useEstimationScheme(issue.projectId)
 
   return (
     <div className="space-y-1.5">
@@ -180,21 +169,19 @@ function PropertyRows({
         )}
       </RailRow>
 
-      <RailRow label="Points">
-        {canEdit ? (
-          <InlineTextField
-            ariaLabel="Story points"
-            value={issue.storyPoints != null ? String(issue.storyPoints) : ""}
-            canEdit
-            placeholder="—"
-            className="h-7 tabular-nums"
-            accepts={isEstimate}
-            onCommit={(next) => editing.fields.mutate({ storyPoints: next.length === 0 ? null : Number(next) })}
+      {/* ⚠️ No row at all where the project does not estimate. An empty picker beside "Points" says
+          the estimate is missing; the truth is that this project has no estimates (ADR-0019). */}
+      {estimationScheme && (
+        <RailRow label="Points">
+          <StoryPointsControl
+            scheme={estimationScheme}
+            storyPoints={issue.storyPoints}
+            canEdit={canEdit}
+            className="h-7 w-full"
+            onChange={(storyPoints) => editing.fields.mutate({ storyPoints })}
           />
-        ) : (
-          <span className="tabular-nums">{formatStoryPoints(issue.storyPoints)}</span>
-        )}
-      </RailRow>
+        </RailRow>
+      )}
 
       <RailRow label="Labels">
         {canEdit ? (
