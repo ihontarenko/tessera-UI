@@ -1,28 +1,31 @@
-import type { ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useParams, useSearchParams } from "react-router-dom"
 import { PageHeader } from "@/components/PageHeader"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MemberChip } from "@/components/MemberChip"
-import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
-import { ProjectSettingsForm } from "@/components/projects/ProjectSettingsForm"
-import { ProjectAccessPanel } from "@/components/projects/ProjectAccessPanel"
+import { ProjectSettingsPanel } from "@/components/projects/ProjectSettingsPanel"
 import { IssuesPanel } from "@/components/issues/IssuesPanel"
 import { BoardPanel } from "@/components/board/BoardPanel"
 import { BacklogPanel } from "@/components/backlog/BacklogPanel"
 import { ReportsPanel } from "@/components/reports/ReportsPanel"
 import { useLanguage } from "@/context/LanguageContext"
 import { ADMINISTER_PROJECT, getProject } from "@/api/projects"
-import { defaultProjectTab, plansInSprints, projectStyleLabel } from "@/lib/projectStyle"
+import {
+  projectStyleLabel,
+  projectTabs,
+  resolveProjectSettingsSection,
+  resolveProjectTab,
+  type ProjectSettingsSection,
+  type ProjectTab,
+} from "@/lib/projectStyle"
 
-function DetailRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b py-2.5 last:border-b-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{children}</span>
-    </div>
-  )
+/** The label for each tab. The list itself comes from `projectTabs`, so this only names them. */
+const TAB_LABELS: Record<ProjectTab, { key: string; text: string }> = {
+  issues: { key: "project.tab.issues", text: "Issues" },
+  board: { key: "project.tab.board", text: "Board" },
+  backlog: { key: "project.tab.backlog", text: "Backlog" },
+  reports: { key: "project.tab.reports", text: "Reports" },
+  settings: { key: "project.tab.settings", text: "Settings" },
 }
 
 export function ProjectDetailPage() {
@@ -50,17 +53,20 @@ export function ProjectDetailPage() {
   }
 
   const canAdminister = project.myPermissions.includes(ADMINISTER_PROJECT)
-  // Derived from the board's scope strategy and nothing else (ADR-0015), so a team switched onto
-  // sprints reads as Scrum and gains its sprint screens with no code change here. Backlog is not among
-  // them: every project has one (ADR-0016), so only Reports is still sprint-only.
-  const planningInSprints = plansInSprints(project.boardScopeStrategy)
-  // The tab is a URL param so a board deep-link (?tab=board) still lands on the board.
-  const defaultTab = defaultProjectTab(project.boardScopeStrategy)
-  const sprintTabs = ["reports"]
-  const requestedTab = searchParameters.get("tab") ?? defaultTab
-  // A link to a sprint tab survives the board being switched back to all issues (ticket 08): the tab
-  // is simply gone, so fall back rather than leave the page on a trigger that no longer exists.
-  const activeTab = !planningInSprints && sprintTabs.includes(requestedTab) ? defaultTab : requestedTab
+  // Which tabs exist and which one a link opens are both derived from the board's scope strategy and
+  // nothing else (ADR-0015) — a project switched onto sprints gains its Reports tab with no code change
+  // here, and a link to a tab that is gone lands somewhere real rather than on a dead trigger.
+  const tabs = projectTabs(project.boardScopeStrategy)
+  const activeTab = resolveProjectTab(searchParameters.get("tab"), project.boardScopeStrategy)
+  const settingsSection = resolveProjectSettingsSection(searchParameters.get("section"))
+
+  function openTab(tab: string) {
+    setSearchParameters(tab === "settings" ? { tab, section: settingsSection } : { tab }, { replace: true })
+  }
+
+  function openSettingsSection(section: ProjectSettingsSection) {
+    setSearchParameters({ tab: "settings", section }, { replace: true })
+  }
 
   return (
     <>
@@ -74,15 +80,13 @@ export function ProjectDetailPage() {
         description={`Project · ${projectStyleLabel(project.boardScopeStrategy)}`}
       />
 
-      <Tabs value={activeTab} onValueChange={(tab) => setSearchParameters({ tab }, { replace: true })}>
+      <Tabs value={activeTab} onValueChange={openTab}>
         <TabsList>
-          <TabsTrigger value="issues">{t("project.tab.issues", "Issues")}</TabsTrigger>
-          <TabsTrigger value="board">{t("project.tab.board", "Board")}</TabsTrigger>
-          <TabsTrigger value="backlog">{t("project.tab.backlog", "Backlog")}</TabsTrigger>
-          {planningInSprints && <TabsTrigger value="reports">{t("project.tab.reports", "Reports")}</TabsTrigger>}
-          <TabsTrigger value="overview">{t("project.tab.overview", "Overview")}</TabsTrigger>
-          <TabsTrigger value="settings">{t("project.tab.settings", "Settings")}</TabsTrigger>
-          <TabsTrigger value="access">{t("project.tab.access", "Access")}</TabsTrigger>
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab} value={tab}>
+              {t(TAB_LABELS[tab].key, TAB_LABELS[tab].text)}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="issues">
@@ -97,43 +101,19 @@ export function ProjectDetailPage() {
           <BacklogPanel projectId={project.id} permissions={project.myPermissions} />
         </TabsContent>
 
-        {planningInSprints && (
+        {tabs.includes("reports") && (
           <TabsContent value="reports">
             <ReportsPanel projectId={project.id} permissions={project.myPermissions} />
           </TabsContent>
         )}
 
-        <TabsContent value="overview">
-          <div className="max-w-xl">
-            <DetailRow label="Key">
-              <span className="font-mono">{project.key}</span>
-            </DetailRow>
-            <DetailRow label="Planning">
-              <ProjectStyleBadge boardScopeStrategy={project.boardScopeStrategy} />
-            </DetailRow>
-            <DetailRow label="Lead">
-              <MemberChip member={project.lead} />
-            </DetailRow>
-            <DetailRow label="Issue type scheme">{project.issueTypeScheme?.name ?? "—"}</DetailRow>
-            <DetailRow label="Workflow scheme">{project.workflowScheme?.name ?? "—"}</DetailRow>
-            <DetailRow label="Key strategy">
-              <span className="font-mono text-xs">{project.keyStrategy}</span>
-            </DetailRow>
-          </div>
-        </TabsContent>
-
         <TabsContent value="settings">
-          {canAdminister ? (
-            <ProjectSettingsForm project={project} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              You need the Administer project permission to edit these settings.
-            </p>
-          )}
-        </TabsContent>
-
-        <TabsContent value="access">
-          <ProjectAccessPanel projectId={project.id} canAdminister={canAdminister} />
+          <ProjectSettingsPanel
+            project={project}
+            canAdminister={canAdminister}
+            section={settingsSection}
+            onSectionChange={openSettingsSection}
+          />
         </TabsContent>
       </Tabs>
     </>

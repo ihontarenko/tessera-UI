@@ -1,4 +1,5 @@
 import { httpClient } from "@/api/httpClient"
+import type { StatusCategory } from "@/api/issues"
 import type { MemberSummary } from "@/api/members"
 import type { BoardScopeStrategy } from "@/api/sprints"
 
@@ -66,10 +67,37 @@ export interface ProjectMember {
   overrides: OverrideSummary[]
 }
 
-// The subset of the global configuration the project screens need (scheme pickers).
+/**
+ * The subset of the global configuration the project screens need.
+ *
+ * It grew from two scheme lists to this when Settings stopped showing a scheme as a bare name and
+ * started showing what selecting one *does* (ticket 06): the issue types a scheme grants, and the
+ * statuses and transitions a workflow scheme grants. All of it already came back from
+ * `GET /api/configuration` — the client simply used to throw it away.
+ */
 export interface Configuration {
-  issueTypeSchemes: Array<{ id: string; name: string; description: string | null }>
-  workflowSchemes: Array<{ id: string; name: string; description: string | null }>
+  issueTypes: Array<{ id: string; name: string; hierarchyLevel: number; iconKey: string | null; description: string | null }>
+  statuses: Array<{ id: string; name: string; category: StatusCategory }>
+  workflows: Array<{
+    id: string
+    name: string
+    description: string | null
+    transitions: Array<{ id: string; name: string; fromStatusId: string | null; toStatusId: string }>
+  }>
+  issueTypeSchemes: Array<{
+    id: string
+    name: string
+    description: string | null
+    defaultIssueTypeId: string | null
+    issueTypeIds: string[]
+  }>
+  workflowSchemes: Array<{
+    id: string
+    name: string
+    description: string | null
+    defaultWorkflowId: string | null
+    mappings: Array<{ issueTypeId: string; workflowId: string }>
+  }>
 }
 
 export function listProjects() {
