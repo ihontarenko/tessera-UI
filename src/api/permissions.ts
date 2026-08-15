@@ -47,3 +47,21 @@ export const ADMINISTER_ACCESS = "access:administer"
  * changes what every project on that workflow may do, which no project's administrator can own.
  */
 export const ADMINISTER_CONFIGURATION = "configuration:administer"
+
+/**
+ * See what is in force behind the assistant, and what the tools have been asked to do.
+ *
+ * ⚠️ Installation-wide, and a **disclosure** surface: it reports every caller's activity, not the
+ * current member's. Unlike the configuration catalogs — whose reads are deliberately open, because
+ * every picker in the product is built from them — these reads are gated, so a member without this one
+ * gets a refusal rather than a read-only screen.
+ */
+export const READ_AI = "ai:read"
+
+/**
+ * Choose the model this installation talks to, and hold the key it pays with.
+ *
+ * ⚠️ Separate from {@link READ_AI} because these are two different powers: reading the trail says what
+ * has been spent, this one decides what gets spent. Reading does not imply administering.
+ */
+export const ADMINISTER_AI = "ai:administer"

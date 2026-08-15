@@ -1,14 +1,18 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, Copy, Plug, Unplug } from "lucide-react"
+import { Check, Copy, Plug, Shield, ShieldCheck, Smile, Unplug } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
-import { MemberChip } from "@/components/MemberChip"
+import { MemberAvatar } from "@/components/MemberAvatar"
+import { AvatarPickerDialog } from "@/components/account/AvatarPickerDialog"
+import { memberName } from "@/lib/memberDisplay"
+import { cn } from "@/lib/helpers"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
 import {
+  type AgentAuthority,
   fetchAgentConnections,
   fetchConnectionInfo,
   revokeAgentConnection,
@@ -31,6 +35,7 @@ import {
  */
 export function AccountSettingsPage() {
   const { data: member, isLoading } = useCurrentMember()
+  const [isPickingAvatar, setPickingAvatar] = useState(false)
 
   return (
     <>
@@ -42,9 +47,30 @@ export function AccountSettingsPage() {
 
           {!isLoading && member && (
             <>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <MemberChip member={member} subtitle={member.email} />
-                <code className="text-[11px] text-muted-foreground">{member.subject}</code>
+              {/* ⚠️ A larger avatar than anywhere else in the product, on purpose. This is the one screen
+                  where the face is the subject rather than a label beside a name, and it is what makes
+                  the button next to it read as "change that" rather than as a stray setting. */}
+              <div className="flex items-center gap-4">
+                <MemberAvatar member={member} className="size-16 shrink-0" />
+
+                <div className="min-w-0 space-y-0.5">
+                  <div className="truncate text-base font-medium">{memberName(member)}</div>
+                  {member.email && (
+                    <div className="truncate text-sm text-muted-foreground">{member.email}</div>
+                  )}
+                  <code className="block truncate text-[11px] text-muted-foreground">{member.subject}</code>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto shrink-0"
+                  onClick={() => setPickingAvatar(true)}
+                >
+                  <Smile className="size-4" />
+                  Change avatar
+                </Button>
               </div>
 
               {/* ⚠️ What you hold, not what you are called. `systemRole` used to be shown here and is
@@ -74,6 +100,8 @@ export function AccountSettingsPage() {
         <McpConnectionSection />
         <ConnectedClientsSection />
       </div>
+
+      <AvatarPickerDialog open={isPickingAvatar} onOpenChange={setPickingAvatar} />
     </>
   )
 }
@@ -115,15 +143,36 @@ function ConnectedClientsSection() {
         {connections.map((connection) => (
           <li key={connection.id} className="flex items-center justify-between gap-3 py-2">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-sm">{connection.clientName}</span>
-                {!connection.active && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {/* The AGENT is the title, not the client. The client is how it connected; the agent is
+                    the thing with permissions and a switch, and it is what a record's badge names —
+                    so the two screens say the same word about the same thing. */}
+                <span className="truncate text-sm font-medium">{connection.agentName}</span>
+
+                {/* Only where they differ. They are the same on the day a client first connects,
+                    because that is what the agent gets named after, and printing it twice is noise. */}
+                {connection.clientName !== connection.agentName && (
+                  <span className="truncate text-xs text-muted-foreground">
+                    via {connection.clientName}
+                  </span>
+                )}
+
+                <AuthorityChip authority={connection.authority} />
+
+                {/* Two different endings, and telling them apart is the whole reason both are here:
+                    one is this client, the other is every client of this agent at once. */}
+                {!connection.agentEnabled && (
+                  <Badge variant="outline" className="text-[11px]">
+                    agent off
+                  </Badge>
+                )}
+                {connection.agentEnabled && !connection.active && (
                   <Badge variant="outline" className="text-[11px]">
                     ended
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 approved {formatMoment(connection.issuedAt)}
                 {connection.lastUsedAt
                   ? ` · last used ${formatMoment(connection.lastUsedAt)}`
@@ -145,6 +194,40 @@ function ConnectedClientsSection() {
         ))}
       </ul>
     </section>
+  )
+}
+
+/**
+ * What this agent may do, in two words.
+ *
+ * ⚠️ **Shown on every row, including the ordinary one.** "Full access" reads as noise right up until
+ * somebody is deciding whether to disconnect a client, and then it is the only thing on the line that
+ * matters. Printing it only when restricted would leave the reader to infer the dangerous case from an
+ * absence.
+ *
+ * Quiet for the default and coloured for the exception, so the list scans as *these are normal, that one
+ * is not* rather than as a wall of chips.
+ */
+function AuthorityChip({ authority }: { authority: AgentAuthority }) {
+  const restricted = authority === "RESTRICTED"
+
+  return (
+    <span
+      title={
+        restricted
+          ? "Holds its own permissions, and never more than you hold"
+          : "Acts with everything you can do, and follows you into new projects"
+      }
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-px text-[10px] font-medium",
+        restricted
+          ? "border-primary/30 bg-primary/[0.08] text-foreground/80"
+          : "border-border text-muted-foreground",
+      )}
+    >
+      {restricted ? <ShieldCheck className="size-2.5 text-primary" /> : <Shield className="size-2.5" />}
+      {restricted ? "Restricted" : "Full access"}
+    </span>
   )
 }
 

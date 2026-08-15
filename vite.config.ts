@@ -20,6 +20,11 @@ export default defineConfig({
     proxy: {
       // Tessera's own API.
       '/api': 'http://localhost:8100',
+      // ⚠️ The AI management screens, served by `jmouse-ai-management` at the library's own default
+      // prefix rather than under /api — deliberately, so every route under it is visibly not Tessera's
+      // own. It is a second proxy entry rather than a rewrite: the address is real on the backend, and
+      // pretending otherwise here would make the one thing this prefix exists to show invisible.
+      '/jmouse-ai': 'http://localhost:8100',
       // Innoventa Central (shared translations) — rewritten to /api on Central so the browser sees a
       // same-origin call and no CORS is involved. Central accepts this app's token once "tessera" is
       // in its accepted-audiences (see Central/BE application.yml).

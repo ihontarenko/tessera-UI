@@ -1,4 +1,4 @@
-import { CircleDot, FolderKanban, LayoutDashboard, SlidersHorizontal, type LucideIcon } from "lucide-react"
+import { CircleDot, FolderKanban, LayoutDashboard, SlidersHorizontal, Sparkles, type LucideIcon } from "lucide-react"
 import { ADMINISTER_CONFIGURATION } from "@/api/permissions"
 
 export interface NavigationItem {
@@ -59,6 +59,17 @@ export const navigationGroups: NavigationGroup[] = [
         translationKey: "nav.issues",
         path: "/issues",
         icon: CircleDot,
+        isBuilt: true,
+        description: "",
+      },
+      // Under Work rather than in a group of its own: it is a way of doing the same work, not a
+      // different subject. No permission — the assistant reaches exactly what the member already
+      // reaches, so a member with no projects gets one that can do nothing rather than a closed door.
+      {
+        title: "Assistant",
+        translationKey: "nav.assistant",
+        path: "/assistant",
+        icon: Sparkles,
         isBuilt: true,
         description: "",
       },

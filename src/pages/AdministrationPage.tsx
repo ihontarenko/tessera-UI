@@ -3,12 +3,13 @@ import { PageHeader } from "@/components/PageHeader"
 import { cn } from "@/lib/helpers"
 import { useLanguage } from "@/context/LanguageContext"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
-import { ADMINISTER_CONFIGURATION } from "@/api/permissions"
+import { ADMINISTER_AI, ADMINISTER_CONFIGURATION, READ_AI } from "@/api/permissions"
 import {
   ADMINISTRATION_SECTIONS,
   ADMINISTRATION_SECTION_LABELS,
   isAdministrationSection,
 } from "@/components/administration/administrationSections"
+import { AiSection } from "@/components/administration/AiSection"
 import { IssueTypesSection } from "@/components/administration/IssueTypesSection"
 import { LinkTypesSection } from "@/components/administration/LinkTypesSection"
 import { PrioritiesSection } from "@/components/administration/PrioritiesSection"
@@ -37,9 +38,20 @@ export function AdministrationPage() {
   const [searchParameters, setSearchParameters] = useSearchParams()
   const { data: currentMember } = useCurrentMember()
 
+  const held = currentMember?.globalPermissions ?? []
+  const canAdminister = held.includes(ADMINISTER_CONFIGURATION)
+  const canReadAi = held.includes(READ_AI)
+  const canAdministerAi = held.includes(ADMINISTER_AI)
+
+  // ⚠️ The one section the navigation hides rather than shows read-only, and the asymmetry is on
+  // purpose: the catalogs keep their reads open because every picker in the product is built from
+  // them, whereas the AI screen's reads are gated server-side. Offering a tab that can only answer
+  // 403 is worse than not offering it — and a member who arrives by URL still meets the section's own
+  // refusal, which names the permission to ask for.
+  const sections = ADMINISTRATION_SECTIONS.filter((candidate) => candidate !== "ai" || canReadAi)
+
   const requested = searchParameters.get("section")
-  const section = isAdministrationSection(requested) ? requested : ADMINISTRATION_SECTIONS[0]
-  const canAdminister = (currentMember?.globalPermissions ?? []).includes(ADMINISTER_CONFIGURATION)
+  const section = isAdministrationSection(requested) ? requested : sections[0]
 
   function openSection(next: string) {
     setSearchParameters({ section: next }, { replace: true })
@@ -61,7 +73,7 @@ export function AdministrationPage() {
           aria-label={t("administration.nav.label", "Configuration")}
         >
           <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
-            {ADMINISTRATION_SECTIONS.map((candidate) => (
+            {sections.map((candidate) => (
               <li key={candidate}>
                 <button
                   type="button"
@@ -92,6 +104,10 @@ export function AdministrationPage() {
           {section === "priorities" && <PrioritiesSection canAdminister={canAdminister} />}
           {section === "resolutions" && <ResolutionsSection canAdminister={canAdminister} />}
           {section === "link-types" && <LinkTypesSection canAdminister={canAdminister} />}
+          {/* Rendered whether or not the permission is held — the navigation hides this section, but a
+              member who arrives by URL should meet the section's own refusal, which names what to ask
+              for, rather than a blank pane. */}
+          {section === "ai" && <AiSection canRead={canReadAi} canAdminister={canAdministerAi} />}
         </div>
       </div>
     </>

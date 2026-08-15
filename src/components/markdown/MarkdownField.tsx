@@ -47,38 +47,46 @@ export function MarkdownField({
     }
   }, [value, editing])
 
+  function commit() {
+    onCommit(draft)
+    setEditing(false)
+  }
+
+  function abandon() {
+    setDraft(value)
+    setEditing(false)
+  }
+
   if (editing) {
     return (
       <div
         className="space-y-2"
         onKeyDown={(event) => {
           if (event.key === "Escape") {
-            setDraft(value)
-            setEditing(false)
+            abandon()
+            return
+          }
+          // The other half of "commits on a button": a document long enough to need a toolbar is long
+          // enough that reaching for the mouse to save it is a nuisance. Escape abandons, this commits,
+          // and neither is reachable by accident the way commit-on-blur was.
+          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault()
+            commit()
           }
         }}
       >
         <TesseraMarkdownEditor value={draft} onChange={setDraft} placeholder={placeholder} />
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              onCommit(draft)
-              setEditing(false)
-            }}
-          >
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={commit}>
             Save
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setDraft(value)
-              setEditing(false)
-            }}
-          >
+          <Button size="sm" variant="ghost" onClick={abandon}>
             Cancel
           </Button>
+          <span className="ml-auto text-xs text-muted-foreground">
+            Markdown · <kbd className="font-mono">⌘↵</kbd> to save · <kbd className="font-mono">Esc</kbd> to
+            discard
+          </span>
         </div>
       </div>
     )

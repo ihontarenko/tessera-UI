@@ -229,6 +229,8 @@ export function removeIssueLink(issueId: string, linkId: string) {
 export interface Comment {
   id: string
   author: MemberSummary | null
+  /** The agent that wrote it, where one did — null where the person typed it themselves. */
+  agentName: string | null
   body: string
   editable: boolean
   createdAt: string
@@ -262,6 +264,8 @@ export interface ActivityLogItem {
 export interface ActivityLog {
   id: string
   actor: MemberSummary | null
+  /** The agent that made the change, where one did — null where the person did it themselves. */
+  agentName: string | null
   createdAt: string
   items: ActivityLogItem[]
 }

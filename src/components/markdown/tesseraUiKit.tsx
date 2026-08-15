@@ -12,6 +12,11 @@ import type { MarkdownUiKit } from "@/markdown"
  * than shipping a second design system that slowly drifts from the first. Binding it is the whole cost
  * of adopting the editor, and it is this file.
  *
+ * ⚠️ **The modal carries `tessera-markdown`.** Every other library surface inherits the token bridge
+ * from the editor it sits inside; a dialog does not, because shadcn portals its content to
+ * `document.body` and leaves the subtree entirely. Without the class here, `dialogs.module.css` looks
+ * up `--paper` and `--line` in a scope that has never heard of them — see `TesseraMarkdown.tsx`.
+ *
  * ⚠️ **Plain `select` rather than shadcn's `Select`.** The library's contract is a value, a change
  * handler and a list of options; shadcn's is a Radix popover with a portal, a trigger and item
  * children. Wrapping the second in the first means a popover inside a dialog inside a portal, which is
@@ -22,7 +27,7 @@ import type { MarkdownUiKit } from "@/markdown"
 export const TESSERA_MARKDOWN_UI: MarkdownUiKit = {
   Modal: ({ title, width, onClose, footer, tabBar, children }) => (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent style={width ? { maxWidth: width } : undefined}>
+      <DialogContent className="tessera-markdown" style={width ? { maxWidth: width } : undefined}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

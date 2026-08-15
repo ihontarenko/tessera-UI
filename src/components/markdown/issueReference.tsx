@@ -133,8 +133,11 @@ export function issueReferencePlugin(): MarkdownPlugin<unknown> {
             return <IssueReferenceLink issueKey={href.slice(SCHEME.length)} />
           }
 
+          // ⚠️ This is also where `externalLinkPlugin` would have gone. It claims the same `a`
+          // component, so installing both means one of them silently losing — and it cannot be this
+          // one. Two attributes here are the same outcome with nothing to collide.
           return (
-            <a href={href} {...rest}>
+            <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
               {children}
             </a>
           )

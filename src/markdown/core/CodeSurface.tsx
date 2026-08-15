@@ -64,10 +64,17 @@ CodeSurface.displayName = 'CodeSurface';
  */
 class CodeMirrorHandle implements EditorHandle {
 
-    constructor(
-        private readonly reference: { current: ReactCodeMirrorRef | null },
-        private readonly fallback:  string,
-    ) {}
+    // ⚠️ Fields and assignments rather than constructor parameter properties, which is the one
+    // deviation from Innoventa's copy of this file. Tessera compiles with `erasableSyntaxOnly`, and a
+    // parameter property is TypeScript that emits code — TS1294, and it failed the build rather than
+    // the dev server, which is why a bare editor shipped unnoticed.
+    private readonly reference: { current: ReactCodeMirrorRef | null };
+    private readonly fallback:  string;
+
+    constructor(reference: { current: ReactCodeMirrorRef | null }, fallback: string) {
+        this.reference = reference;
+        this.fallback  = fallback;
+    }
 
     private get view() {
         return this.reference.current?.view ?? null;

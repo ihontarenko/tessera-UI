@@ -12,12 +12,32 @@ import { httpClient } from "@/api/httpClient"
  * either: it speaks OAuth to the backend directly, without a browser session and without this app.
  */
 
+/**
+ * Whose permissions an agent acts with.
+ *
+ * `INHERITED` — everything its owner holds, followed live. `RESTRICTED` — its own grants, capped by its
+ * owner's. ⚠️ A different question from whether the agent is switched on at all.
+ */
+export type AgentAuthority = "INHERITED" | "RESTRICTED"
+
+/**
+ * One connected client, with the agent it belongs to.
+ *
+ * ⚠️ **A connection is not the agent.** The agent is the persona — the thing with a name, permissions
+ * and an on/off switch — and it can hold several connections at once. Disconnecting one ends that
+ * client; the persona and its other clients carry on.
+ */
 export interface AgentConnection {
   id: string
+  agentId: string
+  agentName: string
+  authority: AgentAuthority
+  agentEnabled: boolean
   clientName: string
   issuedAt: string
   lastUsedAt: string | null
   revokedAt: string | null
+  /** ⚠️ Both halves: a live connection under a switched-off agent is not active. */
   active: boolean
 }
 
@@ -38,8 +58,8 @@ export function fetchAgentConnections() {
     .then((response) => response.data)
 }
 
-export function revokeAgentConnection(credentialId: string) {
+export function revokeAgentConnection(connectionId: string) {
   return httpClient
-    .delete<void>(`/agents/authorization/connections/${credentialId}`)
+    .delete<void>(`/agents/authorization/connections/${connectionId}`)
     .then((response) => response.data)
 }

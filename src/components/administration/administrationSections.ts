@@ -16,6 +16,11 @@ export const ADMINISTRATION_SECTIONS = [
   "priorities",
   "resolutions",
   "link-types",
+  // Last, and deliberately not among the catalogs: everything above is what issues are made of, and
+  // this is the machinery behind the assistant. It is here rather than on a screen of its own because
+  // it is the same kind of thing — an installation-wide setting nobody's project owns — but it is its
+  // own two permissions, so it is the one section the navigation can hide.
+  "ai",
 ] as const
 
 export type AdministrationSection = (typeof ADMINISTRATION_SECTIONS)[number]
@@ -28,6 +33,7 @@ export const ADMINISTRATION_SECTION_LABELS: Record<AdministrationSection, { key:
   priorities: { key: "administration.nav.priorities", text: "Priorities" },
   resolutions: { key: "administration.nav.resolutions", text: "Resolutions" },
   "link-types": { key: "administration.nav.linkTypes", text: "Link types" },
+  ai: { key: "administration.nav.ai", text: "AI" },
 }
 
 export function isAdministrationSection(candidate: string | null): candidate is AdministrationSection {

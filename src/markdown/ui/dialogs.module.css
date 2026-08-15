@@ -46,14 +46,14 @@
 }
 
 .option:hover {
-    border-color: var(--accent);
-    background: var(--accent-soft);
+    border-color: var(--brand);
+    background: var(--brand-soft);
 }
 
 .optionActive {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    color: var(--accent);
+    border-color: var(--brand);
+    background: var(--brand-soft);
+    color: var(--brand);
 }
 
 .optionName {
@@ -144,12 +144,12 @@
 
 .pickerKind:hover,
 .pickerKindOn:hover {
-    background: var(--accent-soft);
+    background: var(--brand-soft);
 }
 
 .pickerKindOn {
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: var(--brand-soft);
+    color: var(--brand);
     font-weight: 600;
 }
 
@@ -199,8 +199,8 @@
 }
 
 .pickerItem:hover {
-    border-color: var(--accent);
-    background: var(--accent-soft);
+    border-color: var(--brand);
+    background: var(--brand-soft);
 }
 
 .pickerLabel {

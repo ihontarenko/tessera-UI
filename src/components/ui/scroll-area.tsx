@@ -7,9 +7,20 @@ import { cn } from "@/lib/helpers"
 
 function ScrollArea({
   className,
+  viewportClassName,
   children,
   ...properties
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+  /**
+   * Classes for the scrolling box itself.
+   *
+   * ⚠️ **A `max-h-*` belongs here, not on the root.** The viewport is `height: 100%`, and a percentage
+   * height against an auto-height parent resolves to auto — so a bounded root merely clips its content
+   * and nothing scrolls. Bounding the viewport instead is what lets an area size to its content up to
+   * a ceiling. A definite `h-*` works on either.
+   */
+  viewportClassName?: string
+}) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -18,7 +29,10 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className={cn(
+          "size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1",
+          viewportClassName
+        )}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

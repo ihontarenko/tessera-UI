@@ -9,6 +9,7 @@ import { ProjectsPage } from "@/pages/ProjectsPage"
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage"
 import { IssuePage } from "@/pages/IssuePage"
 import { IssuesPage } from "@/pages/IssuesPage"
+import { AssistantPage } from "@/pages/AssistantPage"
 import { readLastProjectId } from "@/lib/lastProject"
 
 /**
@@ -34,6 +35,11 @@ export function AppRoutes() {
         <Route path="/issues" element={<IssuesPage />} />
         {/* An issue is addressed by key, not id — the URL is the thing people paste (ticket 07). */}
         <Route path="/issues/:issueKey" element={<IssuePage />} />
+        {/* Not under /projects/:projectId, because the conversation is not one project's: a tool
+            resolves its own scope per call and will happily answer about a project the reader is not
+            currently looking at. Putting it inside one would promise a confinement the dispatcher
+            does not apply. */}
+        <Route path="/assistant" element={<AssistantPage />} />
         {/* The boards and backlog index pages are gone (ticket 09): both listed the member's projects
             and existed only to be clicked through. An old bookmark lands on that list itself. */}
         <Route path="/boards/*" element={<Navigate to="/projects" replace />} />

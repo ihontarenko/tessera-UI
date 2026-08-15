@@ -2,15 +2,15 @@ import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
-import { MessageSquare, PencilLine } from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Bot, MessageSquare, PencilLine } from "lucide-react"
+import { MemberAvatar } from "@/components/MemberAvatar"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { TesseraMarkdown } from "@/components/markdown/TesseraMarkdown"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import type { MemberSummary } from "@/api/members"
-import { memberInitials, memberName } from "@/lib/memberDisplay"
+import { memberName } from "@/lib/memberDisplay"
 import {
   addComment,
   deleteComment,
@@ -178,6 +178,7 @@ export function IssueActivityStream({
               <div className="min-w-0">
                 <div className="flex items-baseline gap-2">
                   <span className="truncate text-sm font-medium">{memberName(entry.comment.author)}</span>
+                  {entry.comment.agentName && <AgentBadge name={entry.comment.agentName} />}
                   <KindBadge kind="comment" />
                   <Timestamp at={entry.at} />
                   {entry.comment.editable && editingId !== entry.comment.id && (
@@ -249,6 +250,11 @@ export function IssueActivityStream({
               <StreamAvatar member={entry.event.actor} />
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{memberName(entry.event.actor)}</span>{" "}
+                {entry.event.agentName && (
+                  <>
+                    <AgentBadge name={entry.event.agentName} />{" "}
+                  </>
+                )}
                 <KindBadge kind="change" />{" "}
                 {/* One edit touching several fields is one event with its items — the shape the
                     activity log already records (ADR-0007) — so it reads as one act, on one line. */}
@@ -301,13 +307,32 @@ function KindBadge({ kind }: { kind: "comment" | "change" }) {
   )
 }
 
+/**
+ * That this was done through an agent, said next to the person who is still answerable for it.
+ *
+ * ⚠️ **Beside the name, never instead of it, and the avatar does not change.** The person asked for
+ * this; the agent is how it got written. Swapping either of them out would answer a question nobody
+ * asked and quietly lose the one that matters — *who wanted this*.
+ *
+ * Visually distinct from {@link KindBadge} on purpose: that one is a category, so it is a solid tint in
+ * small caps; this one is an annotation, so it is outlined and reads in ordinary case. The icon carries
+ * the colour, which keeps the chip legible across every theme without competing with the name.
+ */
+function AgentBadge({ name }: { name: string }) {
+  return (
+    <span
+      title={`Written through ${name}, acting for the person named beside it`}
+      className="inline-flex max-w-[14rem] shrink-0 translate-y-px items-center gap-1 rounded border border-primary/25 bg-primary/[0.06] px-1.5 py-px text-[10px] font-medium text-foreground/70"
+    >
+      <Bot className="size-2.5 shrink-0 text-primary" />
+      <span className="truncate">via {name}</span>
+    </span>
+  )
+}
+
 /** The stream's gutter: an avatar and nothing else, since the name is already on the line beside it. */
 function StreamAvatar({ member }: { member: MemberSummary | null }) {
-  return (
-    <Avatar className="mt-0.5 size-6 shrink-0">
-      <AvatarFallback className="text-[10px]">{memberInitials(member)}</AvatarFallback>
-    </Avatar>
-  )
+  return <MemberAvatar member={member} className="mt-0.5 size-6 shrink-0" />
 }
 
 /**

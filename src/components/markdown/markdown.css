@@ -1,0 +1,265 @@
+/* ============================================================================
+   The Markdown surface: the token bridge the library asks for, and the prose
+   voice a rendered document is read in.
+
+   `src/markdown/` is vendored, not written for this application, and its one
+   rule about colour is that it defines none — "every colour is a design token
+   the host defines" (core/editor.module.css). Innoventa is the host it was
+   written against, so it asks for `--paper`, `--line`, `--ink-*`, `--accent`.
+   Tessera renamed that whole vocabulary onto shadcn's (`--background`,
+   `--border`, `--foreground`, `--primary`), which meant every one of those
+   lookups resolved to nothing: an invisible frame, transparent buttons and a
+   toolbar you could not see. Bridging them here is the host holding up its end
+   of the contract — and it keeps the vendored copy a *copy*, so re-syncing it
+   from Innoventa stays a file operation rather than a merge.
+   ============================================================================ */
+
+/* ── Syntax colour ───────────────────────────────────────────────────────────
+   Innoventa's house palette, ported verbatim, light and dark.
+
+   ⚠️ Global and deliberately *not* per-theme, which is the one surprising thing
+   about it. All 27 themes recolour the frame around code and none of them touch
+   the code, because decorative colour and legible colour are different jobs:
+   painting keywords from `--primary` means every theme whose primary sits near
+   its secondary renders keywords and strings the same colour, and the darker
+   palettes drop a whole class of token to a few percent off the background.
+   The reasoning in full is at the top of `lib/codemirror/highlightStyle.ts`.
+
+   Read by two things that must agree — the CodeMirror `HighlightStyle` and the
+   stylesheet it generates for rendered fences (`lib/codemirror/staticHighlight`)
+   — so they are on `:root` rather than scoped to a markdown surface. */
+:root {
+    --syntax-heading:     #2A2A29;
+    --syntax-keyword:     #C2185B;
+    --syntax-string:      #2F7A55;
+    --syntax-literal:     #A65A17;
+    --syntax-namespace:   #1B6E97;
+    --syntax-property:    #2E8BA8;
+    --syntax-declaration: #6A3FB5;
+    --syntax-variable:    #3A3A38;
+    --syntax-comment:     #8C8A85;
+    --syntax-operator:    #6E6C67;
+    --syntax-punctuation: #8C8A85;
+    --syntax-invalid:     #B3261E;
+
+    /* Policy (.jmp) — see `lib/codemirror/tags.ts` for why a tracker paints
+       another product's language. `deny` is loud on purpose. */
+    --syntax-deny:        #B3261E;
+    --syntax-role:        #2E7D32;
+    --syntax-subject:     #9A6614;
+    --syntax-scope:       #6A3FB5;
+    --syntax-instance:    #3F8F4A;
+    --syntax-action:      #2E8BA8;
+}
+
+:root.dark {
+    --syntax-heading:     #E8E6E0;
+    --syntax-keyword:     #FF7EB6;
+    --syntax-string:      #7FD8A6;
+    --syntax-literal:     #FFAB70;
+    --syntax-namespace:   #6FC3E8;
+    --syntax-property:    #86D8F0;
+    --syntax-declaration: #C3A6FF;
+    --syntax-variable:    #D9D6CF;
+    --syntax-comment:     #8B8880;
+    --syntax-operator:    #A9A69F;
+    --syntax-punctuation: #8B8880;
+    --syntax-invalid:     #FF6B60;
+
+    --syntax-deny:        #FF6B60;
+    --syntax-role:        #7EE787;
+    --syntax-subject:     #E3B341;
+    --syntax-scope:       #C3A6FF;
+    --syntax-instance:    #9BE29B;
+    --syntax-action:      #86D8F0;
+}
+
+/* ── The bridge ──────────────────────────────────────────────────────────────
+   Scoped, never global: these are a vendored library's names, and putting a
+   shadow vocabulary on `:root` invites the rest of the application to start
+   using it.
+
+   ⚠️ `--brand`/`--brand-soft` are the one place the vendored copy was edited
+   rather than bridged, because `--accent` means opposite things in the two
+   products and Tailwind v4 leaves no way to re-point it — the reasoning is at
+   the top of `markdown/core/editor.module.css`, where somebody re-syncing that
+   file will actually see it. */
+.tessera-markdown {
+    --paper: var(--background);
+    --paper-2: var(--muted);
+    --line: var(--border);
+
+    --ink: var(--foreground);
+    --ink-2: var(--secondary-foreground);
+    --ink-3: var(--muted-foreground);
+    /* --ink-4 needs no bridge: Tessera defines it under its own name, having
+       found no shadcn slot for it when the palettes were ported. */
+
+    --brand: var(--primary);
+    --brand-soft: var(--accent);
+
+    --danger: var(--destructive);
+    --warn: var(--warning);
+    --ok: var(--success);
+
+    --r: var(--radius-sm);
+    --r-md: var(--radius-md);
+
+    /* The library's own default is 60vh — right for Innoventa's full-page
+       editor, absurd for a description field, where it opened a screen-high
+       void between the placeholder and the Save button. The editor sets its own
+       value per surface; this is the floor for anything that does not. */
+    --markdown-editor-height: 15rem;
+}
+
+/* ── Prose ───────────────────────────────────────────────────────────────────
+   Ported from Innoventa's markdown.module.css `.prose`, in Tessera's tokens.
+   Unlayered on purpose: Tailwind's preflight lives in `@layer base` and flattens
+   every heading to inherit, and an unlayered rule beats a layered one outright —
+   no `!important`, no specificity arithmetic. */
+
+.prose-tessera {
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--foreground);
+    overflow-wrap: anywhere;
+}
+
+.prose-tessera > *:first-child {
+    margin-top: 0;
+}
+
+.prose-tessera > *:last-child {
+    margin-bottom: 0;
+}
+
+.prose-tessera h1,
+.prose-tessera h2,
+.prose-tessera h3,
+.prose-tessera h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+}
+
+.prose-tessera h1 { font-size: 1.5em;  margin: 0.9em 0 0.4em; }
+.prose-tessera h2 { font-size: 1.28em; margin: 1em 0 0.4em; }
+.prose-tessera h3 { font-size: 1.1em;  margin: 0.9em 0 0.35em; }
+.prose-tessera h4 { font-size: 1em;    margin: 0.9em 0 0.35em; }
+
+.prose-tessera p { margin: 0.65em 0; }
+
+.prose-tessera ul,
+.prose-tessera ol {
+    margin: 0.65em 0;
+    padding-left: 1.4em;
+}
+
+.prose-tessera ul { list-style: disc; }
+.prose-tessera ol { list-style: decimal; }
+.prose-tessera li { margin: 0.25em 0; }
+
+/* GFM task lists are a list whose marker is the checkbox itself. */
+.prose-tessera li:has(> input[type="checkbox"]) {
+    list-style: none;
+    margin-left: -1.2em;
+}
+
+.prose-tessera input[type="checkbox"] {
+    margin-right: 0.5em;
+    accent-color: var(--primary);
+}
+
+.prose-tessera a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
+.prose-tessera a:hover {
+    text-decoration-thickness: 2px;
+}
+
+.prose-tessera img {
+    max-width: 100%;
+    margin: 0.5em 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.prose-tessera code {
+    padding: 0.1em 0.4em;
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    color: var(--primary);
+}
+
+.prose-tessera pre {
+    margin: 0.7em 0;
+    padding: 0.8em 1em;
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+}
+
+.prose-tessera pre code {
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--foreground);
+    font-size: 0.85em;
+    line-height: 1.5;
+}
+
+.prose-tessera table {
+    width: 100%;
+    margin: 0.7em 0;
+    border-collapse: collapse;
+    font-size: 0.92em;
+}
+
+.prose-tessera th,
+.prose-tessera td {
+    padding: 0.45em 0.7em;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+
+.prose-tessera th {
+    background: var(--muted);
+    font-weight: 600;
+    color: var(--secondary-foreground);
+}
+
+.prose-tessera blockquote {
+    margin: 0.7em 0;
+    padding: 0.3em 1em;
+    border-left: 3px solid var(--primary);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--muted);
+    color: var(--muted-foreground);
+}
+
+.prose-tessera hr {
+    margin: 1.3em 0;
+    border: none;
+    border-top: 1px solid var(--border);
+}
+
+.prose-tessera strong { font-weight: 700; color: var(--foreground); }
+.prose-tessera em     { font-style: italic; }
+.prose-tessera del    { color: var(--muted-foreground); }
+
+/* A long display formula scrolls inside its own box rather than widening the
+   column it sits in — an issue description is narrow and often beside a rail. */
+.prose-tessera .katex-display {
+    padding: 2px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
