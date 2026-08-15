@@ -307,10 +307,15 @@ function McpConnectionSection() {
         <h3 className="font-medium">Connect a client</h3>
       </header>
 
+      {/* ⚠️ This used to say a client "acts as you: exactly what you can do, and nothing else". That
+          stopped being true when an agent gained an authority of its own — a restricted one does
+          strictly less. The ceiling is the half worth stating, because it is the half that holds in
+          both cases: never more than you, sometimes less. */}
       <p className="text-sm text-muted-foreground">
         Tessera speaks the Model Context Protocol, so a client can read your projects, raise issues,
-        move them through the workflow, comment, and plan sprints. It acts <strong>as you</strong>: it
-        can do exactly what you can do, in exactly the projects you belong to, and nothing else.
+        move them through the workflow, comment, and plan sprints. It acts as an <strong>agent</strong>{" "}
+        working for you — never able to do more than you can, in no project you do not belong to, and
+        less than that wherever the agent has been restricted.
       </p>
 
       <CopyableBlock label="Server URL" value={endpoint} />
