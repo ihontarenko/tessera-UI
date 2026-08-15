@@ -202,3 +202,91 @@ export async function takeProviderConfigurationOutOfForce(
 export async function discardProviderConfiguration(id: string): Promise<void> {
   await managementClient.delete(`/configurations/${id}`)
 }
+
+// ── Agents ───────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Whose permissions an agent acts with.
+ *
+ * `INHERITED` — everything its owner holds, followed live. `RESTRICTED` — its own grants, capped by its
+ * owner's. ⚠️ A different question from whether the agent is switched on at all.
+ */
+export type AgentAuthority = "INHERITED" | "RESTRICTED"
+
+export interface AgentConnection {
+  id: string
+  agentId: string
+  clientName: string
+  issuedAt: string
+  refreshExpiresAt: string
+  lastUsedAt: string | null
+  revokedAt: string | null
+}
+
+/**
+ * One agent with the clients connected to it.
+ *
+ * ⚠️ **`connections` includes revoked ones and `connectionCount` does not.** A screen shows history;
+ * "3 clients" must not count endings.
+ */
+export interface AgentView {
+  id: string
+  ownerReference: string | null
+  name: string
+  authority: AgentAuthority
+  enabled: boolean
+  createdAt: string
+  lastActiveAt: string | null
+  connectionCount: number
+  connections: AgentConnection[]
+}
+
+export async function fetchAgents(limit = 100): Promise<AgentView[]> {
+  const response = await managementClient.get<AgentView[]>("/agents", { params: { limit } })
+
+  return response.data
+}
+
+export async function setAgentEnabled(agentId: string, enabled: boolean): Promise<AgentView> {
+  const response = await managementClient.patch<AgentView>(`/agents/${agentId}/enabled`, null, {
+    params: { enabled },
+  })
+
+  return response.data
+}
+
+export async function renameAgent(agentId: string, name: string): Promise<AgentView> {
+  const response = await managementClient.patch<AgentView>(`/agents/${agentId}/name`, { name })
+
+  return response.data
+}
+
+/** ⚠️ Restricting takes effect on the next call, and an ungranted agent can then do nothing. */
+export async function setAgentAuthority(
+  agentId: string,
+  authority: AgentAuthority,
+): Promise<AgentView> {
+  const response = await managementClient.patch<AgentView>(`/agents/${agentId}/authority`, {
+    authority,
+  })
+
+  return response.data
+}
+
+export async function revokeAgentConnection(
+  agentId: string,
+  connectionId: string,
+): Promise<AgentView> {
+  const response = await managementClient.delete<AgentView>(
+    `/agents/${agentId}/connections/${connectionId}`,
+  )
+
+  return response.data
+}
+
+/** Ends every client of one agent at once, without switching the agent off. */
+export async function revokeAllAgentConnections(agentId: string): Promise<AgentView> {
+  const response = await managementClient.delete<AgentView>(`/agents/${agentId}/connections`)
+
+  return response.data
+}

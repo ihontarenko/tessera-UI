@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AdministrationSection } from "@/components/administration/AdministrationPieces"
 import { ActivityPanel } from "@/components/administration/ai/ActivityPanel"
+import { AgentsPanel } from "@/components/administration/ai/AgentsPanel"
 import { CataloguePanel } from "@/components/administration/ai/CataloguePanel"
 import { ProviderPanel } from "@/components/administration/ai/ProviderPanel"
 import { useAiOverview } from "@/hooks/useAiAdministration"
@@ -74,6 +75,9 @@ export function AiSection({
               {overview.data?.publishedActions ?? "—"}
             </Badge>
           </TabsTrigger>
+          {/* Beside the actions rather than on a screen of its own: an action is what CAN be done and
+              an agent is WHO may do it, and the two are read together or not at all. */}
+          <TabsTrigger value="agents">Agents</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -83,6 +87,10 @@ export function AiSection({
 
         <TabsContent value="catalogue">
           <CataloguePanel />
+        </TabsContent>
+
+        <TabsContent value="agents">
+          <AgentsPanel />
         </TabsContent>
 
         <TabsContent value="activity">
