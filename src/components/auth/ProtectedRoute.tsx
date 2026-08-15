@@ -12,6 +12,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProperties) {
   const location = useLocation()
   const hasStartedSigninRedirect = useRef(false)
 
+  // ⚠️ The query string is part of where they were, not decoration. It stopped mattering to any route
+  // in this application when the client-authorization screen moved into jmouse-ai-mcp-authorization —
+  // that screen carried a whole request in its parameters and was the reason this line exists — but it
+  // is kept because the omission was invisible until something depended on it, and would be again.
+  const returnTarget = location.pathname + location.search
+
   useEffect(() => {
     // React StrictMode double-invokes effects in development — auth.activeNavigator only flips
     // true once signinRedirect's async work updates context, so both invocations can pass that
@@ -19,9 +25,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProperties) {
     // is a synchronous guard neither invocation can slip past.
     if (!auth.isLoading && !auth.isAuthenticated && !auth.activeNavigator && !hasStartedSigninRedirect.current) {
       hasStartedSigninRedirect.current = true
-      void auth.signinRedirect({ state: location.pathname })
+      void auth.signinRedirect({ state: returnTarget })
     }
-  }, [auth, location.pathname])
+  }, [auth, returnTarget])
 
   if (auth.isAuthenticated) {
     return children

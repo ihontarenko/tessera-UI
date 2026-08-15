@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Check, Copy, Plug } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Check, Copy, Plug, Unplug } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
 import { MemberChip } from "@/components/MemberChip"
 import { Badge } from "@/components/ui/badge"
@@ -7,6 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
+import {
+  fetchAgentConnections,
+  fetchConnectionInfo,
+  revokeAgentConnection,
+} from "@/api/agentAuthorization"
 
 /**
  * Who you are here, and how to reach Tessera from outside the browser.
@@ -66,9 +72,84 @@ export function AccountSettingsPage() {
         </section>
 
         <McpConnectionSection />
+        <ConnectedClientsSection />
       </div>
     </>
   )
+}
+
+/**
+ * The clients you have actually connected, and the switch that ends one.
+ *
+ * ⚠️ **This is the half that makes handing out a month-long credential defensible.** Ending a connection
+ * is immediate rather than eventual: every protocol call checks its connection still exists, so a client
+ * stops on its next call rather than when its current token happens to expire.
+ *
+ * Absent entirely when nothing is connected. An empty list with a heading above it is a section about
+ * nothing, and this page's point is the instructions above it.
+ */
+function ConnectedClientsSection() {
+  const queryClient = useQueryClient()
+  const { data: connections } = useQuery({
+    queryKey: ["agent-connections"],
+    queryFn: fetchAgentConnections,
+  })
+
+  const revoke = useMutation({
+    mutationFn: revokeAgentConnection,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["agent-connections"] }),
+  })
+
+  if (!connections || connections.length === 0) {
+    return null
+  }
+
+  return (
+    <section className="space-y-3 rounded-lg border p-4">
+      <header className="flex items-center gap-2">
+        <Unplug className="size-4" />
+        <h3 className="font-medium">Connected clients</h3>
+      </header>
+
+      <ul className="divide-y">
+        {connections.map((connection) => (
+          <li key={connection.id} className="flex items-center justify-between gap-3 py-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-sm">{connection.clientName}</span>
+                {!connection.active && (
+                  <Badge variant="outline" className="text-[11px]">
+                    ended
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                approved {formatMoment(connection.issuedAt)}
+                {connection.lastUsedAt
+                  ? ` · last used ${formatMoment(connection.lastUsedAt)}`
+                  : " · never used"}
+              </p>
+            </div>
+
+            {connection.active && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => revoke.mutate(connection.id)}
+                disabled={revoke.isPending}
+              >
+                Disconnect
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function formatMoment(moment: string) {
+  return new Date(moment).toLocaleString()
 }
 
 type ClientKind = "claude-code" | "claude-desktop" | "codex" | "chatgpt"
@@ -83,10 +164,12 @@ const CLIENTS: Array<{ value: ClientKind; label: string }> = [
 /**
  * How to point a Model Context Protocol client at this installation.
  *
- * ⚠️ **The endpoint is derived from the page's own origin, never configured.** A URL written into a
- * settings file is a URL that is wrong on somebody's staging installation and stays wrong quietly —
- * whereas the browser is already talking to the right server, so asking it is both simpler and correct
- * everywhere.
+ * ⚠️ **The endpoint is asked of the server, never written down and never the page's own origin.** A URL
+ * in a settings file is wrong on somebody's staging installation and stays wrong quietly; the browser's
+ * origin was the next best thing and is wrong in *development*, where the interface is a dev server on
+ * 5050 and the protocol is served on 8100. What the server answers is also exactly what its discovery
+ * documents publish — and a client configured with a different origin refuses the connection itself,
+ * before Tessera is ever asked.
  *
  * ⚠️ **Every command here was read out of the tool's own `--help`, not recalled.** A setup instruction
  * that is subtly wrong is worse than none: the reader trusts it, pastes it, and debugs their
@@ -95,7 +178,15 @@ const CLIENTS: Array<{ value: ClientKind; label: string }> = [
  */
 function McpConnectionSection() {
   const [client, setClient] = useState<ClientKind>("claude-code")
-  const endpoint = `${window.location.origin}/api/mcp`
+  const { data: connectionInfo } = useQuery({
+    queryKey: ["mcp-connection-info"],
+    queryFn: fetchConnectionInfo,
+    staleTime: Infinity,
+  })
+
+  // Until the server answers, the page's own origin is the better guess than an empty box — it is right
+  // in every deployment and wrong only in development, which is the one place somebody knows both ports.
+  const endpoint = connectionInfo?.serverUrl ?? `${window.location.origin}/api/mcp`
 
   const instructions: Record<ClientKind, { hint: string; snippet: string; label: string }> = {
     "claude-code": {
@@ -154,10 +245,17 @@ function McpConnectionSection() {
 
       <div className="space-y-1.5 border-t pt-3 text-sm text-muted-foreground">
         <p>
-          <strong className="text-foreground">You will be asked to sign in.</strong> The client opens
-          your browser, you sign in to Identity as usual, and it comes back with its own token. Tessera
-          never sees a password and you never paste one anywhere — there is nothing here to copy but the
-          URL above.
+          <strong className="text-foreground">You will be asked to sign in, and then to approve.</strong>{" "}
+          The client opens your browser, you sign in to Identity as usual, and Tessera shows you one screen
+          naming the client and the address on this machine its code will be sent to. Approving it is what
+          creates the connection — nothing is issued to a client nobody said yes to, and there is nothing
+          here to copy but the URL above.
+        </p>
+        <p>
+          <strong className="text-foreground">The credential works here and nowhere else.</strong> It is
+          signed by Tessera for this one endpoint, so it is not a token that can read the rest of the API,
+          and it is not the token your browser holds. End it whenever you like — the client stops on its
+          next call, not whenever its token would have expired.
         </p>
         <p>
           ⚠️ <strong className="text-foreground">A refusal is not a bug.</strong> The client is held to
