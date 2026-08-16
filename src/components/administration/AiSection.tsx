@@ -149,7 +149,10 @@ function InForce({ overview }: { overview: AiOverview }) {
         </Badge>
       </div>
 
-      {!provider.keyConfigured && (
+      {/* ⚠️ `usable`, not `keyConfigured`. A provider running on this machine has no credential to
+          give, and warning that it has none would be alarming somebody about the thing working
+          correctly — the server decides which of the two this is, because only it knows the provider. */}
+      {!provider.usable && (
         <Alert variant="destructive">
           <AlertTriangle className="size-4" />
           <AlertTitle>The configuration in force has no key</AlertTitle>

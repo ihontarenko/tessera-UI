@@ -22,7 +22,7 @@ import {
   useTakeProviderConfigurationOutOfForce,
   useUpdateProviderConfiguration,
 } from "@/hooks/useAiAdministration"
-import type { ProviderConfiguration } from "@/api/ai"
+import type { ProviderConfiguration, SupportedProvider } from "@/api/ai"
 
 /**
  * Which model this installation talks to, on whose key.
@@ -59,8 +59,14 @@ export function ProviderPanel({ canAdminister }: { canAdminister: boolean }) {
   }
 
   const rows = configurations.data?.configurations ?? []
-  const supported = configurations.data?.supportedProviders ?? []
+  const providers = configurations.data?.providers ?? []
   const busy = activate.isPending || deactivate.isPending || remove.isPending
+
+  // ⚠️ Asked of the provider, not assumed of every configuration. A model running on this machine has
+  // no credential to give, and a screen that greyed out "Put in force" for it would make the only
+  // free-in-every-sense option the one nobody can switch on.
+  const needsKey = (provider: string) =>
+    providers.find((shipped) => shipped.name === provider)?.requiresKey ?? true
 
   return (
     <section className="space-y-4">
@@ -112,8 +118,18 @@ export function ProviderPanel({ canAdminister }: { canAdminister: boolean }) {
                 </TableCell>
                 <TableCell className="text-sm">{configuration.maximumTokens}</TableCell>
                 <TableCell>
-                  <Badge variant={configuration.keyConfigured ? "outline" : "destructive"}>
-                    {configuration.keyConfigured ? "set" : "missing"}
+                  <Badge
+                    variant={
+                      configuration.keyConfigured || !needsKey(configuration.provider)
+                        ? "outline"
+                        : "destructive"
+                    }
+                  >
+                    {configuration.keyConfigured
+                      ? "set"
+                      : needsKey(configuration.provider)
+                        ? "missing"
+                        : "not needed"}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -144,9 +160,11 @@ export function ProviderPanel({ canAdminister }: { canAdminister: boolean }) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={busy || !configuration.keyConfigured}
+                        disabled={
+                          busy || (needsKey(configuration.provider) && !configuration.keyConfigured)
+                        }
                         title={
-                          configuration.keyConfigured
+                          configuration.keyConfigured || !needsKey(configuration.provider)
                             ? undefined
                             : "Give it a key first — every call through it would be refused before it was sent."
                         }
@@ -180,7 +198,7 @@ export function ProviderPanel({ canAdminister }: { canAdminister: boolean }) {
       {(creating || editing) && (
         <ProviderDialog
           configuration={editing}
-          supportedProviders={supported}
+          providers={providers}
           onClose={() => {
             setCreating(false)
             setEditing(null)
@@ -193,23 +211,24 @@ export function ProviderPanel({ canAdminister }: { canAdminister: boolean }) {
 
 function ProviderDialog({
   configuration,
-  supportedProviders,
+  providers,
   onClose,
 }: {
   /** Null for a new one — which is created idle, because typing a key is not saying "start spending". */
   configuration: ProviderConfiguration | null
-  supportedProviders: string[]
+  providers: SupportedProvider[]
   onClose: () => void
 }) {
   const create = useCreateProviderConfiguration()
   const update = useUpdateProviderConfiguration()
 
-  const [provider, setProvider] = useState(configuration?.provider ?? supportedProviders[0] ?? "")
+  const [provider, setProvider] = useState(configuration?.provider ?? providers[0]?.name ?? "")
   const [model, setModel] = useState(configuration?.model ?? "")
   const [apiKey, setApiKey] = useState("")
   const [apiUrl, setApiUrl] = useState(configuration?.apiUrl ?? "")
   const [maximumTokens, setMaximumTokens] = useState(configuration?.maximumTokens ?? 4096)
 
+  const chosen  = providers.find((shipped) => shipped.name === provider)
   const pending = create.isPending || update.isPending
 
   function submit() {
@@ -249,14 +268,38 @@ function ProviderDialog({
             <SelectTrigger id="ai-provider">
               <SelectValue placeholder="Choose a provider" />
             </SelectTrigger>
+            {/* The note beside each name is the whole point of the richer list: choosing a provider
+                otherwise requires already knowing the landscape, and the free ones are exactly the ones
+                somebody new would not know to look for. */}
             <SelectContent>
-              {supportedProviders.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
+              {providers.map((shipped) => (
+                <SelectItem key={shipped.name} value={shipped.name}>
+                  <span className="flex flex-col items-start gap-0.5">
+                    <span className="flex items-center gap-2">
+                      {shipped.name}
+                      {!shipped.requiresKey && (
+                        <span className="rounded border border-primary/30 bg-primary/[0.08] px-1 py-px text-[10px] font-medium">
+                          no key
+                        </span>
+                      )}
+                    </span>
+                    {shipped.note && (
+                      <span className="max-w-[28rem] text-xs text-muted-foreground">{shipped.note}</span>
+                    )}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {/* ⚠️ Stated where the choice is made rather than discovered at "Put in force". A provider
+              whose address is a default is one the reader can leave alone; a gateway is not. */}
+          {chosen?.defaultApiUrl && (
+            <p className="text-xs text-muted-foreground">
+              Defaults to <code>{chosen.defaultApiUrl}</code> — leave the address blank unless yours
+              differs.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -281,7 +324,9 @@ function ProviderDialog({
           placeholder={
             configuration?.keyConfigured
               ? "A key is set — leave blank to keep it"
-              : "Required before it can be put in force"
+              : chosen && !chosen.requiresKey
+                ? "Not needed for this provider — leave it blank"
+                : "Required before it can be put in force"
           }
           onChange={(event) => setApiKey(event.target.value)}
         />

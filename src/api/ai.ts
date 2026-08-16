@@ -43,6 +43,8 @@ export interface ActiveProvider {
   apiUrl?: string
   maximumTokens: number
   keyConfigured: boolean
+  /** Whether a call could actually be sent — a key is set, OR this provider needs none. */
+  usable: boolean
 }
 
 export interface AiOverview {
@@ -110,8 +112,23 @@ export interface ProviderConfiguration {
   updatedAt: string
 }
 
+/**
+ * One provider a configuration may name.
+ *
+ * ⚠️ `requiresKey: false` is a real answer, not a relaxation — a model on this machine has no
+ * credential to give, and demanding one would make the only free option the one nobody can switch on.
+ */
+export interface SupportedProvider {
+  name: string
+  defaultApiUrl: string | null
+  requiresKey: boolean
+  note: string | null
+}
+
 export interface StoredConfigurations {
   supportedProviders: string[]
+  /** The same list with an address, a note and whether a key is needed, in reading order. */
+  providers: SupportedProvider[]
   configurations: ProviderConfiguration[]
 }
 
