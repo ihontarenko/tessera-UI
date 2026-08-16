@@ -1,5 +1,15 @@
 import { useState } from "react"
-import { Bot, Plug, Power, Shield, ShieldCheck, Unplug } from "lucide-react"
+import {
+  Bot,
+  ChevronDown,
+  ChevronUp,
+  Plug,
+  Power,
+  Shield,
+  ShieldCheck,
+  Trash2,
+  Unplug,
+} from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -8,12 +18,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import {
   useAgents,
+  useDiscardAgent,
   useRevokeAgentConnection,
   useSetAgentAuthority,
   useSetAgentEnabled,
 } from "@/hooks/useAiAdministration"
-import type { AgentAuthority, AgentConnection, AgentView } from "@/api/ai"
+import type { AgentAuthority, AgentConnection, AgentSurface, AgentView } from "@/api/ai"
 import { cn } from "@/lib/helpers"
+import { AgentGrantsEditor } from "./AgentGrantsEditor"
 
 /**
  * Every agent this installation has, what each may do, and which clients are holding a credential.
@@ -29,8 +41,10 @@ import { cn } from "@/lib/helpers"
  * Rows are cards rather than a table on purpose: an agent has a nested list under it and a table with a
  * list in one cell is a table that has stopped being one.
  */
-export function AgentsPanel() {
-  const agents = useAgents()
+export function AgentsPanel({ surface = "everyone" }: { surface?: AgentSurface }) {
+  const mine = surface === "mine"
+  const agents = useAgents(surface)
+  const discard = useDiscardAgent()
 
   if (agents.isLoading) {
     return <Skeleton className="h-40 w-full" />
@@ -40,11 +54,15 @@ export function AgentsPanel() {
     return (
       <Alert>
         <Bot className="size-4" />
-        <AlertTitle>No agent has ever connected</AlertTitle>
+        <AlertTitle>{mine ? "You have no agents" : "No agent has ever connected"}</AlertTitle>
         <AlertDescription>
-          An agent appears here the first time somebody approves a client against the protocol
-          endpoint. Nothing is created in advance, because an agent nobody connected is a switch with
-          nothing behind it.
+          {mine
+            ? `One appears here the first time you approve a client against the protocol endpoint —
+               nothing is created in advance, because an agent nobody connected is a switch with
+               nothing behind it.`
+            : `An agent appears here the first time somebody approves a client against the protocol
+               endpoint. Nothing is created in advance, because an agent nobody connected is a switch
+               with nothing behind it.`}
         </AlertDescription>
       </Alert>
     )
@@ -53,21 +71,38 @@ export function AgentsPanel() {
   return (
     <div className="space-y-3">
       {agents.data.map((agent) => (
-        <AgentCard key={agent.id} agent={agent} />
+        <AgentCard
+          key={agent.id}
+          agent={agent}
+          surface={surface}
+          onDiscard={mine ? () => discard.mutate(agent.id) : undefined}
+        />
       ))}
     </div>
   )
 }
 
-function AgentCard({ agent }: { agent: AgentView }) {
-  const setEnabled = useSetAgentEnabled()
-  const setAuthority = useSetAgentAuthority()
-  const revoke = useRevokeAgentConnection()
+function AgentCard({
+  agent,
+  surface,
+  onDiscard,
+}: {
+  agent: AgentView
+  surface: AgentSurface
+  onDiscard?: () => void
+}) {
+  const setEnabled = useSetAgentEnabled(surface)
+  const setAuthority = useSetAgentAuthority(surface)
+  const revoke = useRevokeAgentConnection(surface)
 
   // Held locally so the warning appears BEFORE the change rather than as a toast after it. Restricting
   // an agent that has been granted nothing leaves it able to do nothing, which is the honest behaviour
   // and exactly the thing somebody has to be told while they can still change their mind.
   const [confirmingRestrict, setConfirmingRestrict] = useState(false)
+
+  // ⚠️ Closed by default, and the pane's query is gated on it: an installation with twenty agents
+  // would otherwise resolve twenty owners' effective permission sets to fill panes nobody opened.
+  const [grantsOpen, setGrantsOpen] = useState(false)
 
   const live = agent.connections.filter((connection) => !connection.revokedAt)
   const ended = agent.connections.filter((connection) => connection.revokedAt)
@@ -107,17 +142,33 @@ function AgentCard({ agent }: { agent: AgentView }) {
           </p>
         </div>
 
-        {/* ⚠️ Labelled, not a bare toggle. "Enabled" and "restricted" are two switches a few
-            centimetres apart that mean at all and how much; an unlabelled one invites the wrong one. */}
-        <label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-          <Power className="size-3.5" />
-          May act
-          <Switch
-            checked={agent.enabled}
-            disabled={setEnabled.isPending}
-            onCheckedChange={(enabled) => setEnabled.mutate({ agentId: agent.id, enabled })}
-          />
-        </label>
+        <div className="flex shrink-0 items-center gap-2">
+          {/* ⚠️ Labelled, not a bare toggle. "Enabled" and "restricted" are two switches a few
+              centimetres apart that mean at all and how much; an unlabelled one invites the wrong. */}
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Power className="size-3.5" />
+            May act
+            <Switch
+              checked={agent.enabled}
+              disabled={setEnabled.isPending}
+              onCheckedChange={(enabled) => setEnabled.mutate({ agentId: agent.id, enabled })}
+            />
+          </label>
+
+          {/* ⚠️ Offered only on somebody's own, and never on the administration screen. Discarding
+              somebody else's agent is indistinguishable afterwards from their having done it, and the
+              switch beside it stops one just as completely while leaving it possible to explain. */}
+          {onDiscard && (
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`Discard ${agent.name}`}
+              onClick={onDiscard}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="mt-3 space-y-3">
@@ -125,10 +176,16 @@ function AgentCard({ agent }: { agent: AgentView }) {
           agent={agent}
           pending={setAuthority.isPending}
           confirming={confirmingRestrict}
+          grantsOpen={grantsOpen}
+          onToggleGrants={() => setGrantsOpen((open) => !open)}
           onRestrictRequested={() => setConfirmingRestrict(true)}
           onCancel={() => setConfirmingRestrict(false)}
           onChange={changeAuthority}
         />
+
+        {agent.authority === "RESTRICTED" && (
+          <AgentGrantsEditor surface={surface} agentId={agent.id} expanded={grantsOpen} />
+        )}
 
         {agent.connections.length > 0 && (
           <ul className="divide-y rounded-md border">
@@ -183,6 +240,8 @@ function AuthorityControl({
   agent,
   pending,
   confirming,
+  grantsOpen,
+  onToggleGrants,
   onRestrictRequested,
   onCancel,
   onChange,
@@ -190,6 +249,8 @@ function AuthorityControl({
   agent: AgentView
   pending: boolean
   confirming: boolean
+  grantsOpen: boolean
+  onToggleGrants: () => void
   onRestrictRequested: () => void
   onCancel: () => void
   onChange: (authority: AgentAuthority) => void
@@ -226,15 +287,24 @@ function AuthorityControl({
           : "Acts with everything its owner can do, and follows them into new projects."}
       </p>
 
-      {agent.authority === "RESTRICTED" ? (
-        <Button size="sm" variant="ghost" disabled={pending} onClick={() => onChange("INHERITED")}>
-          Give it its owner's access
-        </Button>
-      ) : (
-        <Button size="sm" variant="ghost" disabled={pending} onClick={onRestrictRequested}>
-          Restrict it
-        </Button>
-      )}
+      <div className="flex items-center gap-1">
+        {agent.authority === "RESTRICTED" && (
+          <Button size="sm" variant="ghost" onClick={onToggleGrants}>
+            {grantsOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            {grantsOpen ? "Hide what it holds" : "Set what it holds"}
+          </Button>
+        )}
+
+        {agent.authority === "RESTRICTED" ? (
+          <Button size="sm" variant="ghost" disabled={pending} onClick={() => onChange("INHERITED")}>
+            Give it its owner's access
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" disabled={pending} onClick={onRestrictRequested}>
+            Restrict it
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

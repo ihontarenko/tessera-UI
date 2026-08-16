@@ -21,6 +21,11 @@ import {
   takeProviderConfigurationOutOfForce,
   updateProviderConfiguration,
   type ProviderDraft,
+  discardAgent,
+  fetchAgentGrants,
+  replaceAgentGrants,
+  type AgentPlacement,
+  type AgentSurface,
 } from "@/api/ai"
 
 /**
@@ -133,10 +138,15 @@ function useProviderMutation<TResult, TVariables>({
 
 // ── Agents ───────────────────────────────────────────────────────────────────────────────────────
 
-const AGENTS = ["ai", "agents"]
+/**
+ * ⚠️ **Keyed by surface, and it has to be.** The two lists overlap — your own agents are also in the
+ * installation's — so one key would let the administration screen's answer satisfy the account page's
+ * query and show somebody every agent there is on their own settings page.
+ */
+const AGENTS = (surface: AgentSurface) => ["ai", "agents", surface]
 
-export function useAgents() {
-  return useQuery({ queryKey: AGENTS, queryFn: () => fetchAgents() })
+export function useAgents(surface: AgentSurface = "everyone") {
+  return useQuery({ queryKey: AGENTS(surface), queryFn: () => fetchAgents(surface) })
 }
 
 /**
@@ -147,10 +157,12 @@ export function useAgents() {
  * too would refetch three things to show one, and make the screen flicker for no reason.
  */
 function useAgentMutation<TVariables>({
+  surface,
   mutationFn,
   success,
   failure,
 }: {
+  surface: AgentSurface
   mutationFn: (variables: TVariables) => Promise<AgentView>
   success: string
   failure: string
@@ -161,48 +173,118 @@ function useAgentMutation<TVariables>({
     mutationFn,
     onSuccess: () => {
       toast.success(success)
-      void queryClient.invalidateQueries({ queryKey: AGENTS })
+      // ⚠️ Both lists, not only the one that was showing. An agent switched off on the account page is
+      // switched off on the administration screen too, and a stale tab is how somebody concludes the
+      // switch did nothing.
+      void queryClient.invalidateQueries({ queryKey: AGENTS(surface) })
+      void queryClient.invalidateQueries({
+        queryKey: AGENTS(surface === "mine" ? "everyone" : "mine"),
+      })
     },
     onError: (error) => toast.error(apiErrorMessage(error, failure)),
   })
 }
 
-export function useSetAgentEnabled() {
+export function useSetAgentEnabled(surface: AgentSurface = "everyone") {
   return useAgentMutation<{ agentId: string; enabled: boolean }>({
-    mutationFn: ({ agentId, enabled }) => setAgentEnabled(agentId, enabled),
+    surface,
+    mutationFn: ({ agentId, enabled }) => setAgentEnabled(surface, agentId, enabled),
     success: "Agent updated",
     failure: "Could not change the agent",
   })
 }
 
-export function useRenameAgent() {
+export function useRenameAgent(surface: AgentSurface = "everyone") {
   return useAgentMutation<{ agentId: string; name: string }>({
-    mutationFn: ({ agentId, name }) => renameAgent(agentId, name),
+    surface,
+    mutationFn: ({ agentId, name }) => renameAgent(surface, agentId, name),
     success: "Agent renamed",
     failure: "Could not rename the agent",
   })
 }
 
-export function useSetAgentAuthority() {
+export function useSetAgentAuthority(surface: AgentSurface = "everyone") {
   return useAgentMutation<{ agentId: string; authority: AgentAuthority }>({
-    mutationFn: ({ agentId, authority }) => setAgentAuthority(agentId, authority),
+    surface,
+    mutationFn: ({ agentId, authority }) => setAgentAuthority(surface, agentId, authority),
     success: "Authority changed — it applies from the next call",
     failure: "Could not change what this agent may do",
   })
 }
 
-export function useRevokeAgentConnection() {
+export function useRevokeAgentConnection(surface: AgentSurface = "everyone") {
   return useAgentMutation<{ agentId: string; connectionId: string }>({
-    mutationFn: ({ agentId, connectionId }) => revokeAgentConnection(agentId, connectionId),
+    surface,
+    mutationFn: ({ agentId, connectionId }) =>
+      revokeAgentConnection(surface, agentId, connectionId),
     success: "Client disconnected",
     failure: "Could not end that client",
   })
 }
 
-export function useRevokeAllAgentConnections() {
+export function useRevokeAllAgentConnections(surface: AgentSurface = "everyone") {
   return useAgentMutation<string>({
-    mutationFn: (agentId) => revokeAllAgentConnections(agentId),
+    surface,
+    mutationFn: (agentId) => revokeAllAgentConnections(surface, agentId),
     success: "Every client of this agent was disconnected",
     failure: "Could not end those clients",
+  })
+}
+
+/** ⚠️ Your own only. See {@link discardAgent} for why there is no administrator's counterpart. */
+export function useDiscardAgent() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (agentId: string) => discardAgent(agentId),
+    onSuccess: () => {
+      toast.success("Agent discarded")
+      void queryClient.invalidateQueries({ queryKey: AGENTS("mine") })
+      void queryClient.invalidateQueries({ queryKey: AGENTS("everyone") })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, "Could not discard that agent")),
+  })
+}
+
+// ── An agent's own grants ────────────────────────────────────────────────────────────────────────
+
+const GRANTS = (surface: AgentSurface, agentId: string) => ["ai", "agents", surface, agentId, "grants"]
+
+/**
+ * What one agent holds, beside what its owner could hand it.
+ *
+ * ⚠️ **Only asked once the row is expanded.** An installation with twenty agents would otherwise fire
+ * twenty requests to fill panes nobody opened — and every one of them resolves the owner's whole
+ * effective permission set, which is the expensive half.
+ */
+export function useAgentGrants(surface: AgentSurface, agentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: GRANTS(surface, agentId),
+    queryFn: () => fetchAgentGrants(surface, agentId),
+    enabled,
+  })
+}
+
+export function useReplaceAgentGrants(surface: AgentSurface, agentId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      permissions,
+      placements,
+    }: {
+      permissions: string[]
+      placements: AgentPlacement[]
+    }) => replaceAgentGrants(surface, agentId, permissions, placements),
+    onSuccess: (view) => {
+      // ⚠️ Seeded rather than invalidated: the answer IS the response, and re-fetching would blank the
+      // pane somebody is looking at to arrive at the same thing.
+      queryClient.setQueryData(GRANTS(surface, agentId), view)
+      void queryClient.invalidateQueries({ queryKey: AGENTS(surface) })
+      toast.success("Saved — it applies from the agent's next call")
+    },
+    onError: (error) => {
+      toast.error(apiErrorMessage(error, "Could not change what this agent holds"))
+    },
   })
 }

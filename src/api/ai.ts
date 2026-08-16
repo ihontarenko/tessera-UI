@@ -258,52 +258,174 @@ export interface AgentView {
   connections: AgentConnection[]
 }
 
-export async function fetchAgents(limit = 100): Promise<AgentView[]> {
-  const response = await managementClient.get<AgentView[]>("/agents", { params: { limit } })
+/**
+ * Which agents a call is about — every one in the installation, or only the caller's own.
+ *
+ * ⚠️ **Two route families rather than a query parameter, and the difference is authorization.** An
+ * administrator's routes take an owner and are gated on one permission; a person's own re-derive the
+ * owner from the session and refuse an agent that is not theirs. Everything past that is identical, so
+ * one set of functions serves both and one component renders both.
+ */
+export type AgentSurface = "everyone" | "mine"
 
-  return response.data
+function agentsPath(surface: AgentSurface): string {
+  return surface === "mine" ? "/my-agents" : "/agents"
 }
 
-export async function setAgentEnabled(agentId: string, enabled: boolean): Promise<AgentView> {
-  const response = await managementClient.patch<AgentView>(`/agents/${agentId}/enabled`, null, {
-    params: { enabled },
+export async function fetchAgents(
+  surface: AgentSurface = "everyone",
+  limit = 100,
+): Promise<AgentView[]> {
+  const response = await managementClient.get<AgentView[]>(agentsPath(surface), {
+    // ⚠️ Not sent to the self-scoped route, which is bounded by ownership rather than by a count.
+    params: surface === "mine" ? undefined : { limit },
   })
 
   return response.data
 }
 
-export async function renameAgent(agentId: string, name: string): Promise<AgentView> {
-  const response = await managementClient.patch<AgentView>(`/agents/${agentId}/name`, { name })
+export async function setAgentEnabled(
+  surface: AgentSurface,
+  agentId: string,
+  enabled: boolean,
+): Promise<AgentView> {
+  const response = await managementClient.patch<AgentView>(
+    `${agentsPath(surface)}/${agentId}/enabled`,
+    null,
+    { params: { enabled } },
+  )
+
+  return response.data
+}
+
+export async function renameAgent(
+  surface: AgentSurface,
+  agentId: string,
+  name: string,
+): Promise<AgentView> {
+  const response = await managementClient.patch<AgentView>(
+    `${agentsPath(surface)}/${agentId}/name`,
+    { name },
+  )
 
   return response.data
 }
 
 /** ⚠️ Restricting takes effect on the next call, and an ungranted agent can then do nothing. */
 export async function setAgentAuthority(
+  surface: AgentSurface,
   agentId: string,
   authority: AgentAuthority,
 ): Promise<AgentView> {
-  const response = await managementClient.patch<AgentView>(`/agents/${agentId}/authority`, {
-    authority,
-  })
+  const response = await managementClient.patch<AgentView>(
+    `${agentsPath(surface)}/${agentId}/authority`,
+    { authority },
+  )
 
   return response.data
 }
 
 export async function revokeAgentConnection(
+  surface: AgentSurface,
   agentId: string,
   connectionId: string,
 ): Promise<AgentView> {
   const response = await managementClient.delete<AgentView>(
-    `/agents/${agentId}/connections/${connectionId}`,
+    `${agentsPath(surface)}/${agentId}/connections/${connectionId}`,
   )
 
   return response.data
 }
 
 /** Ends every client of one agent at once, without switching the agent off. */
-export async function revokeAllAgentConnections(agentId: string): Promise<AgentView> {
-  const response = await managementClient.delete<AgentView>(`/agents/${agentId}/connections`)
+export async function revokeAllAgentConnections(
+  surface: AgentSurface,
+  agentId: string,
+): Promise<AgentView> {
+  const response = await managementClient.delete<AgentView>(
+    `${agentsPath(surface)}/${agentId}/connections`,
+  )
+
+  return response.data
+}
+
+/**
+ * Throws one of your own away.
+ *
+ * ⚠️ **Only ever your own — there is no administrator's counterpart, deliberately.** Discarding
+ * somebody else's agent from an administration screen is indistinguishable, afterwards, from that
+ * person having done it, and the switch beside it stops an agent just as completely while leaving it
+ * possible to explain what happened.
+ */
+export async function discardAgent(agentId: string): Promise<void> {
+  await managementClient.delete(`/my-agents/${agentId}`)
+}
+
+// ── An agent's own grants ────────────────────────────────────────────────────────────────────────
+
+/** Somewhere an agent can be put to work — a project here, a workspace in the other product. */
+export interface AgentPlace {
+  id: string
+  label: string
+}
+
+/** A role it can be given, and whether that role has to be pinned to a place. */
+export interface AgentRole {
+  name: string
+  placeScoped: boolean
+}
+
+/** One role held in one place — `placeId` null for an installation-wide role. */
+export interface AgentPlacement {
+  roleName: string
+  placeId: string | null
+}
+
+export interface AgentHeld {
+  permissions: string[]
+  placements: AgentPlacement[]
+}
+
+/**
+ * What the agent's OWNER could hand down.
+ *
+ * ⚠️ Not what the installation defines. An agent's set is intersected with its owner's on every
+ * request, so offering more would let somebody grant into a void — and the result looks, from outside,
+ * exactly like the agent being broken.
+ */
+export interface AgentOffer {
+  permissions: string[]
+  places: AgentPlace[]
+  roles: AgentRole[]
+}
+
+export interface AgentGrantsView {
+  held: AgentHeld
+  offer: AgentOffer
+}
+
+export async function fetchAgentGrants(
+  surface: AgentSurface,
+  agentId: string,
+): Promise<AgentGrantsView> {
+  const response = await managementClient.get<AgentGrantsView>(
+    `${agentsPath(surface)}/${agentId}/grants`,
+  )
+
+  return response.data
+}
+
+/** ⚠️ The whole set, never a delta — two people editing with deltas merge into a set neither chose. */
+export async function replaceAgentGrants(
+  surface: AgentSurface,
+  agentId: string,
+  permissions: string[],
+  placements: AgentPlacement[],
+): Promise<AgentGrantsView> {
+  const response = await managementClient.put<AgentGrantsView>(
+    `${agentsPath(surface)}/${agentId}/grants`,
+    { permissions, placements },
+  )
 
   return response.data
 }

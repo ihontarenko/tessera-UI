@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, Copy, Plug, Shield, ShieldCheck, Smile, Unplug } from "lucide-react"
+import { Bot, Check, Copy, Plug, Shield, ShieldCheck, Smile, Unplug } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { AvatarPickerDialog } from "@/components/account/AvatarPickerDialog"
@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
+import { useAgents } from "@/hooks/useAiAdministration"
+import { AgentsPanel } from "@/components/administration/ai/AgentsPanel"
 import {
   type AgentAuthority,
   fetchAgentConnections,
@@ -98,11 +100,46 @@ export function AccountSettingsPage() {
         </section>
 
         <McpConnectionSection />
+        <MyAgentsSection />
         <ConnectedClientsSection />
       </div>
 
       <AvatarPickerDialog open={isPickingAvatar} onOpenChange={setPickingAvatar} />
     </>
+  )
+}
+
+/**
+ * Your own agents — the same cards the administration screen shows, over the self-scoped routes.
+ *
+ * ⚠️ **The same component, deliberately, and not a second one that looks like it.** Everything an
+ * administrator can do to an agent, its owner can do to their own: rename it, switch it off, restrict
+ * it, set what a restricted one holds, end a client. The only difference is which routes it calls and
+ * that discarding is offered here and nowhere else — so the two screens cannot drift into disagreeing
+ * about what an agent is.
+ *
+ * ⚠️ It sits **above** the connected-clients list because an agent is the thing with a switch and a
+ * client is only how one connected. The list below is the same connections a second time, from the
+ * client's side, which is the view somebody wants when they are deciding what to disconnect.
+ */
+function MyAgentsSection() {
+  const agents = useAgents("mine")
+
+  // Absent rather than empty. This page's point is the instructions above it, and a heading over
+  // nothing is a section about nothing.
+  if (!agents.data || agents.data.length === 0) {
+    return null
+  }
+
+  return (
+    <section className="space-y-3">
+      <header className="flex items-center gap-2">
+        <Bot className="size-4" />
+        <h3 className="font-medium">Your agents</h3>
+      </header>
+
+      <AgentsPanel surface="mine" />
+    </section>
   )
 }
 
