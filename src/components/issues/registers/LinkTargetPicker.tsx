@@ -33,6 +33,11 @@ export function LinkTargetPicker({
   /** The keys already gathered — filtered out rather than offered and then refused. */
   linkedIssueKeys: string[]
   isPending: boolean
+  /**
+   * ⚠️ Called with the selection, which this component keeps. Clear it by unmounting the picker (the caller
+   * closes it on success); a picker that cleared its own selection on click loses what a partial failure
+   * left behind.
+   */
   onLink: (targetIssueIds: string[]) => void
 }) {
   const [text, setText] = useState("")
@@ -80,10 +85,12 @@ export function LinkTargetPicker({
             {candidates.map((row) => (
               <li key={row.issue.id}>
                 <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted/60">
+                  {/* Frozen while the batch is in flight: the list it is describing is being changed. */}
                   <input
                     type="checkbox"
                     className="size-3.5 shrink-0 accent-current"
                     checked={selectedIssueIds.includes(row.issue.id)}
+                    disabled={isPending}
                     onChange={() => toggle(row.issue.id)}
                   />
                   <IssueTypeIcon type={row.issue.type} />
@@ -100,15 +107,16 @@ export function LinkTargetPicker({
         </ScrollArea>
       )}
 
+      {/* ⚠️ **The selection is NOT cleared here.** It used to be, synchronously, right after firing — and the
+          batch stops at the first refusal, so a partial failure wiped the very list somebody needed in order
+          to see what was left and try again. It is the caller's job to clear it once the write has actually
+          landed. */}
       <Button
         size="sm"
         variant="outline"
         className="h-7 w-full text-xs"
         disabled={selectedIssueIds.length === 0 || isPending}
-        onClick={() => {
-          onLink(selectedIssueIds)
-          setSelectedIssueIds([])
-        }}
+        onClick={() => onLink(selectedIssueIds)}
       >
         <Link2 className="mr-1 size-3.5" />
         {selectedIssueIds.length <= 1 ? "Link the selected issue" : `Link ${selectedIssueIds.length} issues`}

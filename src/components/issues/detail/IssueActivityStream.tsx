@@ -320,7 +320,6 @@ export function IssueActivityStream({
                 linked={linkedCommentId === entry.comment.id}
                 editing={editingId === entry.comment.id}
                 canReply={canComment}
-                topics={commentTopics}
                 onCopyLink={copyLink}
                 onStartEditing={startEditing}
                 onStartReplying={() => startReplying(entry.comment.id)}
@@ -358,7 +357,6 @@ export function IssueActivityStream({
                         // refuses a second; offering a button that always fails would be worse than
                         // offering none.
                         canReply={false}
-                        topics={commentTopics}
                         onCopyLink={copyLink}
                         onStartEditing={startEditing}
                         onStartReplying={() => undefined}
@@ -478,7 +476,6 @@ function CommentEntry({
   linked: boolean
   editing: boolean
   canReply: boolean
-  topics: CommentTopicResponse[]
   onCopyLink: (commentId: string) => void
   onStartEditing: (comment: Comment) => void
   onStartReplying: () => void

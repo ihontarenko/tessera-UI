@@ -36,6 +36,28 @@ const WITHOUT_PROJECT: GroupColumns = {
 const GroupColumnsContext = createContext<GroupColumns>(WITHOUT_PROJECT)
 
 /**
+ * The column layout, for a group whose heading is not an issue.
+ *
+ * ⚠️ **It exists so nothing depends on the context's default.** The Epics view's *Not in an epic* group has
+ * no heading issue, so it cannot use {@link IssueGroup} — and its rows were reading whatever the default
+ * happened to be. That worked, and would have broken silently the day the default changed, with the symptom
+ * being one group's columns out of step with every other's.
+ */
+export function IssueGroupColumns({
+  withProject = true,
+  children,
+}: {
+  withProject?: boolean
+  children: ReactNode
+}) {
+  return (
+    <GroupColumnsContext.Provider value={withProject ? WITH_PROJECT : WITHOUT_PROJECT}>
+      {children}
+    </GroupColumnsContext.Provider>
+  )
+}
+
+/**
  * A heading issue with the issues gathered under it — the shape both grouped screens are made of.
  *
  * ⚠️ **Deliberately not a card, and deliberately not a `Table`.** It was both: a bordered card holding a
@@ -136,7 +158,7 @@ export function IssueGroup({
  * progress. Finished also thickens the count's weight, so the answer survives being read at a glance in a
  * list of ten.
  */
-function ProgressMeter({ done, total }: { done: number; total: number }) {
+export function ProgressMeter({ done, total }: { done: number; total: number }) {
   const percent = Math.round((done / total) * 100)
   const isComplete = done === total
   const hasStarted = done > 0

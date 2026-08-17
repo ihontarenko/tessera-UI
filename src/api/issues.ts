@@ -228,14 +228,19 @@ export interface IssueRegisterEntry {
   linkId: string
   linkTypeId: string
   linkTypeName: string
-  /** The label for this direction — always the outward one here, since a register gathers. */
+  /**
+   * How the relationship reads **from the heading issue** — the outward label when it gathers, the inward one
+   * when it is gathered. ⚠️ Not always outward: the screen asks for one side at a time, and a list of
+   * "tracked by" rows labelled "tracks" states the relationship backwards.
+   */
   label: string
   projectKey: string | null
   issue: IssueReference
 }
 
 export interface IssueRegisterItem {
-  project: { id: string; key: string; name: string }
+  /** ⚠️ Null where the project row has gone missing under the issue — the server sends null rather than lying. */
+  project: { id: string; key: string; name: string } | null
   issue: IssueRow
   entries: IssueRegisterEntry[]
   /** How many entries are finished — derived on read from `open`, never stored. */

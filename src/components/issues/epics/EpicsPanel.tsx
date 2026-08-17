@@ -4,7 +4,12 @@ import { Layers } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/EmptyState"
 import { MemberChip } from "@/components/MemberChip"
-import { IssueGroup, IssueGroupRow } from "@/components/issues/grouping/IssueGroup"
+import {
+  IssueGroup,
+  IssueGroupColumns,
+  IssueGroupRow,
+  ProgressMeter,
+} from "@/components/issues/grouping/IssueGroup"
 import { formatStoryPoints } from "@/components/issues/issueVisuals"
 import { groupByEpic } from "@/components/issues/epics/epicGrouping"
 import { listIssues, type IssueRow } from "@/api/issues"
@@ -29,17 +34,20 @@ export function EpicsPanel({ projectId }: { projectId: string }) {
   })
 
   const groups = useMemo(() => groupByEpic(issues), [issues])
-  const epicCount = groups.filter((group) => group.epic !== null).length
 
   if (isLoading) {
     return <Skeleton className="h-64 w-full" />
   }
 
-  if (epicCount === 0) {
+  // ⚠️ **Empty means the project is empty, not that it has no epics.** This tested `epicCount === 0`, so a
+  // project with forty unfiled issues and no epic showed nothing at all — the exact "silently holds fewer
+  // issues than the project has" failure `epicGrouping` was written to avoid, produced by the screen instead
+  // of by the grouping. With no epics there is one group, *Not in an epic*, and it holds everything.
+  if (groups.length === 0) {
     return (
       <EmptyState
         icon={Layers}
-        title="No epics yet"
+        title="Nothing to gather yet"
         message="Raise an issue of an epic type and give other issues it as their parent — they will gather here."
       />
     )
@@ -73,20 +81,23 @@ export function EpicsPanel({ projectId }: { projectId: string }) {
           // *issue*, and there is no issue here. Kept in the list at all because work nobody filed is the
           // thing this screen is most useful for finding.
           // ⚠️ A transparent accent edge rather than no edge: the 4px + padding is what keeps its rows
-          // aligned with every other group's, and a coloured stripe would claim a type it has not got.
-          <section key="__loose__" className="border-l-4 border-l-transparent py-3 pl-3 first:pt-0 last:pb-0">
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-base font-semibold tracking-[-0.01em] text-muted-foreground">Not in an epic</h3>
-              <span className="text-xs font-medium tabular-nums text-foreground/80">
-                {group.done} of {group.issues.length} done
-              </span>
-            </div>
-            <ul className="mt-2">
-              {group.issues.map((issue) => (
-                <EpicMemberRow key={issue.id} issue={issue} />
-              ))}
-            </ul>
-          </section>
+          // aligned with every other group's, and a coloured stripe would claim a type it has not got. And
+          // the columns come from an explicit provider — see `IssueGroupColumns`.
+          <IssueGroupColumns key="__loose__" withProject={false}>
+            <section className="border-l-4 border-l-transparent py-3 pl-3 first:pt-0 last:pb-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <h3 className="text-base font-semibold tracking-[-0.01em] text-muted-foreground">
+                  Not in an epic
+                </h3>
+                {group.issues.length > 0 && <ProgressMeter done={group.done} total={group.issues.length} />}
+              </div>
+              <ul className="mt-2">
+                {group.issues.map((issue) => (
+                  <EpicMemberRow key={issue.id} issue={issue} />
+                ))}
+              </ul>
+            </section>
+          </IssueGroupColumns>
         ),
       )}
     </div>

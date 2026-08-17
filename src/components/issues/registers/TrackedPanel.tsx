@@ -40,7 +40,7 @@ const PREFERRED_LINK_TYPE_NAME = "Tracks"
  */
 export function TrackedPanel() {
   const [linkTypeId, setLinkTypeId] = useState(ANY_TYPE)
-  const [hasChosenType, setHasChosenType] = useState(false)
+  const [hasAppliedDefault, setHasAppliedDefault] = useState(false)
   const [inward, setInward] = useState(false)
   const [page, setPage] = useState(0)
   const [isStarting, setIsStarting] = useState(false)
@@ -51,15 +51,15 @@ export function TrackedPanel() {
   // The default is applied once the catalog arrives and never again, so a reader who deliberately chose
   // "any type" does not have their choice overwritten the next time the query refreshes.
   useEffect(() => {
-    if (hasChosenType || linkTypes.length === 0) {
+    if (hasAppliedDefault || linkTypes.length === 0) {
       return
     }
 
     const preferred = linkTypes.find((linkType) => linkType.name === PREFERRED_LINK_TYPE_NAME)
 
     setLinkTypeId(preferred ? preferred.id : ANY_TYPE)
-    setHasChosenType(true)
-  }, [linkTypes, hasChosenType])
+    setHasAppliedDefault(true)
+  }, [linkTypes, hasAppliedDefault])
 
   useEffect(() => {
     setPage(0)
@@ -94,9 +94,12 @@ export function TrackedPanel() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ANY_TYPE}>Every kind of link</SelectItem>
+            {/* ⚠️ The label of the side being read, not always the outward one. Choosing "tracked by" and
+                then seeing the filter still say "tracks" states the relationship backwards — the same
+                mistake the per-row select already avoids. */}
             {linkTypes.map((linkType) => (
               <SelectItem key={linkType.id} value={linkType.id}>
-                {linkType.outwardLabel}
+                {inward ? linkType.inwardLabel : linkType.outwardLabel}
               </SelectItem>
             ))}
           </SelectContent>
@@ -152,7 +155,9 @@ export function TrackedPanel() {
             register={register}
             linkTypes={linkTypes}
             inward={inward}
-            canEdit={canEditIn(register.project.id)}
+            // ⚠️ No project means no permission answer, so no controls — a heading whose project row has
+            // gone missing is read-only rather than optimistically editable.
+            canEdit={register.project !== null && canEditIn(register.project.id)}
           />
         ))}
       </div>
@@ -184,11 +189,16 @@ export function TrackedPanel() {
  * still exists in the data, so the fallback says which side is which without pretending the words differ.
  */
 function directionSegments(linkType: LinkType | undefined) {
-  const isAsymmetric = linkType !== undefined && linkType.outwardLabel !== linkType.inwardLabel
+  if (!linkType || linkType.outwardLabel === linkType.inwardLabel) {
+    return [
+      { value: "outward", label: "Outward" },
+      { value: "inward", label: "Inward" },
+    ]
+  }
 
   return [
-    { value: "outward", label: isAsymmetric ? (linkType as LinkType).outwardLabel : "Outward" },
-    { value: "inward", label: isAsymmetric ? (linkType as LinkType).inwardLabel : "Inward" },
+    { value: "outward", label: linkType.outwardLabel },
+    { value: "inward", label: linkType.inwardLabel },
   ]
 }
 

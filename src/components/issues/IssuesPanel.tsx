@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { ChevronDown, CircleDot } from "lucide-react"
@@ -15,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmptyState } from "@/components/EmptyState"
 import { MemberChip } from "@/components/MemberChip"
 import { EpicsPanel } from "@/components/issues/epics/EpicsPanel"
+import { useLanguage } from "@/context/LanguageContext"
 import { CreateIssueDialog } from "@/components/issues/CreateIssueDialog"
 import { IssueDetailModal } from "@/components/issues/IssueDetailModal"
 import { IssueTypeIcon, PriorityBadge, StatusPill, formatStoryPoints } from "@/components/issues/issueVisuals"
@@ -32,16 +34,34 @@ const ANY = "__any__"
  * Tracked tab's link-based grouping, and the answer to "how much of this epic is done" that the flat table
  * cannot give however it is sorted.
  *
- * The create control and the detail modal belong to the panel rather than to either view: one project, one
- * create button, and a row opens the same modal from wherever it was clicked.
+ * The create control belongs to the panel rather than to either view: one project, one create button.
+ *
+ * ⚠️ **The two views open a row differently, and that is deliberate rather than an oversight.** A List row
+ * opens the quick-view modal, which needs one project's permissions and has them here. An Epics row is a
+ * link to `/issues/{key}`, the same choice the cross-project search made: a grouped view is read as a
+ * register, and following an item out of it should land somewhere addressable that resolves its own
+ * permissions.
  */
 export function IssuesPanel({ projectId, permissions }: { projectId: string; permissions: string[] }) {
+  const { t } = useLanguage()
   const [statusId, setStatusId] = useState(ANY)
   const [issueTypeId, setIssueTypeId] = useState(ANY)
   const [priorityId, setPriorityId] = useState(ANY)
   const [assigneeMemberId, setAssigneeMemberId] = useState(ANY)
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
-  const [view, setView] = useState("list")
+
+  // ⚠️ In the URL, like every other view choice in this application — a register somebody is reading is a
+  // thing they send to somebody else. And it MERGES rather than replaces: the project page owns `?tab=`, so
+  // writing a bare `{ view }` would drop the tab and bounce the reader back to Board.
+  const [searchParameters, setSearchParameters] = useSearchParams()
+  const view = searchParameters.get("view") === "epics" ? "epics" : "list"
+
+  function openView(next: string) {
+    const merged = new URLSearchParams(searchParameters)
+
+    merged.set("view", next)
+    setSearchParameters(merged, { replace: true })
+  }
 
   const { data: issues, isLoading } = useQuery({ queryKey: ["issues", projectId], queryFn: () => listIssues(projectId) })
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
@@ -76,13 +96,13 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
   })
 
   return (
-    <Tabs value={view} onValueChange={setView} className="space-y-3">
+    <Tabs value={view} onValueChange={openView} className="space-y-3">
       {/* The create control sits on the tab strip rather than in the filter row: it belongs to the project,
           not to either view of it, and duplicating it into both would be two buttons doing one thing. */}
       <div className="flex flex-wrap items-center gap-2">
         <TabsList>
-          <TabsTrigger value="list">List</TabsTrigger>
-          <TabsTrigger value="epics">Epics</TabsTrigger>
+          <TabsTrigger value="list">{t("issues.view.list", "List")}</TabsTrigger>
+          <TabsTrigger value="epics">{t("issues.view.epics", "Epics")}</TabsTrigger>
         </TabsList>
         {canCreate && (
           <div className="ml-auto">

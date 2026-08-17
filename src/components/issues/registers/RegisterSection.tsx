@@ -92,7 +92,12 @@ export function RegisterSection({
                   linkedIssueKeys={register.entries.map((entry) => entry.issue.issueKey)}
                   isPending={linkAll.isPending}
                   onLink={(targetIssueIds) =>
-                    linkAll.mutate({ hubIssueId: hub.id, linkTypeId: addLinkTypeId, targetIssueIds })
+                    linkAll.mutate(
+                      { hubIssueId: hub.id, linkTypeId: addLinkTypeId, targetIssueIds },
+                      // Closing the picker is what clears the selection — and it only closes when the batch
+                      // landed whole. A refusal leaves it open with the checkboxes intact to try again.
+                      { onSuccess: () => setIsAdding(false) },
+                    )
                   }
                 />
               </>
@@ -114,7 +119,8 @@ export function RegisterSection({
           trailing={
             <span className="flex shrink-0 items-center gap-1">
               {/* The label is the control (TSSR-40): retyping in place rather than deleting and recreating.
-                  Outward labels only — a register's links all point away from the hub. */}
+                  The options read the side being shown, so an inward row says "tracked by" rather than
+                  claiming this issue tracks the one gathering it. */}
               {canEdit ? (
                 <LinkTypeSelect
                   value={entry.linkTypeId}
@@ -134,7 +140,9 @@ export function RegisterSection({
                   type="button"
                   // Quiet until the row is under the pointer: an × on every row of a twenty-item register
                   // reads as a list of delete buttons.
-                  className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus:opacity-100 group-hover/row:opacity-100"
+                  // ⚠️ Faint, never invisible. `opacity-0` is the defect the comment controls were rewritten
+                  // out of in this same change: a hover-only control does not exist on a touch screen.
+                  className="text-muted-foreground opacity-50 transition-opacity hover:text-destructive focus:opacity-100 group-hover/row:opacity-100"
                   onClick={() => unlink.mutate({ hubIssueId: hub.id, linkId: entry.linkId })}
                   disabled={isPending}
                   aria-label={`Remove the link to ${entry.issue.issueKey}`}
