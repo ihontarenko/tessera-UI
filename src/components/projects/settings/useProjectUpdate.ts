@@ -19,6 +19,9 @@ export function useProjectUpdate(project: ProjectResponse, successMessage: strin
     mutationFn: (changes: Partial<UpdateProjectRequest>) =>
       updateProject(project.id, {
         name: project.name,
+        // ⚠️ Sent on every save, like the rest: a section that omitted it would clear the icon while
+        // editing something else, because blank is how the icon is removed.
+        icon: project.icon,
         leadMemberId: project.lead?.id ?? "",
         issueTypeSchemeId: project.issueTypeScheme?.id ?? "",
         workflowSchemeId: project.workflowScheme?.id ?? "",
@@ -27,6 +30,10 @@ export function useProjectUpdate(project: ProjectResponse, successMessage: strin
         estimationSchemeId: project.estimationScheme?.id ?? null,
         keyStrategy: project.keyStrategy,
         keyPattern: project.keyPattern,
+        // ⚠️ Null is a value here too — it means "the wiki is not configured", which is a project's
+        // ordinary state and not a missing field. A section that omitted it would silently disconnect
+        // the wiki while editing something else.
+        wiqRootCategoryId: project.wiqRootCategoryId,
         ...changes,
       }),
     onSuccess: (updated) => {

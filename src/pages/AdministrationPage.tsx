@@ -1,15 +1,17 @@
 import { useSearchParams } from "react-router-dom"
 import { PageHeader } from "@/components/PageHeader"
-import { cn } from "@/lib/helpers"
+import { sectionNavigationItemClass } from "@/lib/sectionNavigation"
 import { useLanguage } from "@/context/LanguageContext"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
 import { ADMINISTER_AI, ADMINISTER_CONFIGURATION, READ_AI } from "@/api/permissions"
 import {
   ADMINISTRATION_SECTIONS,
+  ADMINISTRATION_SECTION_GROUPS,
   ADMINISTRATION_SECTION_LABELS,
   isAdministrationSection,
 } from "@/components/administration/administrationSections"
 import { AiSection } from "@/components/administration/AiSection"
+import { CommentTopicsSection } from "@/components/administration/CommentTopicsSection"
 import { IssueTypesSection } from "@/components/administration/IssueTypesSection"
 import { LinkTypesSection } from "@/components/administration/LinkTypesSection"
 import { PrioritiesSection } from "@/components/administration/PrioritiesSection"
@@ -48,10 +50,16 @@ export function AdministrationPage() {
   // them, whereas the AI screen's reads are gated server-side. Offering a tab that can only answer
   // 403 is worse than not offering it — and a member who arrives by URL still meets the section's own
   // refusal, which names the permission to ask for.
-  const sections = ADMINISTRATION_SECTIONS.filter((candidate) => candidate !== "ai" || canReadAi)
+  const isOffered = (candidate: string) => candidate !== "ai" || canReadAi
+
+  // A group whose every section is hidden is dropped rather than left as a heading with nothing under it.
+  const groups = ADMINISTRATION_SECTION_GROUPS.map((group) => ({
+    ...group,
+    sections: group.sections.filter(isOffered),
+  })).filter((group) => group.sections.length > 0)
 
   const requested = searchParameters.get("section")
-  const section = isAdministrationSection(requested) ? requested : sections[0]
+  const section = isAdministrationSection(requested) ? requested : ADMINISTRATION_SECTIONS[0]
 
   function openSection(next: string) {
     setSearchParameters({ section: next }, { replace: true })
@@ -72,28 +80,36 @@ export function AdministrationPage() {
           className="lg:w-52 lg:shrink-0"
           aria-label={t("administration.nav.label", "Configuration")}
         >
-          <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
-            {sections.map((candidate) => (
-              <li key={candidate}>
-                <button
-                  type="button"
-                  onClick={() => openSection(candidate)}
-                  aria-current={candidate === section ? "page" : undefined}
-                  className={cn(
-                    "w-full rounded-md px-3 py-2 text-left text-sm whitespace-nowrap transition-colors",
-                    candidate === section
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                  )}
-                >
-                  {t(
-                    ADMINISTRATION_SECTION_LABELS[candidate].key,
-                    ADMINISTRATION_SECTION_LABELS[candidate].text,
-                  )}
-                </button>
-              </li>
+          {/* Grouped down the side, one flat scrolling row across the top when there is no room for
+              headings — the grouping is worth a column and not worth a horizontal accordion. */}
+          <div className="flex gap-1 overflow-x-auto lg:flex-col lg:gap-5 lg:overflow-visible">
+            {groups.map((group) => (
+              <div key={group.id} className="flex gap-1 lg:flex-col lg:gap-1">
+                {/* px-2.5 to sit on the same left edge as the items below it. */}
+                <h2 className="hidden px-2.5 text-xs font-medium tracking-wide text-muted-foreground/70 uppercase lg:block">
+                  {t(group.label.key, group.label.text)}
+                </h2>
+
+                <ul className="flex gap-1 lg:flex-col">
+                  {group.sections.map((candidate) => (
+                    <li key={candidate}>
+                      <button
+                        type="button"
+                        onClick={() => openSection(candidate)}
+                        aria-current={candidate === section ? "page" : undefined}
+                        className={sectionNavigationItemClass(candidate === section)}
+                      >
+                        {t(
+                          ADMINISTRATION_SECTION_LABELS[candidate].key,
+                          ADMINISTRATION_SECTION_LABELS[candidate].text,
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         </nav>
 
         <div className="min-w-0 flex-1">
@@ -104,6 +120,7 @@ export function AdministrationPage() {
           {section === "priorities" && <PrioritiesSection canAdminister={canAdminister} />}
           {section === "resolutions" && <ResolutionsSection canAdminister={canAdminister} />}
           {section === "link-types" && <LinkTypesSection canAdminister={canAdminister} />}
+          {section === "comment-topics" && <CommentTopicsSection canAdminister={canAdminister} />}
           {/* Rendered whether or not the permission is held — the navigation hides this section, but a
               member who arrives by URL should meet the section's own refusal, which names what to ask
               for, rather than a blank pane. */}

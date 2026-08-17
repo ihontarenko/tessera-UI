@@ -3,6 +3,7 @@ import {
   Bot,
   ChevronDown,
   ChevronUp,
+  Pencil,
   Plug,
   Power,
   Shield,
@@ -14,11 +15,13 @@ import { formatDistanceToNow } from "date-fns"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import {
   useAgents,
   useDiscardAgent,
+  useRenameAgent,
   useRevokeAgentConnection,
   useSetAgentAuthority,
   useSetAgentEnabled,
@@ -123,7 +126,7 @@ function AgentCard({
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <Bot className="size-4 shrink-0 text-primary" />
-            <span className="truncate font-medium">{agent.name}</span>
+            <AgentName agent={agent} surface={surface} />
             <AuthorityChip authority={agent.authority} />
             {!agent.enabled && (
               <Badge variant="outline" className="text-[11px]">
@@ -226,6 +229,73 @@ function AgentCard({
         )}
       </div>
     </section>
+  )
+}
+
+/**
+ * What the agent is called, and the one place it can be corrected.
+ *
+ * <h2>⚠️ Why a rename has to be offered at all</h2>
+ *
+ * An agent is named after the client that first connected to it, and a client's name is a **claim it
+ * made about itself** during registration — one it may not have made. A client that sent nothing is
+ * called *An unnamed client*, and that string is then baked into the agent, the connections and every
+ * record either of them touches. The registry is durable now, so it stops happening; renaming is what
+ * fixes the ones it already happened to.
+ *
+ * ⚠️ Escape cancels and an empty box is refused — an agent with no name at all is a row nobody can
+ * point at, which is the state this control exists to get out of, not into.
+ */
+function AgentName({ agent, surface }: { agent: AgentView; surface: AgentSurface }) {
+  const rename = useRenameAgent(surface)
+
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState("")
+
+  function save() {
+    const wanted = draft.trim()
+
+    setEditing(false)
+
+    if (wanted !== "" && wanted !== agent.name) {
+      rename.mutate({ agentId: agent.id, name: wanted })
+    }
+  }
+
+  if (editing) {
+    return (
+      <Input
+        className="h-7 max-w-[240px] text-sm"
+        value={draft}
+        autoFocus
+        maxLength={120}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={save}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            save()
+          }
+          if (event.key === "Escape") {
+            setEditing(false)
+          }
+        }}
+      />
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      title="Rename"
+      className="group inline-flex min-w-0 items-center gap-1.5 font-medium"
+      onClick={() => {
+        setDraft(agent.name)
+        setEditing(true)
+      }}
+    >
+      <span className="truncate">{agent.name}</span>
+      <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
   )
 }
 

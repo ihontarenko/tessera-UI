@@ -63,8 +63,10 @@ export function SchemeMembershipEditor({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-muted-foreground">
+      <div className="min-w-0 space-y-1.5">
+        {/* Both headers claim the same height so the two lists start on the same line, whatever the
+            column width does to the longer sentence. */}
+        <p className="flex min-h-8 items-end text-xs font-medium text-muted-foreground">
           In this scheme — the order pickers offer them in
         </p>
 
@@ -79,30 +81,51 @@ export function SchemeMembershipEditor({
             const issueType = byId.get(issueTypeId)
 
             return (
-              <li key={issueTypeId} className="rounded-md border px-2 py-1.5">
-                <div className="flex items-center gap-2">
+              <li
+                key={issueTypeId}
+                className={
+                  issueTypeId === defaultId
+                    ? "overflow-hidden rounded-md border border-primary/40 bg-primary/[0.06] px-2 py-1.5"
+                    : "overflow-hidden rounded-md border px-2 py-1.5"
+                }
+              >
+                {/* ⚠️ The name shrinks and the controls do not, so the controls have to be square. Four
+                    text-sized buttons and a badge left this row nothing to write a name in — "Sub-task"
+                    rendered as "S…" and the last button sat outside the border. */}
+                <div className="flex items-center gap-1">
                   <IssueTypeIcon type={issueType ?? null} className="size-4 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate text-sm">{issueType?.name ?? issueTypeId}</span>
+                  <span className="min-w-0 flex-1 truncate pr-1 text-sm">
+                    {issueType?.name ?? issueTypeId}
+                  </span>
 
                   {issueTypeId === defaultId && (
-                    <Badge variant="secondary" className="shrink-0 text-[11px]">
+                    <Badge variant="secondary" className="shrink-0 text-[10px]">
                       Preselected
                     </Badge>
                   )}
 
                   <Button
                     type="button"
-                    size="sm"
+                    size="icon-sm"
                     variant="ghost"
                     aria-label={`Preselect ${issueType?.name ?? issueTypeId}`}
                     aria-pressed={issueTypeId === defaultId}
+                    title={
+                      issueTypeId === defaultId
+                        ? "Pickers offer this one first"
+                        : "Offer this one first"
+                    }
                     onClick={() => onChange(selectedIds, issueTypeId)}
                   >
-                    <Star className={issueTypeId === defaultId ? "size-4 fill-current" : "size-4"} />
+                    <Star
+                      className={
+                        issueTypeId === defaultId ? "size-4 fill-current text-primary" : "size-4"
+                      }
+                    />
                   </Button>
                   <Button
                     type="button"
-                    size="sm"
+                    size="icon-sm"
                     variant="ghost"
                     aria-label="Move up"
                     disabled={index === 0}
@@ -112,7 +135,7 @@ export function SchemeMembershipEditor({
                   </Button>
                   <Button
                     type="button"
-                    size="sm"
+                    size="icon-sm"
                     variant="ghost"
                     aria-label="Move down"
                     disabled={index === selectedIds.length - 1}
@@ -122,7 +145,7 @@ export function SchemeMembershipEditor({
                   </Button>
                   <Button
                     type="button"
-                    size="sm"
+                    size="icon-sm"
                     variant="ghost"
                     aria-label={`Remove ${issueType?.name ?? issueTypeId}`}
                     onClick={() => remove(issueTypeId)}
@@ -138,8 +161,8 @@ export function SchemeMembershipEditor({
         </ul>
       </div>
 
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-muted-foreground">Not in it</p>
+      <div className="min-w-0 space-y-1.5">
+        <p className="flex min-h-8 items-end text-xs font-medium text-muted-foreground">Not in it</p>
 
         {available.length === 0 ? (
           <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">

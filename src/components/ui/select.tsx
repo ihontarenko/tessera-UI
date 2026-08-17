@@ -142,10 +142,19 @@ function SelectGroup({ className, ...properties }: React.ComponentProps<"div">) 
   return <div data-slot="select-group" role="group" className={className} {...properties} />
 }
 
-/** What the trigger shows: the selected item's own children, or the placeholder. */
+/**
+ * What the trigger shows: the selected item's own children, or the placeholder.
+ *
+ * ⚠️ **Children override the mirroring**, and that escape hatch is what keeps a rich list usable. An
+ * item is free to be two lines — a name above a sentence explaining it — but a trigger is one line in
+ * a grid cell, and mirroring that item into it stretches the cell over its neighbour. A call site with
+ * items like that passes the short form itself; passing nothing keeps the icon-and-label behaviour the
+ * other call sites rely on.
+ */
 function SelectValue({
   placeholder,
   className,
+  children,
   ...properties
 }: React.ComponentProps<"span"> & { placeholder?: React.ReactNode }) {
   const { value, labels } = useSelect("SelectValue")
@@ -153,7 +162,7 @@ function SelectValue({
 
   return (
     <span data-slot="select-value" className={className} {...properties}>
-      {selected ? selected.label : placeholder}
+      {children ?? (selected ? selected.label : placeholder)}
     </span>
   )
 }

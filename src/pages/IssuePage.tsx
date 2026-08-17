@@ -1,15 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
-import { Trash2 } from "lucide-react"
+import { Archive, ArchiveRestore, Trash2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PageHeader } from "@/components/PageHeader"
 import { IssueTypeIcon } from "@/components/issues/issueVisuals"
 import { IssueDetailPanel } from "@/components/issues/detail/IssueDetailPanel"
 import { issueByKeyQueryKey } from "@/components/issues/detail/useIssueEditing"
+import { useIssueArchiving } from "@/hooks/useIssueArchiving"
 import { deleteIssue, getIssueByKey } from "@/api/issues"
-import { DELETE_ISSUE } from "@/api/permissions"
+import { DELETE_ISSUE, EDIT_ISSUE } from "@/api/permissions"
 import { getProject } from "@/api/projects"
 import { apiErrorMessage } from "@/api/errors"
 
@@ -37,6 +39,8 @@ export function IssuePage() {
     queryFn: () => getProject(issue?.projectId as string),
     enabled: issue != null,
   })
+
+  const { archive, unarchive } = useIssueArchiving()
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteIssue(issue?.id as string),
@@ -79,6 +83,9 @@ export function IssuePage() {
           <span className="flex items-center gap-2">
             <IssueTypeIcon type={issue.type} />
             <span className="font-display text-lg font-semibold tracking-[-0.02em]">{issue.issueKey}</span>
+            {/* Said here rather than in the rail: an archived issue is off every list, so somebody who
+                arrived by a link is owed the reason it cannot be found where they expect it. */}
+            {issue.archivedAt !== null && <Badge variant="secondary">Archived</Badge>}
           </span>
         }
         description={
@@ -89,17 +96,44 @@ export function IssuePage() {
           )
         }
         actions={
-          permissions.includes(DELETE_ISSUE) && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-destructive hover:text-destructive"
-              onClick={() => deleteMutation.mutate()}
-              disabled={deleteMutation.isPending}
-            >
-              <Trash2 className="mr-1 size-3.5" /> Delete
-            </Button>
-          )
+          <span className="flex items-center gap-1">
+            {/* Offered beside Delete because they are the two ways work leaves a screen — and the
+                cheap, reversible one is the one shown first. Archiving is refused on an open issue,
+                so the refusal explains itself rather than the button being hidden on a guess about
+                what the workflow will allow. */}
+            {permissions.includes(EDIT_ISSUE) &&
+              (issue.archivedAt === null ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => archive.mutate(issue.id)}
+                  disabled={archive.isPending}
+                >
+                  <Archive className="mr-1 size-3.5" /> Archive
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => unarchive.mutate(issue.id)}
+                  disabled={unarchive.isPending}
+                >
+                  <ArchiveRestore className="mr-1 size-3.5" /> Restore
+                </Button>
+              ))}
+
+            {permissions.includes(DELETE_ISSUE) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 className="mr-1 size-3.5" /> Delete
+              </Button>
+            )}
+          </span>
         }
       />
 

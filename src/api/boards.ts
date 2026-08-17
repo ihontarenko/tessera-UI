@@ -34,6 +34,13 @@ export interface BoardCard {
   priorityId: string | null
   /** Nearest Epic ancestor's key, resolved server-side; `null` gathers the card in the "No epic" lane. */
   epicKey: string | null
+  /**
+   * Something unresolved is holding this card up (TSSR-41).
+   *
+   * ⚠️ A flag, not the keys — a board is where somebody decides what to pick up, and that decision
+   * needs "not this one", not a list to read. The keys are one click away on the issue.
+   */
+  blocked: boolean
   /** Recorded completion time the done-threshold measures against (ticket 06) — never `updatedAt`. */
   resolvedAt: string | null
 }

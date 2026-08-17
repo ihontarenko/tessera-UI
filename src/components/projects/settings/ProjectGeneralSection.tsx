@@ -6,9 +6,12 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MemberChip } from "@/components/MemberChip"
+import { ProjectIcon } from "@/components/projects/ProjectIcon"
+import { ProjectIconPicker } from "@/components/projects/ProjectIconPicker"
 import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
 import { DetailRow, SettingsSection } from "@/components/projects/settings/SettingsSection"
 import { IssueKeyFormatEditor } from "@/components/projects/settings/IssueKeyFormatEditor"
+import { WiqRootPicker } from "@/components/projects/WiqRootPicker"
 import { useProjectUpdate } from "@/components/projects/settings/useProjectUpdate"
 import { searchMembers } from "@/api/members"
 import type { ProjectResponse } from "@/api/projects"
@@ -31,13 +34,18 @@ export function ProjectGeneralSection({
 }) {
   const { t } = useLanguage()
   const [name, setName] = useState(project.name)
+  const [icon, setIcon] = useState(project.icon ?? "")
   const [leadMemberId, setLeadMemberId] = useState(project.lead?.id ?? "")
 
   const { data: members = [] } = useQuery({ queryKey: ["members", "all"], queryFn: () => searchMembers() })
   const mutation = useProjectUpdate(project, t("project.settings.general.saved", "Project updated"))
 
   const trimmedName = name.trim()
-  const unchanged = trimmedName === project.name && leadMemberId === (project.lead?.id ?? "")
+  const trimmedIcon = icon.trim()
+  const unchanged =
+    trimmedName === project.name &&
+    trimmedIcon === (project.icon ?? "") &&
+    leadMemberId === (project.lead?.id ?? "")
   const canSubmit = trimmedName.length > 0 && leadMemberId.length > 0 && !unchanged
 
   return (
@@ -52,7 +60,9 @@ export function ProjectGeneralSection({
             onSubmit={(event) => {
               event.preventDefault()
               if (canSubmit) {
-                mutation.mutate({ name: trimmedName, leadMemberId })
+                // ⚠️ Empty travels as empty, not as undefined — clearing the icon is a save, and an
+                // omitted field would leave the old one in place with the form showing it gone.
+                mutation.mutate({ name: trimmedName, icon: trimmedIcon, leadMemberId })
               }
             }}
           >
@@ -60,6 +70,8 @@ export function ProjectGeneralSection({
               <Label htmlFor="settings-name">{t("project.settings.general.name", "Name")}</Label>
               <Input id="settings-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={128} />
             </div>
+
+            <ProjectIconPicker icon={icon} onChange={setIcon} inputId="settings-icon" />
 
             <div className="space-y-1.5">
               <Label htmlFor="settings-lead">{t("project.settings.general.lead", "Lead")}</Label>
@@ -88,6 +100,20 @@ export function ProjectGeneralSection({
           <IssueKeyFormatEditor project={project} canAdminister={canAdminister} />
 
           <Separator />
+
+          {/* Which WiQ section this project's wiki lives in (WIQ-10; WIQ-1 §3).
+              ⚠️ The pages are stored in another product, and who may read them is decided there —
+              choosing a root here grants nobody anything. See WiqRootPicker, which also handles WiQ
+              being unreachable, since that is a normal state rather than an error. */}
+          <div className="space-y-1.5">
+            <Label>{t("project.settings.general.wikiRoot", "Wiki section (WiQ)")}</Label>
+            <WiqRootPicker
+              value={project.wiqRootCategoryId}
+              onChange={(wiqRootCategoryId) => mutation.mutate({ wiqRootCategoryId })}
+            />
+          </div>
+
+          <Separator />
         </>
       )}
 
@@ -96,6 +122,9 @@ export function ProjectGeneralSection({
           <span className="font-mono">{project.key}</span>
         </DetailRow>
         <DetailRow label={t("project.settings.general.name", "Name")}>{project.name}</DetailRow>
+        <DetailRow label={t("project.settings.general.icon", "Icon")}>
+          <ProjectIcon icon={project.icon} size="lg" />
+        </DetailRow>
         <DetailRow label={t("project.settings.general.leadLabel", "Lead")}>
           <MemberChip member={project.lead} />
         </DetailRow>
@@ -115,6 +144,18 @@ export function ProjectGeneralSection({
         </DetailRow>
         <DetailRow label={t("project.settings.general.keyStrategy", "Key strategy")}>
           <span className="font-mono text-xs">{project.keyStrategy}</span>
+        </DetailRow>
+        {/* ⚠️ Two empty states, not one, and they are different situations (WIQ-1 §3): an
+            administrator sees the picker above and is being asked to do something; everybody else sees
+            this, which says the wiki is not configured rather than that it is empty. */}
+        <DetailRow label={t("project.settings.general.wikiRoot", "Wiki section (WiQ)")}>
+          {project.wiqRootCategoryId ? (
+            <span className="font-mono text-xs">{project.wiqRootCategoryId}</span>
+          ) : (
+            <span className="text-muted-foreground">
+              {t("project.settings.general.wikiNotConfigured", "The wiki is not configured.")}
+            </span>
+          )}
         </DetailRow>
       </div>
 

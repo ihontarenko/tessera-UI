@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { AlertTriangle, ArrowRight, Flag, Plus, Trash2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StatusPill } from "@/components/issues/issueVisuals"
+import { sectionNavigationItemClass } from "@/lib/sectionNavigation"
 import {
   AdministrationSection,
   CatalogDialog,
@@ -80,11 +82,7 @@ export function WorkflowsSection({ canAdminister }: { canAdminister: boolean }) 
                   type="button"
                   onClick={() => setSelectedId(workflow.id)}
                   aria-current={workflow.id === selected?.id ? "page" : undefined}
-                  className={
-                    workflow.id === selected?.id
-                      ? "w-full rounded-md bg-primary px-3 py-2 text-left text-sm whitespace-nowrap text-primary-foreground"
-                      : "w-full rounded-md px-3 py-2 text-left text-sm whitespace-nowrap text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                  }
+                  className={sectionNavigationItemClass(workflow.id === selected?.id)}
                 >
                   {workflow.name}
                   <span className="ml-1.5 text-xs opacity-70">{workflow.transitions.length}</span>
@@ -534,6 +532,17 @@ function AddTransitionRow({
       <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
         Cancel
       </Button>
+
+      {/* The picker offers the whole catalog, so a status missing from it does not exist yet — and the
+          screen that creates one is elsewhere. Without this line the honest conclusion from a short list
+          is that the workflow, rather than the installation, is what limits the choice. */}
+      <p className="basis-full text-xs text-muted-foreground">
+        Only these statuses exist.{" "}
+        <Link to="/administration?section=statuses" className="underline underline-offset-2">
+          Create another one
+        </Link>{" "}
+        and it appears here.
+      </p>
     </form>
   )
 }

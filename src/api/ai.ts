@@ -220,6 +220,106 @@ export async function discardProviderConfiguration(id: string): Promise<void> {
   await managementClient.delete(`/configurations/${id}`)
 }
 
+// ── Preferences ──────────────────────────────────────────────────────────────────────────────────
+//
+// One route pair for every setting rather than one per setting: a preference is a declared
+// name, some prose and a string, so a second one costs a bean in the backend and nothing here.
+
+/**
+ * One stored wording of a setting — a whole prompt, with a name somebody gave it.
+ *
+ * ⚠️ **Several per setting, one in force**, deliberately the shape a provider configuration already
+ * has: keeping the long prompt while trying the short one, and switching back with a press rather than
+ * a paste. The assistant reads the one in force and nothing else.
+ */
+export interface AiPreferenceValue {
+  id: string
+  label: string
+  value: string
+  inForce: boolean
+  /**
+   * Which wording this build ships that this row started as, or null for one somebody wrote here.
+   *
+   * ⚠️ Provenance only — nothing reads it at runtime. What it buys is *put this back to what the build
+   * ships*, which is the difference between experimenting and losing the original.
+   */
+  shippedKey: string | null
+  /** Whether the text still equals what the build ships for that wording. Computed by the server. */
+  asShipped: boolean
+  createdAt: string
+  changedAt: string
+}
+
+/**
+ * One declared setting with everything stored for it.
+ *
+ * ⚠️ **Never empty in practice.** A setting with no rows is seeded from what the product ships on the
+ * first read, so opening this screen finds the shipped wordings rather than an empty table.
+ */
+export interface AiPreference {
+  name: string
+  title: string
+  description: string
+  /** Whether a screen should offer a text area rather than one line. Presentation only. */
+  multiline: boolean
+  values: AiPreferenceValue[]
+}
+
+/** What somebody typed, on the way in. */
+export interface AiPreferenceDraft {
+  label: string
+  value: string
+}
+
+/** ⚠️ Reading seeds: a setting with no rows is filled from what the build ships before this answers. */
+export async function fetchAiPreferences(): Promise<AiPreference[]> {
+  const response = await managementClient.get<AiPreference[]>("/preferences")
+
+  return response.data
+}
+
+/** A new wording, idle — putting it in force is a second request. */
+export async function addAiPreferenceValue(
+  name: string,
+  draft: AiPreferenceDraft,
+): Promise<AiPreferenceValue> {
+  const response = await managementClient.post<AiPreferenceValue>(`/preferences/${name}`, draft)
+
+  return response.data
+}
+
+export async function changeAiPreferenceValue(
+  id: string,
+  draft: AiPreferenceDraft,
+): Promise<AiPreferenceValue> {
+  const response = await managementClient.put<AiPreferenceValue>(`/preferences/values/${id}`, draft)
+
+  return response.data
+}
+
+/** ⚠️ Takes whatever was in force out of it — one operation, not two. */
+export async function putAiPreferenceValueInForce(id: string): Promise<AiPreferenceValue> {
+  const response = await managementClient.patch<AiPreferenceValue>(
+    `/preferences/values/${id}/in-force`,
+  )
+
+  return response.data
+}
+
+/** Back to the text this build ships for it. ⚠️ Refuses a wording nobody seeded. */
+export async function restoreAiPreferenceValue(id: string): Promise<AiPreferenceValue> {
+  const response = await managementClient.post<AiPreferenceValue>(
+    `/preferences/values/${id}/shipped`,
+  )
+
+  return response.data
+}
+
+/** ⚠️ Refuses the one in force, so the assistant is never left with nothing to be told. */
+export async function discardAiPreferenceValue(id: string): Promise<void> {
+  await managementClient.delete(`/preferences/values/${id}`)
+}
+
 // ── Agents ───────────────────────────────────────────────────────────────────────────────────────
 
 /**

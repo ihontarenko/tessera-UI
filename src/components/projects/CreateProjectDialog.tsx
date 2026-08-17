@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ProjectIconPicker } from "@/components/projects/ProjectIconPicker"
 import { createProject } from "@/api/projects"
 import type { BoardScopeStrategy } from "@/api/sprints"
 import { searchMembers } from "@/api/members"
@@ -39,6 +40,7 @@ export function CreateProjectDialog() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [key, setKey] = useState("")
+  const [icon, setIcon] = useState("")
   const [boardScopeStrategy, setBoardScopeStrategy] = useState<BoardScopeStrategy>("ACTIVE_SPRINT")
   const [leadMemberId, setLeadMemberId] = useState<string>(SELF_LEAD)
 
@@ -59,6 +61,7 @@ export function CreateProjectDialog() {
       createProject({
         name: name.trim(),
         key,
+        icon: icon.trim(),
         boardScopeStrategy,
         leadMemberId: leadMemberId === SELF_LEAD ? null : leadMemberId,
       }),
@@ -75,6 +78,7 @@ export function CreateProjectDialog() {
     setOpen(false)
     setName("")
     setKey("")
+    setIcon("")
     setBoardScopeStrategy("ACTIVE_SPRINT")
     setLeadMemberId(SELF_LEAD)
   }
@@ -130,6 +134,10 @@ export function CreateProjectDialog() {
               <p className="text-xs text-destructive">Must be uppercase, starting with a letter.</p>
             )}
           </div>
+
+          {/* Offered at creation rather than only in settings: a project gets its face while somebody
+              is still thinking about what it is, and afterwards nobody goes back for it. */}
+          <ProjectIconPicker icon={icon} onChange={setIcon} inputId="project-icon" />
 
           <div className="space-y-1.5">
             <Label htmlFor="project-planning">Planning</Label>

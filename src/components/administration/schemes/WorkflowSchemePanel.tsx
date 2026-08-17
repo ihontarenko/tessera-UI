@@ -254,7 +254,7 @@ export function WorkflowSchemePanel({
                     </Select>
                     <Button
                       type="button"
-                      size="sm"
+                      size="icon-sm"
                       variant="ghost"
                       aria-label="Remove override"
                       onClick={() =>

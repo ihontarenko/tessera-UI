@@ -21,6 +21,7 @@ import type {
   ToolbarLayout,
 } from "@/markdown"
 import { issueReferencePlugin } from "@/components/markdown/issueReference"
+import { liveBlockPlugin } from "@/components/markdown/liveBlocks"
 import { TESSERA_MARKDOWN_GRAMMAR } from "@/lib/codemirror/markdownGrammar"
 import { highlightToHtml, resolveParser } from "@/lib/codemirror/staticHighlight"
 
@@ -69,6 +70,7 @@ function markdownGrammarPlugin(): MarkdownPlugin<unknown> {
  * | `math` | `$$…$$`, because estimates and formulas turn up in specs |
  * | `mermaid` | `;;;mermaid` — a flow somebody would otherwise draw elsewhere and paste as an image |
  * | `issue-reference` | `TES-42` becomes a live link — the one construct this product added |
+ * | `live-blocks` | `:::issue`, `:::sprint`, `:::board` — a document that reads its own tracker |
  * | `codeHighlight` | a fenced block reads as code rather than as grey text |
  *
  * <p>Not installed, and each for a reason rather than an oversight: `wavedrom` and `jme` are
@@ -87,6 +89,12 @@ export const TESSERA_READER_PLUGINS: readonly MarkdownPlugin<undefined>[] = [
   mermaidPlugin(),
   codeHighlightPlugin({ highlight: tesseraHighlighter }),
   issueReferencePlugin(),
+  // ⚠️ In the READER list, not just the writing one, and installed everywhere rather than only where it
+  // can resolve. A `:::issue` typed into an issue description has to keep being recognised as a block —
+  // it renders a notice saying live blocks resolve on a wiki page. Left uninstalled it would fall
+  // through to grey text, which is the failure this library's portability rule exists to avoid, and it
+  // would make the same line mean two different things depending on which field it sits in.
+  liveBlockPlugin(),
 ] as readonly MarkdownPlugin<undefined>[]
 
 /**
@@ -101,6 +109,20 @@ export const TESSERA_BLOCKS: readonly BlockDescriptor[] = [
   { name: "tip", label: "Tip callout", hint: "message text", example: "Run it against staging first." },
   { name: "warning", label: "Warning callout", hint: "message text", example: "Breaks every saved filter." },
   { name: "info", label: "Info callout", hint: "message text", example: "Agreed in the 3 March review." },
+
+  // The live ones (TSSR-18). ⚠️ Offered everywhere the palette is, including in an issue description
+  // where they will not resolve — the palette is one static list per application, and the alternative
+  // is hiding a construct that would then render an explanatory notice nobody was offered a way to
+  // produce.
+  //
+  // ⚠️ **Static, and the library is why.** `blockPickerPlugin` takes its entries at construction and
+  // the plugin list must be stable across renders, so a palette fetched from the server cannot drive
+  // it. That costs nothing today because Tessera's three resolvers are unconditional — there is no
+  // configuration that switches one off. The day there is, `PageBlockService` grows a `catalog()`,
+  // `PageBlockResolver` grows a `describe()`, and this list becomes a fetch.
+  { name: "issue", label: "Issue", hint: "an issue key", example: "TSSR-4" },
+  { name: "sprint", label: "Sprint", hint: "a project key, optionally /sprint name", example: "TSSR" },
+  { name: "board", label: "Board", hint: "a project key", example: "TSSR" },
 ]
 
 /** Scaffolds for the two constructs nobody remembers the syntax of. */

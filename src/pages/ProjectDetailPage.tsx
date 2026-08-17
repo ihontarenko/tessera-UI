@@ -3,11 +3,14 @@ import { useParams, useSearchParams } from "react-router-dom"
 import { PageHeader } from "@/components/PageHeader"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ProjectIcon } from "@/components/projects/ProjectIcon"
 import { ProjectSettingsPanel } from "@/components/projects/ProjectSettingsPanel"
 import { IssuesPanel } from "@/components/issues/IssuesPanel"
 import { BoardPanel } from "@/components/board/BoardPanel"
 import { BacklogPanel } from "@/components/backlog/BacklogPanel"
+import { ShippedPanel } from "@/components/shipped/ShippedPanel"
 import { ReportsPanel } from "@/components/reports/ReportsPanel"
+import { WikiPanel } from "@/components/wiki/WikiPanel"
 import { useLanguage } from "@/context/LanguageContext"
 import { ADMINISTER_PROJECT, getProject } from "@/api/projects"
 import {
@@ -65,6 +68,7 @@ export function ProjectDetailPage() {
       <PageHeader
         title={
           <span className="flex items-center gap-2">
+            <ProjectIcon icon={project.icon} size="lg" />
             <span className="font-mono text-sm text-muted-foreground">{project.key}</span>
             <span className="font-display text-lg font-semibold tracking-[-0.02em]">{project.name}</span>
           </span>
@@ -93,11 +97,19 @@ export function ProjectDetailPage() {
           <BacklogPanel projectId={project.id} permissions={project.myPermissions} />
         </TabsContent>
 
+        <TabsContent value="shipped">
+          <ShippedPanel projectId={project.id} permissions={project.myPermissions} />
+        </TabsContent>
+
         {tabs.includes("reports") && (
           <TabsContent value="reports">
             <ReportsPanel projectId={project.id} permissions={project.myPermissions} />
           </TabsContent>
         )}
+
+        <TabsContent value="wiki">
+          <WikiPanel projectId={project.id} permissions={project.myPermissions} />
+        </TabsContent>
 
         <TabsContent value="settings">
           <ProjectSettingsPanel

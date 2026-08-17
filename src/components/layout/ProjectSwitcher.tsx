@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useMatch, useNavigate } from "react-router-dom"
-import { Check, FolderKanban } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { ProjectIcon } from "@/components/projects/ProjectIcon"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { listProjects } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
-import { readLastProjectId, writeLastProjectId } from "@/lib/lastProject"
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId"
 
 /**
  * Moving between projects in one click (ticket 09).
@@ -29,27 +30,15 @@ import { readLastProjectId, writeLastProjectId } from "@/lib/lastProject"
 export function ProjectSwitcher() {
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const projectRoute = useMatch("/projects/:projectId")
   const [filter, setFilter] = useState("")
 
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: listProjects })
 
-  const routeProjectId = projectRoute?.params.projectId ?? null
-  // Read once, on mount. After that the route is the answer, and re-reading storage every render would
-  // be a side effect in a render for a value that cannot have changed under us.
-  const [rememberedProjectId, setRememberedProjectId] = useState(readLastProjectId)
-
-  // Being in a project is what makes it the last one — not opening the switcher, and not a project
-  // that has since been deleted or left, which is why the remembered id is only ever used to look one
-  // up in the member's own list.
-  useEffect(() => {
-    if (routeProjectId) {
-      writeLastProjectId(routeProjectId)
-      setRememberedProjectId(routeProjectId)
-    }
-  }, [routeProjectId])
-
-  const currentProjectId = routeProjectId ?? rememberedProjectId
+  // The sidebar's Issues entry resolves the same project this switcher labels (TSSR-23), so the
+  // resolution lives in one hook rather than in two components that could drift apart. A remembered id
+  // is only ever used to look a project up in the member's own list, so one since deleted or left
+  // simply finds nothing.
+  const currentProjectId = useCurrentProjectId()
   const currentProject = projects.find((project) => project.id === currentProjectId) ?? null
 
   const matches = useMemo(() => {
@@ -71,7 +60,7 @@ export function ProjectSwitcher() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton tooltip={t("nav.switchProject", "Switch project")}>
-              <FolderKanban className="size-4" />
+              <ProjectIcon icon={currentProject?.icon ?? null} />
               <span className="truncate">
                 {currentProject?.name ?? t("nav.switchProject", "Switch project")}
               </span>
@@ -108,6 +97,12 @@ export function ProjectSwitcher() {
                 onClick={() => navigate(`/projects/${project.id}`)}
                 className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
               >
+                {/* Fixed width so the keys below it still line up — an emoji and the fallback glyph
+                    are not the same width, and a ragged left edge is what a list of icons costs
+                    otherwise. */}
+                <span className="flex w-4 shrink-0 justify-center">
+                  <ProjectIcon icon={project.icon} size="sm" />
+                </span>
                 <span className="font-mono text-xs text-muted-foreground">{project.key}</span>
                 <span className="truncate">{project.name}</span>
                 {project.id === currentProjectId && <Check className="ml-auto size-4 shrink-0" />}

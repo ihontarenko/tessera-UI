@@ -1,7 +1,8 @@
 import { Fragment, useMemo, useState } from "react"
 import type { DragEvent } from "react"
+import { Ban } from "lucide-react"
 import { MemberChip } from "@/components/MemberChip"
-import { IssueTypeIcon, PriorityBadge } from "@/components/issues/issueVisuals"
+import { IssueTypeIcon, PriorityBadge, issueTypeBorderClass } from "@/components/issues/issueVisuals"
 import type { Swimlane } from "@/components/board/swimlanes"
 import { useLanguage } from "@/context/LanguageContext"
 import type { BoardCard, BoardColumnView, BoardMoveRequest } from "@/api/boards"
@@ -272,7 +273,16 @@ function IssueCard({
       onDragOver={onDragOver}
       onClick={() => onSelect(card.id)}
       className={cn(
-        "flex w-full flex-col gap-2 rounded-md border bg-background p-2.5 text-left shadow-sm transition-colors hover:border-primary/40",
+        // The accent edge is the issue type's own colour (TSSR-22) — the same hue its icon is drawn
+        // in, so a column reads as a mix of bugs and stories without anybody reading a word.
+        //
+        // ⚠️ The hover recolours three sides, not four. `hover:border-primary/40` on its own repaints
+        // the left edge too and wipes the accent out exactly when somebody is pointing at the card.
+        //
+        // pl-2 against p-2.5 keeps the text where it was: the edge grows from 1px to 4px, so the
+        // padding gives the 3px back rather than letting every card shift on its own.
+        "flex w-full flex-col gap-2 rounded-md border border-l-4 bg-background p-2.5 pl-2 text-left shadow-sm transition-colors hover:border-y-primary/40 hover:border-r-primary/40",
+        issueTypeBorderClass(card.type),
         draggable && "cursor-grab active:cursor-grabbing",
       )}
     >
@@ -280,6 +290,13 @@ function IssueCard({
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5">
           <IssueTypeIcon type={card.type} />
+          {/* ⚠️ A mark, not a list (TSSR-41). This is the screen where somebody decides what to pick
+              up next, and that decision needs "not this one" — the keys are on the issue itself. */}
+          {card.blocked && (
+            <Ban className="size-3.5 shrink-0 text-warning" aria-label="Blocked">
+              <title>Something unresolved is holding this up</title>
+            </Ban>
+          )}
           <span className="font-mono text-xs text-muted-foreground">{card.issueKey}</span>
         </span>
         <div className="flex items-center gap-2">

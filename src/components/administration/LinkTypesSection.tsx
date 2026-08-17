@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   AdministrationSection,
@@ -19,6 +20,7 @@ import {
   fetchLinkTypeUsage,
   listLinkTypes,
   updateLinkType,
+  type LinkTypeEffect,
   type LinkTypeResponse,
 } from "@/api/configurationAdministration"
 
@@ -65,6 +67,9 @@ export function LinkTypesSection({ canAdminister }: { canAdminister: boolean }) 
             <TableHead>Name</TableHead>
             <TableHead>Outward</TableHead>
             <TableHead>Inward</TableHead>
+            {/* Which types actually do something. An installation with fifteen link types and one that
+                blocks should be able to see that without opening each dialog. */}
+            <TableHead className="w-40">Effect</TableHead>
             <TableHead className="w-24">Links</TableHead>
             {canAdminister && <TableHead className="w-32" />}
           </TableRow>
@@ -75,6 +80,13 @@ export function LinkTypesSection({ canAdminister }: { canAdminister: boolean }) 
               <TableCell className="font-medium">{linkType.name}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{linkType.outwardLabel}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{linkType.inwardLabel}</TableCell>
+              <TableCell className="text-sm">
+                {linkType.effect === "NONE" ? (
+                  <span className="text-muted-foreground">Informational</span>
+                ) : (
+                  <span className="font-medium">{LINK_TYPE_EFFECTS[linkType.effect].label}</span>
+                )}
+              </TableCell>
               <TableCell className="text-sm">{counts?.linksByLinkType[linkType.id] ?? 0}</TableCell>
               {canAdminister && (
                 <TableCell>
@@ -106,6 +118,32 @@ export function LinkTypesSection({ canAdminister }: { canAdminister: boolean }) 
   )
 }
 
+/**
+ * What each effect means, in the words an administrator picking one needs.
+ *
+ * ⚠️ **Every hint is written from the inward side** — the issue that reads "is blocked by" — because
+ * that is the end the effect lands on. In "A blocks B" it is B that cannot proceed, and a label that
+ * did not say so would leave everybody guessing which half of the pair they were configuring.
+ */
+const LINK_TYPE_EFFECTS: Record<LinkTypeEffect, { label: string; hint: string }> = {
+  NONE: {
+    label: "Informational",
+    hint: "The product reads it and does nothing. It tells a reader where to look.",
+  },
+  WARNS_START: {
+    label: "Warns before starting",
+    hint: "Starting the issue on the inward end warns while the other end is still open, and proceeds.",
+  },
+  BLOCKS_START: {
+    label: "Blocks starting",
+    hint: "The issue on the inward end cannot be started while the other end is still open.",
+  },
+  BLOCKS_DONE: {
+    label: "Blocks closing",
+    hint: "The issue on the inward end cannot be closed while the other end is still open.",
+  },
+}
+
 function LinkTypeDialog({
   linkType,
   onClose,
@@ -118,6 +156,7 @@ function LinkTypeDialog({
   const [name, setName] = useState(linkType?.name ?? "")
   const [outwardLabel, setOutwardLabel] = useState(linkType?.outwardLabel ?? "")
   const [inwardLabel, setInwardLabel] = useState(linkType?.inwardLabel ?? "")
+  const [effect, setEffect] = useState<LinkTypeEffect>(linkType?.effect ?? "NONE")
 
   const save = useCatalogMutation({
     mutationFn: () => {
@@ -125,6 +164,7 @@ function LinkTypeDialog({
         name: name.trim(),
         outwardLabel: outwardLabel.trim(),
         inwardLabel: inwardLabel.trim(),
+        effect,
       }
 
       return linkType ? updateLinkType(linkType.id, request) : createLinkType(request)
@@ -189,6 +229,25 @@ function LinkTypeDialog({
           maxLength={64}
         />
         <p className="text-xs text-muted-foreground">How it reads from the other end.</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="link-type-effect">Effect</Label>
+        <Select value={effect} onValueChange={(value) => setEffect(value as LinkTypeEffect)}>
+          <SelectTrigger id="link-type-effect">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(LINK_TYPE_EFFECTS) as LinkTypeEffect[]).map((candidate) => (
+              <SelectItem key={candidate} value={candidate}>
+                {LINK_TYPE_EFFECTS[candidate].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {/* Written from the inward side, because that is the end the effect lands on — and saying so
+            beside the control is cheaper than expecting anybody to work it out from "blocks". */}
+        <p className="text-xs text-muted-foreground">{LINK_TYPE_EFFECTS[effect].hint}</p>
       </div>
 
       {linkType && <RenameWarning currentName={linkType.name} nextName={name} />}

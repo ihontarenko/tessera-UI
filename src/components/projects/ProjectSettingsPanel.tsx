@@ -7,7 +7,7 @@ import { ProjectWorkflowSection } from "@/components/projects/settings/ProjectWo
 import { SettingsSection } from "@/components/projects/settings/SettingsSection"
 import type { ProjectResponse } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
-import { cn } from "@/lib/helpers"
+import { sectionNavigationItemClass } from "@/lib/sectionNavigation"
 import { PROJECT_SETTINGS_SECTIONS, type ProjectSettingsSection } from "@/lib/projectStyle"
 
 /** The label for each section, in the order `PROJECT_SETTINGS_SECTIONS` fixes. */
@@ -50,12 +50,7 @@ export function ProjectSettingsPanel({
                 type="button"
                 onClick={() => onSectionChange(candidate)}
                 aria-current={candidate === section ? "page" : undefined}
-                className={cn(
-                  "w-full whitespace-nowrap rounded-md px-3 py-2 text-left text-sm transition-colors",
-                  candidate === section
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
+                className={sectionNavigationItemClass(candidate === section)}
               >
                 {t(SECTION_LABELS[candidate].key, SECTION_LABELS[candidate].text)}
               </button>

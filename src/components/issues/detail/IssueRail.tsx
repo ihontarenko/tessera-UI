@@ -4,19 +4,29 @@ import { Link } from "react-router-dom"
 import { Link2, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { MemberChip } from "@/components/MemberChip"
 import { SegmentedControl } from "@/components/SegmentedControl"
-import { PriorityBadge } from "@/components/issues/issueVisuals"
+import { PriorityBadge, StatusPill } from "@/components/issues/issueVisuals"
 import { StoryPointsControl } from "@/components/issues/StoryPointsSelect"
 import { InlineSelect } from "@/components/inline/InlineSelect"
 import { InlineTextField } from "@/components/inline/InlineTextField"
 import { IssueActivityStream } from "@/components/issues/detail/IssueActivityStream"
 import { IssueTransitionAction } from "@/components/issues/detail/IssueTransitionAction"
 import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"
-import { fetchCatalog, fetchLinkTypes, listIssues, type IssueDetail, type IssueRef } from "@/api/issues"
+import {
+  fetchCatalog,
+  fetchLinkTypes,
+  listIssues,
+  searchIssues,
+  type IssueDetail,
+  type IssueLinkView,
+  type IssueReference,
+} from "@/api/issues"
 import { searchMembers } from "@/api/members"
 import { memberName } from "@/lib/memberDisplay"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useEstimationScheme } from "@/hooks/useEstimationScheme"
 
 const UNASSIGNED = "__unassigned__"
@@ -212,12 +222,56 @@ function PropertyRows({
   )
 }
 
-/** A key that reads as a key and goes where a key should go — the issue's own page (ticket 07). */
-function IssueRefLink({ issue }: { issue: IssueRef }) {
+/**
+ * A key that reads as a key and goes where a key should go — the issue's own page (ticket 07).
+ *
+ * ⚠️ <strong>`shrink-0` on the key is load-bearing.</strong> Without it the key is an ordinary
+ * shrinkable flex item, so a long summary squeezes it until it breaks mid-token — `JMF-2` wrapping to
+ * `JMF-` and `2`, and the row growing a second line to hold one digit. The summary is the part that
+ * should give; the key is four characters and is what the row is identified by.
+ *
+ * ⚠️ And `flex w-full` rather than `inline-flex`: an inline flex box is sized by its content, so
+ * `truncate` has no width to truncate against and the summary overflows the card instead of clipping.
+ * Truncation needs a bounded parent, which is what the `w-full` and the `min-w-0` on the text give it.
+ */
+/**
+ * Another issue, as much of it as the reader may see.
+ *
+ * ⚠️ **A redacted reference is shown, not hidden** (TSSR-43). The far side of a link can live in a
+ * project the reader is not a member of, and dropping it would make a tracking hub's register silently
+ * short — a list that lies with nothing to say it did. The key and the status travel; the summary and
+ * the link through do not.
+ */
+function IssueRefLink({ issue }: { issue: IssueReference }) {
+  // ⚠️ The status travels either way, redacted or not. A status name is installation-wide
+  // configuration rather than anybody's private text — and without it a tracking hub could not say how
+  // much of an effort is done, which is most of what a hub is for.
+  const state = issue.status && <StatusPill status={issue.status} />
+
+  if (!issue.readable) {
+    return (
+      <span
+        title={`${issue.issueKey} — in a project you are not a member of`}
+        className="flex w-full min-w-0 items-baseline gap-1.5"
+      >
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">{issue.issueKey}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground italic">
+          in a project you cannot see
+        </span>
+        {state}
+      </span>
+    )
+  }
+
   return (
-    <Link to={`/issues/${issue.issueKey}`} className="inline-flex min-w-0 items-baseline gap-1.5 hover:underline">
-      <span className="font-mono text-xs">{issue.issueKey}</span>
-      <span className="truncate">{issue.summary}</span>
+    <Link
+      to={`/issues/${issue.issueKey}`}
+      title={`${issue.issueKey} · ${issue.summary}`}
+      className="flex w-full min-w-0 items-baseline gap-1.5 hover:underline"
+    >
+      <span className="shrink-0 font-mono text-xs text-muted-foreground">{issue.issueKey}</span>
+      <span className="min-w-0 flex-1 truncate">{issue.summary}</span>
+      {state}
     </Link>
   )
 }
@@ -264,7 +318,7 @@ function HierarchyRows({
           </span>
           <ul className="space-y-1">
             {issue.children.map((child) => (
-              <li key={child.id} className="rounded bg-muted/40 px-2 py-1 text-sm">
+              <li key={child.id} className="flex min-w-0 rounded bg-muted/40 px-2 py-1 text-sm">
                 <IssueRefLink issue={child} />
               </li>
             ))}
@@ -273,6 +327,38 @@ function HierarchyRows({
       )}
     </div>
   )
+}
+
+/**
+ * The links, gathered under the words they read as (TSSR-43).
+ *
+ * ⚠️ **Grouped by label, not by type.** A symmetric type says the same word both ways and belongs in one
+ * group; an asymmetric one reads `blocks` in one direction and `is blocked by` in the other, and those
+ * are two different statements about this issue. Grouping by `linkTypeId` would file them together and
+ * produce a heading that is true of only half its rows.
+ *
+ * ⚠️ **`open` is the canonical invariant** (ADR-0004) — no resolution — so "done" here means the same
+ * thing it means everywhere else, including for a redacted reference whose summary was withheld but
+ * whose state was not.
+ *
+ * Insertion order is kept rather than sorted: the response already returns outward links before inward
+ * ones, which is the order somebody wrote them in.
+ */
+function groupLinksByType(links: IssueLinkView[]): Array<{ label: string; links: IssueLinkView[]; done: number }> {
+  const groups = new Map<string, IssueLinkView[]>()
+
+  for (const link of links) {
+    const existing = groups.get(link.label) ?? []
+
+    existing.push(link)
+    groups.set(link.label, existing)
+  }
+
+  return [...groups].map(([label, grouped]) => ({
+    label,
+    links: grouped,
+    done: grouped.filter((link) => !link.issue.open).length,
+  }))
 }
 
 function LinkRows({
@@ -286,12 +372,21 @@ function LinkRows({
 }) {
   const [linkTypeId, setLinkTypeId] = useState(CHOOSE)
   const [targetIssueId, setTargetIssueId] = useState(CHOOSE)
+  const [search, setSearch] = useState("")
   const { data: linkTypes = [] } = useQuery({ queryKey: ["link-types"], queryFn: fetchLinkTypes })
-  const { data: projectIssues = [] } = useQuery({
-    queryKey: ["issues", issue.projectId],
-    queryFn: () => listIssues(issue.projectId),
+
+  // ⚠️ A SEARCH, NOT A LIST OF ONE PROJECT (TSSR-43). This asked `listIssues(issue.projectId)`, which
+  // is why a cross-project link could never be made from the interface even though the service always
+  // allowed one. And it is a search rather than a bigger dropdown because "every issue in every project
+  // I belong to" is not a list anybody scrolls.
+  const debouncedSearch = useDebouncedValue(search, 250)
+  const { data: results } = useQuery({
+    queryKey: ["issue-search", "link-candidates", debouncedSearch],
+    queryFn: () => searchIssues({ text: debouncedSearch || undefined, size: 20 }),
   })
-  const candidates = projectIssues.filter((row) => row.id !== issue.id)
+  const candidates = (results?.items ?? []).filter((row) => row.issue.id !== issue.id)
+
+  const grouped = groupLinksByType(issue.links)
 
   return (
     <div className="space-y-1.5">
@@ -301,27 +396,65 @@ function LinkRows({
 
       {issue.links.length === 0 && <p className="text-sm text-muted-foreground">None</p>}
 
-      <ul className="space-y-1">
-        {issue.links.map((link) => (
-          <li key={link.id} className="flex items-baseline gap-1.5 rounded bg-muted/40 px-2 py-1 text-sm">
-            <Link2 className="size-3.5 shrink-0 self-center text-muted-foreground" />
-            <span className="shrink-0 text-xs text-muted-foreground">{link.label}</span>
-            <IssueRefLink issue={link.issue} />
-            {canEdit && (
-              <button
-                type="button"
-                className="ml-auto shrink-0 self-center text-muted-foreground hover:text-destructive"
-                onClick={() => editing.removeLink.mutate(link.id)}
-                aria-label="Remove link"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+      {/* ⚠️ Grouped by label, with a count of what is finished (TSSR-43). A flat list of twenty is the
+          shape that made a tracking hub unreadable — and "12 of 20 done" is derived from what the
+          response already carries, so a register costs no entity and no snapshot to keep in step. */}
+      {grouped.map((group) => (
+        <div key={group.label} className="space-y-1 pt-0.5">
+          <span className="flex items-baseline justify-between gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="truncate">{group.label}</span>
+            <span className="shrink-0 tabular-nums normal-case">
+              {group.done} of {group.links.length} done
+            </span>
+          </span>
 
-      {canEdit && candidates.length > 0 && (
+          <ul className="space-y-1">
+            {group.links.map((link) => (
+              <li key={link.id} className="flex items-baseline gap-1.5 rounded bg-muted/40 px-2 py-1 text-sm">
+                <Link2 className="size-3.5 shrink-0 self-center text-muted-foreground" />
+
+                {/* ⚠️ The label IS the control (TSSR-40) — retyping a link in place, rather than
+                    deleting and recreating it, which is what a mistyped one used to cost. It changes
+                    the type and nothing else: an endpoint change would be a different link. */}
+                {canEdit ? (
+                  <InlineSelect
+                    ariaLabel={`Link type — ${link.label} ${link.issue.issueKey}`}
+                    className="shrink-0 text-xs text-muted-foreground"
+                    value={link.linkTypeId}
+                    options={linkTypes.map((linkType) => ({
+                      value: linkType.id,
+                      // The same end of the label the row is already showing, so switching type does
+                      // not silently flip which direction the reader thinks they are looking at.
+                      label: link.direction === "OUTWARD" ? linkType.outwardLabel : linkType.inwardLabel,
+                    }))}
+                    onChange={(nextLinkTypeId) => {
+                      if (nextLinkTypeId !== link.linkTypeId) {
+                        editing.changeLinkType.mutate({ linkId: link.id, linkTypeId: nextLinkTypeId })
+                      }
+                    }}
+                  />
+                ) : (
+                  <span className="shrink-0 text-xs text-muted-foreground">{link.label}</span>
+                )}
+
+                <IssueRefLink issue={link.issue} />
+                {canEdit && (
+                  <button
+                    type="button"
+                    className="ml-auto shrink-0 self-center text-muted-foreground hover:text-destructive"
+                    onClick={() => editing.removeLink.mutate(link.id)}
+                    aria-label="Remove link"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      {canEdit && (
         <div className="space-y-1.5 pt-1">
           <InlineSelect
             ariaLabel="Link type"
@@ -333,16 +466,33 @@ function LinkRows({
             ]}
             onChange={setLinkTypeId}
           />
+
+          {/* ⚠️ Typing is how the target is found now, not scrolling (TSSR-43). The old dropdown listed
+              one project, which is the single reason a cross-project link could not be made from here.
+              The search is already cross-project and already scoped to what the member may browse. */}
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Find an issue, any project…"
+            className="h-7 text-xs"
+          />
+
           <InlineSelect
             ariaLabel="Target issue"
             className="rounded-md border"
             value={targetIssueId}
             options={[
-              { value: CHOOSE, label: "Target issue…" },
-              ...candidates.map((row) => ({ value: row.id, label: `${row.issueKey} · ${row.summary}` })),
+              { value: CHOOSE, label: candidates.length === 0 ? "No matches" : "Target issue…" },
+              // The project key is part of the label, not a detail: a bare key from another project
+              // means nothing to somebody who has fifty issues named TSSR-4 in their head.
+              ...candidates.map((row) => ({
+                value: row.issue.id,
+                label: `${row.project.key} · ${row.issue.issueKey} · ${row.issue.summary}`,
+              })),
             ]}
             onChange={setTargetIssueId}
           />
+
           <Button
             size="sm"
             variant="outline"
@@ -355,6 +505,7 @@ function LinkRows({
                   onSuccess: () => {
                     setLinkTypeId(CHOOSE)
                     setTargetIssueId(CHOOSE)
+                    setSearch("")
                   },
                 },
               )

@@ -18,7 +18,7 @@ import type { TranslatableText } from "@/lib/translatableText"
  */
 
 /** The tabs `ProjectDetailPage` renders. Named here so nothing below can name one that has no panel. */
-export type ProjectTab = "issues" | "board" | "backlog" | "reports" | "settings"
+export type ProjectTab = "issues" | "board" | "backlog" | "shipped" | "wiki" | "reports" | "settings"
 
 /**
  * Tabs that used to exist and no longer do, each pointing at where its content went. A bookmark or a
@@ -70,14 +70,25 @@ export function plansInSprints(boardScopeStrategy: BoardScopeStrategy): boolean 
 
 /**
  * The tabs this project has, in the order they are shown. Reports is the only conditional one: Issues,
- * Board, Backlog and Settings apply to every project however it plans.
+ * Board, Backlog, Shipped and Settings apply to every project however it plans.
+ *
+ * Shipped sits after Backlog because that is the order the work moves in — what is left, then what is
+ * done (TSSR-4). It is unconditional for the same reason the backlog is: every project finishes things,
+ * whether or not it plans in sprints, and the grouping inside adapts instead of the tab disappearing.
+ *
+ * Wiki follows the work rather than sitting among it (TSSR-17): it is prose *beside* the tracker, so it
+ * belongs after everything that shows issues and before Settings. Unconditional too — a project with no
+ * pages shows an empty state saying what a wiki is for, which is more use than a tab that is simply not
+ * there.
  */
 export function projectTabs(boardScopeStrategy: BoardScopeStrategy): ProjectTab[] {
   return [
     "issues",
     "board",
     "backlog",
+    "shipped",
     ...(plansInSprints(boardScopeStrategy) ? (["reports"] as const) : []),
+    "wiki",
     "settings",
   ]
 }
@@ -105,6 +116,8 @@ export const PROJECT_TAB_LABELS: Record<ProjectTab, TranslatableText> = {
   issues: { key: "project.tab.issues", text: "Issues" },
   board: { key: "project.tab.board", text: "Board" },
   backlog: { key: "project.tab.backlog", text: "Backlog" },
+  shipped: { key: "project.tab.shipped", text: "Shipped" },
+  wiki: { key: "project.tab.wiki", text: "Wiki" },
   reports: { key: "project.tab.reports", text: "Reports" },
   settings: { key: "project.tab.settings", text: "Settings" },
 }

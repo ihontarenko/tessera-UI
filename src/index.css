@@ -1,11 +1,27 @@
+/* The typefaces, served by this application rather than fetched from Google — see fonts.css for what
+   that fixed and why the subsets are the ones they are. Must precede Tailwind: @import is only legal
+   at the top of a stylesheet, and a face that arrives after the rules using it still repaints. */
+@import "./fonts.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: "DM Sans", system-ui, sans-serif;
-  --font-display: "Space Grotesk", system-ui, sans-serif;
+  /* ⚠️ One typeface in all three text roles, and the reason is Cyrillic. Space Grotesk and DM Sans
+     — what `--font-display` and `--font-sans` used to hold — cover latin and latin-ext and nothing
+     else, so every Ukrainian string in the product was drawn by the system fallback: Segoe UI on
+     Windows, which is wider and reads heavier at the same weight. A screen with English labels over
+     Ukrainian content was two typefaces at once, which reads as inconsistent weight rather than as
+     a missing font. Onest carries latin, latin-ext, cyrillic and cyrillic-ext across all four
+     weights, and is what Innoventa moved to for exactly this.
+
+     The three names are kept apart even though they now resolve alike: `font-display` and
+     `font-brand` mark the places whose typeface is a decision, so a future split stays a one-line
+     change rather than a hunt through the components. */
+  --font-sans: "Onest", system-ui, sans-serif;
+  --font-display: "Onest", system-ui, sans-serif;
+  --font-brand: "Onest", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Courier New", monospace;
 }
 
@@ -1095,6 +1111,19 @@
     @apply bg-background text-foreground;
   }
 
+  /* Tells the browser which way its *own* chrome is painted — the parts no stylesheet reaches: a
+     native `<select>`'s option list (see components/inline/InlineSelect.tsx, which picks native on
+     purpose), scrollbars, date pickers, form-control defaults. Without it every one of them is drawn
+     light while the option text inherits the theme's light `--foreground`, so a dark theme's dropdown
+     reads as white-on-white. ThemeContext always applies `.dark` alongside the specific theme class,
+     so these two lines cover all 27 themes. */
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
   /* ⚠️ EVERY DROPDOWN, MENU, SELECT AND TOOLTIP IN THIS APPLICATION IS POSITIONED BY THESE SEVEN
      LINES, and by nothing in JavaScript. See `components/ui/anchored.tsx` for the measurements, but
      the short version: text size is `zoom`, and a JS positioner divides a trigger's measured rect by
@@ -1128,6 +1157,25 @@
   .anchored-panel[data-side="right"] {
     margin-block: 0;
     margin-inline: 4px;
+  }
+
+  /* A status drawn in its own colour (TSSR-21). `--status-color` is the one value an administrator
+     stored, set inline by `statusColorStyle` in components/issues/issueVisuals.tsx.
+
+     ⚠️ THE STORED COLOUR IS NEVER PRINTED AS THE TEXT. A pill is a filled element, and the same
+     mid-tone hex has to read on cream and on near-black — which is why the category fallback spells
+     out `text-sky-700 dark:text-sky-300` by hand rather than using one sky. Mixing towards black in
+     light and towards white in dark reproduces that pairing from a single stored value, so all 27
+     themes keep working and clearing the field is still a real way back to the category default.
+
+     `.dark` is applied to <html> alongside the specific theme class (ThemeContext), so these two
+     rules cover every theme rather than being a light/dark special case. */
+  .status-pill-custom {
+    background-color: color-mix(in srgb, var(--status-color) 15%, transparent);
+    color: color-mix(in srgb, var(--status-color) 75%, black);
+  }
+  .dark .status-pill-custom {
+    color: color-mix(in srgb, var(--status-color) 70%, white);
   }
 }
 

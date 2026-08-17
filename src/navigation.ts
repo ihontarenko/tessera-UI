@@ -1,10 +1,50 @@
-import { CircleDot, FolderKanban, LayoutDashboard, SlidersHorizontal, Sparkles, type LucideIcon } from "lucide-react"
+import {
+  CircleDot,
+  CircleDotDashed,
+  FolderKanban,
+  LayoutDashboard,
+  SlidersHorizontal,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react"
 import { ADMINISTER_CONFIGURATION } from "@/api/permissions"
+
+/** Where the member is, for the entries whose destination depends on it. */
+export interface NavigationContext {
+  /** ⚠️ Null before this browser has ever been in a project — an ordinary answer, not an error. */
+  currentProjectId: string | null
+}
+
+/** The part of the location an entry may match on. `search` carries the leading `?`. */
+export interface NavigationLocation {
+  pathname: string
+  search: string
+}
 
 export interface NavigationItem {
   title: string
   translationKey: string
+  /**
+   * Where the entry goes, and what a plain prefix match compares against.
+   *
+   * ⚠️ For an entry with a {@link NavigationItem.resolvePath}, this is the destination when the context
+   * cannot answer — never a URL that would be wrong, always the honest fallback.
+   */
   path: string
+  /**
+   * The destination when it depends on where the member is (TSSR-23).
+   *
+   * Kept as a function on the item so the navigation stays *data* the sidebar renders, rather than a
+   * list with one entry the sidebar knows about by name.
+   */
+  resolvePath?: (context: NavigationContext) => string
+  /**
+   * When this location counts as being on this entry, for the entries a prefix cannot describe.
+   *
+   * ⚠️ An entry that defines one is matched **only** by it, and it outranks every prefix match — which
+   * is what keeps two rows from lighting up at once on a URL they both describe.
+   */
+  matches?: (location: NavigationLocation) => boolean
   icon: LucideIcon
   isBuilt: boolean
   description: string
@@ -33,6 +73,14 @@ export interface NavigationGroup {
 // a backlog belong to a project and are reached inside it, with the switcher covering the hop they
 // were there to provide. Issues — the cross-project search — was the last entry carrying a "soon"
 // badge and is now built (ticket 10), so nothing here is a promise any more.
+//
+// ⚠️ ONE ENTRY IS PROJECT-SCOPED, AND THAT IS DELIBERATE (TSSR-23). Everything above is why Boards and
+// Backlog left, and **Issues** now points back into a project all the same — because reaching the
+// issues of the project you are working in was two hops through a screen that shows every project's,
+// which is the confusion the entries were removed to avoid rather than an instance of it. The rule the
+// removal was really about still holds and is the one written on `requiredGlobalPermission` below: an
+// entry may not appear and disappear as somebody switches projects. This one is always there; only
+// where it lands moves. `All issues` keeps the cross-project page, unchanged.
 export const navigationGroups: NavigationGroup[] = [
   {
     title: "Work",
@@ -54,11 +102,36 @@ export const navigationGroups: NavigationGroup[] = [
         isBuilt: true,
         description: "",
       },
+      // Where the member works: the issues of the project they are in. The fallback is the project
+      // list rather than the cross-project page — this entry promises one project's issues, and
+      // quietly showing every project's instead is exactly what the split was for. "Pick one first"
+      // is the true answer when nothing is remembered.
       {
         title: "Issues",
         translationKey: "nav.issues",
-        path: "/issues",
+        path: "/projects",
+        resolvePath: (context) =>
+          context.currentProjectId ? `/projects/${context.currentProjectId}?tab=issues` : "/projects",
+        // Only the issues tab, never the whole project — without this the entry would light up on the
+        // board, the backlog and the settings too, taking the highlight off Projects on all three.
+        // The tab has to be named: `/projects/x` with no `?tab=` opens whichever tab the project's
+        // board strategy defaults to, and the sidebar has no business knowing that. `resolvePath`
+        // always writes the parameter, so the entry's own destination always matches.
+        matches: (location) =>
+          /^\/projects\/[^/]+$/.test(location.pathname)
+          && new URLSearchParams(location.search).get("tab") === "issues",
         icon: CircleDot,
+        isBuilt: true,
+        description: "",
+      },
+      // Where the member looks something up: every issue in every project they belong to. Same subject,
+      // different question — this one is a server-side search with paging and no way to create
+      // anything, where the entry above is a list you work in.
+      {
+        title: "All issues",
+        translationKey: "nav.allIssues",
+        path: "/issues",
+        icon: CircleDotDashed,
         isBuilt: true,
         description: "",
       },

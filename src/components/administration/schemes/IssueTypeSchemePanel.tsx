@@ -171,6 +171,7 @@ export function IssueTypeSchemePanel({
         canSubmit={canSubmit}
         isPending={save.isPending}
         onSubmit={() => save.mutate()}
+        size="wide"
       >
         {draft && (
           <>

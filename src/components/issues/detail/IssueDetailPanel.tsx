@@ -71,7 +71,9 @@ export function IssueDetailPanel({
 
       {/* Fixed basis, never full width: beside the content on a wide screen, folded under it on a
           narrow one, and never a reason for the content to become a strip. */}
-      <aside className="w-full lg:w-[290px] lg:flex-none">
+      {/* `min-w-0` so the rail can never be the reason the row is wider than its container: a fixed
+          basis fixes the width it *asks* for, not the width its content insists on. */}
+      <aside className="w-full min-w-0 lg:w-[290px] lg:flex-none">
         <IssueRail
           issue={issue}
           permissions={{ canEdit, canTransition: permissions.includes(TRANSITION_ISSUE) }}

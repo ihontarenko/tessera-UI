@@ -1,29 +1,49 @@
 /**
- * The Administration screen's sections, in the order its navigation offers them.
+ * The Administration screen's sections, grouped the way a person thinks about them.
  *
- * Ordered by what a person edits most often rather than alphabetically, and with the two that carry
- * engine meaning — statuses and workflows — first: they are the reason this screen exists, and the flat
- * catalogs beneath them are the easy part.
+ * The flat list this used to be put the assistant's machinery one row below Link types, as though an AI
+ * provider were another catalog of issue metadata. It is not, and neither are schemes: the four groups
+ * below separate *what an issue moves through* (statuses and workflows — the two that carry engine
+ * meaning, and the reason this screen exists), *what an issue is described with*, *what decides which
+ * project gets which of the above*, and *what belongs to the installation rather than to issues at all*.
  *
- * Which section is open is a URL parameter, so a link to a section is a link to a section — the same
- * arrangement project settings uses.
+ * Groups are presentation only — the section is still a single flat URL parameter, so a link to a section
+ * stays a link to a section and no existing link breaks by being regrouped.
  */
-export const ADMINISTRATION_SECTIONS = [
-  "statuses",
-  "workflows",
-  "issue-types",
-  "schemes",
-  "priorities",
-  "resolutions",
-  "link-types",
-  // Last, and deliberately not among the catalogs: everything above is what issues are made of, and
-  // this is the machinery behind the assistant. It is here rather than on a screen of its own because
-  // it is the same kind of thing — an installation-wide setting nobody's project owns — but it is its
-  // own two permissions, so it is the one section the navigation can hide.
-  "ai",
+const GROUPS = [
+  {
+    id: "workflow",
+    label: { key: "administration.nav.group.workflow", text: "Workflow" },
+    sections: ["statuses", "workflows"],
+  },
+  {
+    id: "issue-fields",
+    label: { key: "administration.nav.group.issueFields", text: "Issue fields" },
+    sections: ["issue-types", "priorities", "resolutions", "link-types", "comment-topics"],
+  },
+  {
+    id: "assignment",
+    label: { key: "administration.nav.group.assignment", text: "Project assignment" },
+    sections: ["schemes"],
+  },
+  {
+    // The only group the navigation can hide: everything above is what issues are made of and its reads
+    // are open to everybody, whereas this is the machinery behind the assistant and its own two
+    // permissions. A group that would render empty is dropped rather than left as a bare heading.
+    id: "platform",
+    label: { key: "administration.nav.group.platform", text: "Platform" },
+    sections: ["ai"],
+  },
 ] as const
 
-export type AdministrationSection = (typeof ADMINISTRATION_SECTIONS)[number]
+export type AdministrationSectionGroup = (typeof GROUPS)[number]
+export type AdministrationSection = AdministrationSectionGroup["sections"][number]
+
+export const ADMINISTRATION_SECTION_GROUPS: readonly AdministrationSectionGroup[] = GROUPS
+
+export const ADMINISTRATION_SECTIONS: readonly AdministrationSection[] = GROUPS.flatMap(
+  (group) => group.sections,
+)
 
 export const ADMINISTRATION_SECTION_LABELS: Record<AdministrationSection, { key: string; text: string }> = {
   statuses: { key: "administration.nav.statuses", text: "Statuses" },
@@ -33,6 +53,7 @@ export const ADMINISTRATION_SECTION_LABELS: Record<AdministrationSection, { key:
   priorities: { key: "administration.nav.priorities", text: "Priorities" },
   resolutions: { key: "administration.nav.resolutions", text: "Resolutions" },
   "link-types": { key: "administration.nav.linkTypes", text: "Link types" },
+  "comment-topics": { key: "administration.nav.commentTopics", text: "Comment topics" },
   ai: { key: "administration.nav.ai", text: "AI" },
 }
 

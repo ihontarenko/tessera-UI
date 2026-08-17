@@ -11,8 +11,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmptyState } from "@/components/EmptyState"
 import { MemberChip } from "@/components/MemberChip"
+import { EpicsPanel } from "@/components/issues/epics/EpicsPanel"
 import { CreateIssueDialog } from "@/components/issues/CreateIssueDialog"
 import { IssueDetailModal } from "@/components/issues/IssueDetailModal"
 import { IssueTypeIcon, PriorityBadge, StatusPill, formatStoryPoints } from "@/components/issues/issueVisuals"
@@ -22,14 +24,24 @@ import { apiErrorMessage } from "@/api/errors"
 
 const ANY = "__any__"
 
-/** The dense per-project issue table (ticket 07/54/55) plus its create control and detail modal.
- *  Filters by the common fields (status, assignee, type, priority) client-side over the ranked list. */
+/**
+ * The project's issues, in two views.
+ *
+ * **List** is the dense ranked table (ticket 07/54/55), filtered client-side by the common fields.
+ * **Epics** is the same work gathered under the epic each issue belongs to — the hierarchy counterpart of the
+ * Tracked tab's link-based grouping, and the answer to "how much of this epic is done" that the flat table
+ * cannot give however it is sorted.
+ *
+ * The create control and the detail modal belong to the panel rather than to either view: one project, one
+ * create button, and a row opens the same modal from wherever it was clicked.
+ */
 export function IssuesPanel({ projectId, permissions }: { projectId: string; permissions: string[] }) {
   const [statusId, setStatusId] = useState(ANY)
   const [issueTypeId, setIssueTypeId] = useState(ANY)
   const [priorityId, setPriorityId] = useState(ANY)
   const [assigneeMemberId, setAssigneeMemberId] = useState(ANY)
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
+  const [view, setView] = useState("list")
 
   const { data: issues, isLoading } = useQuery({ queryKey: ["issues", projectId], queryFn: () => listIssues(projectId) })
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
@@ -64,7 +76,26 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
   })
 
   return (
-    <div className="space-y-3">
+    <Tabs value={view} onValueChange={setView} className="space-y-3">
+      {/* The create control sits on the tab strip rather than in the filter row: it belongs to the project,
+          not to either view of it, and duplicating it into both would be two buttons doing one thing. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <TabsList>
+          <TabsTrigger value="list">List</TabsTrigger>
+          <TabsTrigger value="epics">Epics</TabsTrigger>
+        </TabsList>
+        {canCreate && (
+          <div className="ml-auto">
+            <CreateIssueDialog projectId={projectId} />
+          </div>
+        )}
+      </div>
+
+      <TabsContent value="epics">
+        <EpicsPanel projectId={projectId} />
+      </TabsContent>
+
+      <TabsContent value="list" className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <FilterSelect value={statusId} onChange={setStatusId} placeholder="Status" options={(catalog?.statuses ?? []).map((status) => ({ id: status.id, label: status.name }))} />
         <FilterSelect value={issueTypeId} onChange={setIssueTypeId} placeholder="Type" options={(catalog?.issueTypes ?? []).map((type) => ({ id: type.id, label: type.name }))} />
@@ -75,11 +106,6 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
           placeholder="Assignee"
           options={assignees.map((assignee) => ({ id: assignee.id, label: assignee.displayName || assignee.email || assignee.id }))}
         />
-        {canCreate && (
-          <div className="ml-auto">
-            <CreateIssueDialog projectId={projectId} />
-          </div>
-        )}
       </div>
 
       {isLoading ? (
@@ -140,6 +166,7 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
           </TableBody>
         </Table>
       )}
+      </TabsContent>
 
       <IssueDetailModal
         issueId={selectedIssueId}
@@ -152,7 +179,7 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
           }
         }}
       />
-    </div>
+    </Tabs>
   )
 }
 

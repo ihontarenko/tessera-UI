@@ -6,6 +6,7 @@ import { AdministrationSection } from "@/components/administration/Administratio
 import { ActivityPanel } from "@/components/administration/ai/ActivityPanel"
 import { AgentsPanel } from "@/components/administration/ai/AgentsPanel"
 import { CataloguePanel } from "@/components/administration/ai/CataloguePanel"
+import { PromptPanel } from "@/components/administration/ai/PromptPanel"
 import { ProviderPanel } from "@/components/administration/ai/ProviderPanel"
 import { useAiOverview } from "@/hooks/useAiAdministration"
 import type { AiOverview } from "@/api/ai"
@@ -67,13 +68,16 @@ export function AiSection({
       <Tabs defaultValue="provider" className="space-y-4">
         <TabsList>
           <TabsTrigger value="provider">Provider</TabsTrigger>
+          {/* Beside the provider rather than at the end: which model answers and what it is told are
+              the two halves of one question, and somebody who has just put a provider in force is one
+              tab away from the thing that decides how it behaves. */}
+          <TabsTrigger value="prompt">Prompt</TabsTrigger>
           <TabsTrigger value="catalogue">
             Actions
             {/* Actions, not tools — eight actions may be three namespaces, and the count somebody
-                reads here is of things that can be done. */}
-            <Badge variant="secondary" className="ml-2">
-              {overview.data?.publishedActions ?? "—"}
-            </Badge>
+                reads here is of things that can be done. No margin: the trigger is a flex row that
+                already spaces its children, and adding one on top of that gap reads as two words. */}
+            <Badge variant="secondary">{overview.data?.publishedActions ?? "—"}</Badge>
           </TabsTrigger>
           {/* Beside the actions rather than on a screen of its own: an action is what CAN be done and
               an agent is WHO may do it, and the two are read together or not at all. */}
@@ -83,6 +87,10 @@ export function AiSection({
 
         <TabsContent value="provider">
           <ProviderPanel canAdminister={canAdminister} />
+        </TabsContent>
+
+        <TabsContent value="prompt">
+          <PromptPanel canAdminister={canAdminister} />
         </TabsContent>
 
         <TabsContent value="catalogue">

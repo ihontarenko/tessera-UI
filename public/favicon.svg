@@ -1,11 +1,31 @@
+<!--
+  The same mark the sidebar wears: a rounded tile with an inset diamond, "one ticket, one tile",
+  a tessera being the token Rome used as a ticket. It used to be a spoked circle, which was a
+  leftover from the shell this UI was forked from and drew no relation to the lockup at all.
+
+  ⚠️ Geometry is TesseraMark.tsx's, scaled up rather than copied at 0.67 like the sidebar does.
+  A favicon is read at 16px and the component's proportions leave the two outlines too close to
+  survive it; here the tile fills 73% of the plate and the diamond 37%, which keeps roughly the
+  component's ratio while opening the gap between the strokes.
+
+  The plate's corner radius is 0.28 of its side, which is what the sidebar's rounded-[10px] on a
+  36px plate works out to, so the two silhouettes match rather than nearly match.
+
+  ⚠️ The plate colour is the cream theme's primary token, hardcoded. A file requested before any
+  script runs cannot know which of the 27 themes the reader picked, so the brand keeps one face
+  in the tab regardless, the same call Innoventa's favicon makes.
+
+  ⚠️ No double hyphen anywhere in this comment. XML forbids it inside a comment, and a favicon
+  that fails to parse does not report an error, it simply renders as a broken image.
+-->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
   <style>
-    .bg { fill: #1E78A4; }
-    @media (prefers-color-scheme: dark) { .bg { fill: #2996C8; } }
+    .plate { fill: #1E78A4; }
+    @media (prefers-color-scheme: dark) { .plate { fill: #2996C8; } }
   </style>
-  <rect width="24" height="24" rx="6" class="bg" />
-  <g fill="none" stroke="#FBF8F2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="7.4" />
-    <path d="M12,8.6 L12,15.4 M8.6,12 L15.4,12 M9.6,9.6 L14.4,14.4 M14.4,9.6 L9.6,14.4" />
+  <rect width="24" height="24" rx="6.7" class="plate" />
+  <g fill="none" stroke="#FBF8F2" stroke-width="1.7" stroke-linejoin="round">
+    <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4" />
+    <rect x="8.9" y="8.9" width="6.2" height="6.2" rx="1.4" transform="rotate(45 12 12)" />
   </g>
 </svg>

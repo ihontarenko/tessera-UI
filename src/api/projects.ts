@@ -1,5 +1,5 @@
 import { httpClient } from "@/api/httpClient"
-import type { StatusCategory } from "@/api/issues"
+import type { StatusSummary } from "@/api/issues"
 import type { MemberSummary } from "@/api/members"
 import type { BoardScopeStrategy } from "@/api/sprints"
 
@@ -12,6 +12,8 @@ export interface ProjectResponse {
   id: string
   key: string
   name: string
+  /** One emoji, or null — every screen falls back to the shared folder glyph (TSSR-7). */
+  icon: string | null
   /**
    * The only stored answer to "does this project do Scrum?" (ADR-0015). The Backlog view keys off it,
    * and so do the Scrum/Kanban label and default tab — see `lib/projectStyle`. There is no `type`.
@@ -24,6 +26,18 @@ export interface ProjectResponse {
   estimationScheme: EstimationSchemeSummary | null
   keyStrategy: string
   keyPattern: string | null
+  /**
+   * Which WiQ section this project's wiki lives in, or null where nobody has chosen one (WIQ-1 §3).
+   *
+   * ⚠️ **An identifier in another service.** Tessera stores it and never validates it — the category
+   * lives in WiQ's database, and asking would make this backend a client of WiQ, which is the
+   * backend-to-backend call WIQ-1 §1 refuses. A root that stops resolving is a state the wiki tab
+   * handles.
+   *
+   * ⚠️ **Null is ordinary**, and the two empty states it produces are different: *"pick a category"* to
+   * an administrator, *"the wiki is not configured"* to everybody else.
+   */
+  wiqRootCategoryId: string | null
   myPermissions: string[]
   createdAt: string
   updatedAt: string
@@ -32,6 +46,8 @@ export interface ProjectResponse {
 export interface CreateProjectRequest {
   name: string
   key: string
+  /** One emoji, or nothing. ⚠️ Anything that is not a single emoji is refused by the server. */
+  icon?: string | null
   /** The "Scrum or Kanban?" answer, sent as the thing it actually sets: the new board's scope. */
   boardScopeStrategy: BoardScopeStrategy
   leadMemberId?: string | null
@@ -39,6 +55,8 @@ export interface CreateProjectRequest {
 
 export interface UpdateProjectRequest {
   name: string
+  /** ⚠️ Blank clears it — having no icon is a project's ordinary state, not a missing value. */
+  icon?: string | null
   leadMemberId: string
   issueTypeSchemeId: string
   workflowSchemeId: string
@@ -48,6 +66,8 @@ export interface UpdateProjectRequest {
   keyStrategy?: string
   /** ⚠️ Read only by CUSTOM, and refused server-side unless it contains a `sequence` placeholder. */
   keyPattern?: string | null
+  /** ⚠️ A WiQ category id, picked from WiQ's own tree. Blank clears it — "not configured" is a state. */
+  wiqRootCategoryId?: string | null
 }
 
 /**
@@ -112,7 +132,10 @@ export interface WorkflowSchemeSummary {
  */
 export interface Configuration {
   issueTypes: Array<{ id: string; name: string; hierarchyLevel: number; iconKey: string | null; description: string | null }>
-  statuses: Array<{ id: string; name: string; category: StatusCategory }>
+  // `StatusSummary` rather than a third hand-written copy of the same four fields: every screen that
+  // reads this list draws a `StatusPill` from it, and a shape that merely resembles the one the pill
+  // takes is a shape that stops matching the day a field is added to it.
+  statuses: StatusSummary[]
   workflows: WorkflowSummary[]
   issueTypeSchemes: IssueTypeSchemeSummary[]
   workflowSchemes: WorkflowSchemeSummary[]

@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { MemberChip } from "@/components/MemberChip"
+import { ProjectIcon } from "@/components/projects/ProjectIcon"
 import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
 import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog"
 import { listProjects } from "@/api/projects"
@@ -60,7 +61,14 @@ export function ProjectsPage() {
                 className="cursor-pointer"
                 onClick={() => navigate(`/projects/${project.id}`)}
               >
-                <TableCell className="font-mono text-xs font-medium">{project.key}</TableCell>
+                <TableCell className="font-mono text-xs font-medium">
+                  <span className="flex items-center gap-2">
+                    <span className="flex w-4 shrink-0 justify-center">
+                      <ProjectIcon icon={project.icon} size="sm" />
+                    </span>
+                    {project.key}
+                  </span>
+                </TableCell>
                 <TableCell className="font-medium">{project.name}</TableCell>
                 <TableCell>
                   <ProjectStyleBadge boardScopeStrategy={project.boardScopeStrategy} />

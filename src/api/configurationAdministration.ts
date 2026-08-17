@@ -37,13 +37,17 @@ export interface UsageReport {
   holders: UsageHolder[]
 }
 
-/** How many issues (or links) each catalog row holds. ⚠️ A row nothing holds is **absent**, not zero. */
+/**
+ * How many issues (or links, or comments) each catalog row holds.
+ * ⚠️ A row nothing holds is **absent**, not zero.
+ */
 export interface ConfigurationCounts {
   issuesByStatus: Record<string, number>
   issuesByIssueType: Record<string, number>
   issuesByPriority: Record<string, number>
   issuesByResolution: Record<string, number>
   linksByLinkType: Record<string, number>
+  commentsByTopic: Record<string, number>
 }
 
 /** A filter whose expression names a catalog row as a literal, and would quietly stop matching. */
@@ -155,12 +159,75 @@ export function deleteResolution(resolutionId: string) {
   return httpClient.delete<void>(`${BASE}/resolutions/${resolutionId}`).then((response) => response.data)
 }
 
+// ── Comment topics ────────────────────────────────────────────────────────────
+
+export interface CommentTopicRequest {
+  name: string
+  description: string | null
+  /** A key from `fetchCommentTopicIcons`, or null. ⚠️ Anything else is refused by the server. */
+  iconKey: string | null
+  /** Any CSS colour, or null for the muted default. */
+  color: string | null
+}
+
+export interface CommentTopicResponse {
+  id: string
+  name: string
+  description: string | null
+  iconKey: string | null
+  color: string | null
+}
+
+/**
+ * The icon keys the client draws for a topic.
+ *
+ * ⚠️ **A different list from `fetchIssueTypeIcons`.** Those keys name kinds of work, these name kinds of
+ * remark — sharing them would offer "Epic" as the drawing for a comment about a root cause.
+ */
+export function fetchCommentTopicIcons() {
+  return httpClient.get<string[]>(`${BASE}/comment-topic-icons`).then((response) => response.data)
+}
+
+/** The same open catalog route the rest of the product reads — see {@link listPriorities}. */
+export function listCommentTopics() {
+  return httpClient.get<CommentTopicResponse[]>("/configuration/comment-topics").then((response) => response.data)
+}
+
+export function fetchCommentTopicUsage(commentTopicId: string) {
+  return httpClient
+    .get<UsageReport>(`${BASE}/comment-topics/${commentTopicId}/usage`)
+    .then((response) => response.data)
+}
+
+export function createCommentTopic(request: CommentTopicRequest) {
+  return httpClient.post<CommentTopicResponse>(`${BASE}/comment-topics`, request).then((response) => response.data)
+}
+
+export function updateCommentTopic(commentTopicId: string, request: CommentTopicRequest) {
+  return httpClient
+    .put<CommentTopicResponse>(`${BASE}/comment-topics/${commentTopicId}`, request)
+    .then((response) => response.data)
+}
+
+export function deleteCommentTopic(commentTopicId: string) {
+  return httpClient.delete<void>(`${BASE}/comment-topics/${commentTopicId}`).then((response) => response.data)
+}
+
 // ── Link types ────────────────────────────────────────────────────────────────
+
+/**
+ * What a link of a type does, as opposed to what it is called.
+ *
+ * ⚠️ **Written from the inward side** — the issue reading "is blocked by". The effect is asymmetric, so
+ * a boolean could never say which end it applies to.
+ */
+export type LinkTypeEffect = "NONE" | "WARNS_START" | "BLOCKS_START" | "BLOCKS_DONE"
 
 export interface LinkTypeRequest {
   name: string
   outwardLabel: string
   inwardLabel: string
+  effect: LinkTypeEffect
 }
 
 export interface LinkTypeResponse {
@@ -168,6 +235,7 @@ export interface LinkTypeResponse {
   name: string
   outwardLabel: string
   inwardLabel: string
+  effect: LinkTypeEffect
 }
 
 /** The same open catalog route the rest of the product reads — see {@link listPriorities}. */
@@ -198,12 +266,15 @@ export function deleteLinkType(linkTypeId: string) {
 export interface StatusRequest {
   name: string
   category: StatusCategory
+  /** Any CSS colour. Blank is sent as null and means "drawn from the category". */
+  color: string | null
 }
 
 export interface StatusResponse {
   id: string
   name: string
   category: StatusCategory
+  color: string | null
 }
 
 /** One board's share of a category change: the column those cards leave, and the one they arrive in. */

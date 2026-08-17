@@ -262,19 +262,21 @@ function ProviderDialog({
       onSubmit={submit}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="ai-provider">Provider</Label>
           <Select value={provider} onValueChange={setProvider}>
-            <SelectTrigger id="ai-provider">
-              <SelectValue placeholder="Choose a provider" />
+            {/* ⚠️ The trigger says the name and nothing else. The items below are two lines each, and a
+                select that mirrors its item into its trigger would put both of them in this grid cell. */}
+            <SelectTrigger id="ai-provider" className="w-full">
+              <SelectValue placeholder="Choose a provider">{chosen?.name}</SelectValue>
             </SelectTrigger>
             {/* The note beside each name is the whole point of the richer list: choosing a provider
                 otherwise requires already knowing the landscape, and the free ones are exactly the ones
                 somebody new would not know to look for. */}
-            <SelectContent>
+            <SelectContent className="max-w-[22rem]">
               {providers.map((shipped) => (
-                <SelectItem key={shipped.name} value={shipped.name}>
-                  <span className="flex flex-col items-start gap-0.5">
+                <SelectItem key={shipped.name} value={shipped.name} className="items-start py-2">
+                  <span className="flex min-w-0 flex-col items-start gap-0.5">
                     <span className="flex items-center gap-2">
                       {shipped.name}
                       {!shipped.requiresKey && (
@@ -284,7 +286,9 @@ function ProviderDialog({
                       )}
                     </span>
                     {shipped.note && (
-                      <span className="max-w-[28rem] text-xs text-muted-foreground">{shipped.note}</span>
+                      <span className="text-xs leading-snug text-wrap text-muted-foreground">
+                        {shipped.note}
+                      </span>
                     )}
                   </span>
                 </SelectItem>
@@ -292,17 +296,14 @@ function ProviderDialog({
             </SelectContent>
           </Select>
 
-          {/* ⚠️ Stated where the choice is made rather than discovered at "Put in force". A provider
-              whose address is a default is one the reader can leave alone; a gateway is not. */}
-          {chosen?.defaultApiUrl && (
-            <p className="text-xs text-muted-foreground">
-              Defaults to <code>{chosen.defaultApiUrl}</code> — leave the address blank unless yours
-              differs.
-            </p>
+          {/* The note the trigger no longer carries — kept visible after the panel closes, because the
+              reason to pick one provider over another should not vanish the moment you pick it. */}
+          {chosen?.note && (
+            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">{chosen.note}</p>
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="ai-model">Model</Label>
           <Input
             id="ai-model"
@@ -336,7 +337,7 @@ function ProviderDialog({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="ai-endpoint">Endpoint</Label>
           <Input
             id="ai-endpoint"
@@ -344,9 +345,19 @@ function ProviderDialog({
             placeholder="The provider's own, unless you say otherwise"
             onChange={(event) => setApiUrl(event.target.value)}
           />
+          {/* ⚠️ Said beside the box it is about, and truncated rather than wrapped. An address is one
+              unbreakable word: left to wrap it drags the whole grid wider than the dialog. */}
+          {chosen?.defaultApiUrl && (
+            <p className="min-w-0 text-xs text-muted-foreground">
+              Blank uses{" "}
+              <code className="block truncate font-mono text-[11px]" title={chosen.defaultApiUrl}>
+                {chosen.defaultApiUrl}
+              </code>
+            </p>
+          )}
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="ai-tokens">Tokens per answer</Label>
           <Input
             id="ai-tokens"

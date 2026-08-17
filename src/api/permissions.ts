@@ -29,6 +29,28 @@ export const ADD_COMMENT = "comment:write"
 
 export const MANAGE_SPRINT = "sprint:manage"
 
+/**
+ * Read the project's wiki.
+ *
+ * ⚠️ Deliberately not `project:browse`. A wiki is prose beside the work rather than a view of it, and an
+ * installation that wants somebody on the board and not in the handbook has nowhere to say so while the
+ * two are one permission. Every project role carries both today — the split buys the ability to take one
+ * away, not a narrower default.
+ */
+export const READ_PAGE = "page:read"
+
+/** Write, re-file and remove wiki pages. ⚠️ There is no version history — a save overwrites for good. */
+export const WRITE_PAGE = "page:write"
+
+/**
+ * Edit the sections the wiki is filed into.
+ *
+ * ⚠️ Not `page:write`, because the tree is agnostic — it holds pages today and is built so a second kind
+ * of content costs a constant on the server. Gating it on the wiki's permission would tie the general
+ * thing to its first consumer.
+ */
+export const MANAGE_CATEGORY = "category:manage"
+
 /** Settings, and which of the three roles each member holds here — the project's own administration. */
 export const ADMINISTER_PROJECT = "project:administer"
 

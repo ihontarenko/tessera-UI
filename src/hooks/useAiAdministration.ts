@@ -2,8 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { apiErrorMessage } from "@/api/errors"
 import {
+  addAiPreferenceValue,
+  changeAiPreferenceValue,
   createProviderConfiguration,
+  discardAiPreferenceValue,
   fetchAgents,
+  fetchAiPreferences,
+  putAiPreferenceValueInForce,
+  restoreAiPreferenceValue,
+  type AiPreferenceDraft,
   renameAgent,
   revokeAgentConnection,
   revokeAllAgentConnections,
@@ -131,6 +138,84 @@ function useProviderMutation<TResult, TVariables>({
       ;[CONFIGURATIONS, OVERVIEW, ASSISTANT].forEach((queryKey) => {
         void queryClient.invalidateQueries({ queryKey })
       })
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, failure)),
+  })
+}
+
+// ── Preferences ──────────────────────────────────────────────────────────────────────────────────
+
+const PREFERENCES = ["ai", "preferences"]
+
+/**
+ * What the assistant is told, and whatever else the backend declares beside it.
+ *
+ * ⚠️ **Not invalidated by a provider write and not invalidating one.** They are separate rows answering
+ * separate questions — which model, and what it is told — and folding them into one cache would refetch
+ * a page of prose every time somebody corrected a token ceiling.
+ */
+export function useAiPreferences(enabled: boolean) {
+  return useQuery({ queryKey: PREFERENCES, queryFn: fetchAiPreferences, enabled })
+}
+
+export function useAddAiPreferenceValue() {
+  return usePreferenceMutation({
+    mutationFn: ({ name, ...draft }: AiPreferenceDraft & { name: string }) =>
+      addAiPreferenceValue(name, draft),
+    success: "Added — putting it in force is a second press",
+    failure: "Could not add that wording",
+  })
+}
+
+export function useChangeAiPreferenceValue() {
+  return usePreferenceMutation({
+    mutationFn: ({ id, ...draft }: AiPreferenceDraft & { id: string }) =>
+      changeAiPreferenceValue(id, draft),
+    success: "Saved",
+    failure: "Could not save that wording",
+  })
+}
+
+export function usePutAiPreferenceValueInForce() {
+  return usePreferenceMutation({
+    mutationFn: (id: string) => putAiPreferenceValueInForce(id),
+    success: "The next conversation is told this one",
+    failure: "Could not put that wording in force",
+  })
+}
+
+export function useRestoreAiPreferenceValue() {
+  return usePreferenceMutation({
+    mutationFn: (id: string) => restoreAiPreferenceValue(id),
+    success: "Back to the text this build ships",
+    failure: "Could not restore that wording",
+  })
+}
+
+export function useDiscardAiPreferenceValue() {
+  return usePreferenceMutation({
+    mutationFn: (id: string) => discardAiPreferenceValue(id),
+    success: "Wording deleted",
+    failure: "Could not delete that wording",
+  })
+}
+
+function usePreferenceMutation<TResult, TVariables>({
+  mutationFn,
+  success,
+  failure,
+}: {
+  mutationFn: (variables: TVariables) => Promise<TResult>
+  success: string
+  failure: string
+}) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      toast.success(success)
+      void queryClient.invalidateQueries({ queryKey: PREFERENCES })
     },
     onError: (error) => toast.error(apiErrorMessage(error, failure)),
   })

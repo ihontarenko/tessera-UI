@@ -1,7 +1,8 @@
-import { useQueryClient, useMutation } from "@tanstack/react-query"
+import { useQueryClient, useMutation, type QueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   addIssueLink,
+  changeIssueLinkType,
   removeIssueLink,
   setIssueParent,
   transitionIssue,
@@ -27,6 +28,29 @@ export function issueByKeyQueryKey(issueKey: string) {
 }
 
 /**
+ * Where an issue that just changed has to land: both cache entries it lives in, and every list that
+ * renders a slice of it.
+ *
+ * Exported because archiving writes an issue from screens that never loaded one — a row on the Shipped
+ * list is not an `IssueDetail` — and a second, subtly different idea of which caches an issue touches is
+ * how a board goes stale after an edit made two tabs away.
+ */
+export function applyIssueUpdate(queryClient: QueryClient, updated: IssueDetail) {
+  queryClient.setQueryData(issueQueryKey(updated.id), updated)
+  queryClient.setQueryData(issueByKeyQueryKey(updated.issueKey), updated)
+
+  for (const queryKey of [
+    ["issues", updated.projectId],
+    ["board", updated.projectId],
+    ["backlog", updated.projectId],
+    ["shipped", updated.projectId],
+    ["history", updated.id],
+  ]) {
+    void queryClient.invalidateQueries({ queryKey })
+  }
+}
+
+/**
  * Every write an issue surface performs, in one place.
  *
  * Two things make this a hook rather than a mutation per component. `PUT /api/issues/{id}` takes the
@@ -39,18 +63,9 @@ export function useIssueEditing(issue: IssueDetail) {
   const queryClient = useQueryClient()
 
   function applyUpdated(updated: IssueDetail) {
-    queryClient.setQueryData(issueQueryKey(updated.id), updated)
-    queryClient.setQueryData(issueByKeyQueryKey(updated.issueKey), updated)
-    // The list, the board and the backlog all render a slice of this issue, and the history gains an
-    // entry for whatever just changed — none of which this response describes.
-    for (const queryKey of [
-      ["issues", issue.projectId],
-      ["board", issue.projectId],
-      ["backlog", issue.projectId],
-      ["history", issue.id],
-    ]) {
-      void queryClient.invalidateQueries({ queryKey })
-    }
+    // The list, the board, the backlog and the Shipped screen all render a slice of this issue, and the
+    // history gains an entry for whatever just changed — none of which this response describes.
+    applyIssueUpdate(queryClient, updated)
   }
 
   function failWith(message: string) {
@@ -103,11 +118,18 @@ export function useIssueEditing(issue: IssueDetail) {
     onError: failWith("Could not add the link"),
   })
 
+  const changeLinkType = useMutation({
+    mutationFn: (link: { linkId: string; linkTypeId: string }) =>
+      changeIssueLinkType(issue.id, link.linkId, link.linkTypeId),
+    onSuccess: applyUpdated,
+    onError: failWith("Could not change the link"),
+  })
+
   const removeLink = useMutation({
     mutationFn: (linkId: string) => removeIssueLink(issue.id, linkId),
     onSuccess: applyUpdated,
     onError: failWith("Could not remove the link"),
   })
 
-  return { fields, transition, parent, labels, addLink, removeLink }
+  return { fields, transition, parent, labels, addLink, changeLinkType, removeLink }
 }

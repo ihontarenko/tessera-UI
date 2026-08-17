@@ -238,6 +238,7 @@ export function CatalogDialog({
   canSubmit,
   isPending,
   onSubmit,
+  size = "default",
   children,
 }: {
   open: boolean
@@ -248,11 +249,20 @@ export function CatalogDialog({
   canSubmit: boolean
   isPending: boolean
   onSubmit: () => void
+  /**
+   * `wide` for a form that is two panels rather than two fields.
+   *
+   * ⚠️ Two sizes on purpose, rather than a free `className`. A dialog whose width every call site picks
+   * for itself drifts into five different widths for the same kind of form; the choice here is only
+   * whether the body is a column of fields or a side-by-side transfer list, and that is a real
+   * distinction rather than a taste.
+   */
+  size?: "default" | "wide"
   children: ReactNode
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={size === "wide" ? "sm:max-w-3xl" : undefined}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

@@ -28,11 +28,31 @@ import {
 } from "@/api/configurationAdministration"
 import { fetchConfiguration } from "@/api/projects"
 import type { StatusCategory } from "@/api/issues"
+import { cn } from "@/lib/helpers"
 
 const CATEGORIES: Array<{ value: StatusCategory; label: string; hint: string }> = [
   { value: "TODO", label: "To Do", hint: "Not started" },
   { value: "IN_PROGRESS", label: "In Progress", hint: "Being worked on" },
   { value: "DONE", label: "Done", hint: "Finished — and what the board's last column holds" },
+]
+
+/**
+ * Colours offered as a starting point — a convenience, not the model.
+ *
+ * The field takes any CSS colour and stores exactly what it is given; these eight are here because
+ * picking a hex out of the air is a worse experience than picking one of eight, and because they are
+ * spread far enough apart to still be told apart at pill size. The first three are the hues the
+ * category fallback already draws with, so a status given one looks native rather than foreign.
+ */
+const COLOR_PRESETS: Array<{ value: string; name: string }> = [
+  { value: "#64748b", name: "Slate" },
+  { value: "#0ea5e9", name: "Sky" },
+  { value: "#10b981", name: "Emerald" },
+  { value: "#f59e0b", name: "Amber" },
+  { value: "#8b5cf6", name: "Violet" },
+  { value: "#f43f5e", name: "Rose" },
+  { value: "#14b8a6", name: "Teal" },
+  { value: "#f97316", name: "Orange" },
 ]
 
 /**
@@ -161,10 +181,15 @@ function StatusDialog({
 }) {
   const [name, setName] = useState(status?.name ?? "")
   const [category, setCategory] = useState<StatusCategory>(status?.category ?? "TODO")
+  const [color, setColor] = useState(status?.color ?? "")
+
+  const trimmedColor = color.trim()
 
   const save = useCatalogMutation({
     mutationFn: () => {
-      const request = { name: name.trim(), category }
+      // Blank is null, not "": an empty string would store as a colour that renders as nothing,
+      // where null means "drawn from the category" — which is the way back to the default.
+      const request = { name: name.trim(), category, color: trimmedColor.length > 0 ? trimmedColor : null }
 
       return status ? updateStatus(status.id, request) : createStatus(request)
     },
@@ -216,6 +241,49 @@ function StatusDialog({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="status-color">Colour</Label>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {COLOR_PRESETS.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              title={preset.name}
+              aria-label={preset.name}
+              aria-pressed={trimmedColor.toLowerCase() === preset.value}
+              onClick={() => setColor(preset.value)}
+              className={cn(
+                "size-6 rounded-full border transition-transform hover:scale-110",
+                trimmedColor.toLowerCase() === preset.value && "ring-2 ring-ring ring-offset-1",
+              )}
+              style={{ backgroundColor: preset.value }}
+            />
+          ))}
+          <Button variant="ghost" size="sm" disabled={trimmedColor.length === 0} onClick={() => setColor("")}>
+            Clear
+          </Button>
+        </div>
+
+        <Input
+          id="status-color"
+          value={color}
+          onChange={(event) => setColor(event.target.value)}
+          placeholder="#8b5cf6"
+          maxLength={16}
+        />
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Preview</span>
+          <StatusPill status={{ id: "preview", name: name.trim() || "Status", category, color: trimmedColor || null }} />
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Any CSS colour, or a swatch. Blank draws the status from its category, which is how every
+          status looked before this field existed.
+        </p>
       </div>
 
       {!status && (
