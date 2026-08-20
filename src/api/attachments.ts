@@ -1,4 +1,7 @@
-import { httpClient } from "@/api/httpClient"
+import { FILES_MANAGEMENT_BASE, managementClient } from "@/api/managementClients"
+
+/** ⚠️ The LIBRARY's base path, not Tessera's `/api` — see `@/api/managementClients`. */
+const httpClient = managementClient(FILES_MANAGEMENT_BASE)
 
 /**
  * The files hanging off an issue.

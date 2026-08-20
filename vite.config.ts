@@ -64,6 +64,11 @@ export default defineConfig({
       // of their own, and the result reads as an installation with no tools and no agents. Change one,
       // change the other — and `api/ai.ts`'s base path, which is the third.
       '/jmai': 'http://localhost:8100',
+
+      // ⚠️ Attachments, served by `jmouse-storage-management` at `jmouse.files.management.prefix`
+      // rather than under /api (UIK-8) — same arrangement as /jmai, same three files to keep in step:
+      // that property, this entry, and `src/api/managementClients.ts`.
+      '/jmouse-files': 'http://localhost:8100',
       // Kiwi (the knowledge product that owns pages) — rewritten to /api on Kiwi so the browser sees a
       // same-origin call in development. ⚠️ In a DEPLOYMENT there is no proxy and this is a real
       // cross-origin request: Kiwi's own CORS allowlist is what permits it, and 5050 has to be in it.

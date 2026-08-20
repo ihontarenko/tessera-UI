@@ -16,7 +16,18 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+
+      // ⚠️ TWO COPIES OF `@types/react`, and the symptom is unreadable. `@jmouse/*` are installed from
+      // a PATH while they are unpublished, so `jmouse-ui/node_modules` brings its own copy — and
+      // TypeScript then reports "Two different types with this name exist, but they are unrelated"
+      // about `Ref<HTMLAnchorElement>`, naming neither package.
+      //
+      // ⚠️ The bundler half of this is already handled — see `resolve.dedupe` in `vite.config.ts`,
+      // which exists for the runtime version of the same problem ("Invalid hook call"). This is the
+      // type-checker half, and it needs saying separately because `dedupe` does not reach it.
+      "react": ["./node_modules/@types/react"],
+      "react-dom": ["./node_modules/@types/react-dom"]
     },
 
     /* Linting */

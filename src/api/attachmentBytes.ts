@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react"
-import { httpClient } from "@/api/httpClient"
+import { FILES_MANAGEMENT_BASE, managementClient } from "@/api/managementClients"
+
+/** ⚠️ The LIBRARY's base path, not Tessera's `/api` — see `@/api/managementClients`. */
+const httpClient = managementClient(FILES_MANAGEMENT_BASE)
 
 /**
  * The bytes of an attachment, fetched with the reader's own credentials.
