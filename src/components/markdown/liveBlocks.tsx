@@ -1,9 +1,9 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { BlockNotice, dataBlockPlugin } from "@/markdown"
-import type { DataBlockRequest, MarkdownPlugin } from "@/markdown"
-import { resolveWikiBlocks, type PageBlockView } from "@/api/blocks"
+import { BlockNotice, dataBlockPlugin } from "@jmouse/markdown"
+import type { DataBlockRequest, MarkdownPlugin } from "@jmouse/markdown"
+import { resolveProjectBlocks, type PageBlockView } from "@/api/blocks"
 import { statusColorStyle } from "@/components/issues/issueVisuals"
 
 /**
@@ -14,51 +14,55 @@ import { statusColorStyle } from "@/components/issues/issueVisuals"
  * March still shows the right status in September, because the numbers are read when the page is opened
  * rather than typed when it was written.
  *
- * <h2>⚠️ Why the page travels through a React context</h2>
+ * <h2>⚠️ Why the project travels through a React context</h2>
  *
  * The library resolves a document's blocks through `useBlockData(blocks, context)`, and `context` is a
  * value the *renderer* is given. `TesseraMarkdown` renders issue descriptions, comments and wiki pages
- * from the same component with `context={undefined}` — changing that would thread a page identifier
- * through every call site that has no page.
+ * from the same component with `context={undefined}` — changing that would thread an identifier through
+ * every call site that has none.
  *
- * So the page arrives the way `IssueReferenceProvider` already brings a document's issue keys: a
- * provider above the renderer, read by a hook inside the plugin. ⚠️ **Where there is no provider the
- * blocks say so** rather than spinning or vanishing — an `:::issue` typed into an issue description
- * renders a notice explaining it only resolves on a wiki page, which is true and is the kind of thing
- * somebody would otherwise file a bug about.
+ * So it arrives the way `IssueReferenceProvider` already brings a document's issue keys: a provider
+ * above the renderer, read by a hook inside the plugin. ⚠️ **Where there is no provider the blocks say
+ * so** rather than spinning or vanishing — an `:::issue` typed into an issue description renders a
+ * notice explaining it only resolves on a wiki page, which is true and is the kind of thing somebody
+ * would otherwise file a bug about.
  *
- * <h2>⚠️ Resolution is addressed by page, and that is a boundary rather than a convenience</h2>
+ * <h2>⚠️ It is addressed by PROJECT now, not by page — TSSR-19 moved the pages out</h2>
  *
- * The server answers a directive only when its exact line appears in that page's *stored* markdown. So
- * a block typed a moment ago and not yet saved comes back `NOT_ON_THIS_PAGE` — correctly. Preview shows
- * the notice; saving makes it resolve.
+ * The document being drawn is Kiwi's, so there is no stored markdown here to check a directive against
+ * and no way to get one without the backend-to-backend call KW-1 §1 refuses. KW-1's fourth finding is
+ * why that costs nothing: **the check bought nothing for an authenticated reader**, since every
+ * resolver authorises the person anyway. See {@link ProjectBlockProvider} for the whole argument, and
+ * INVT-0092 for the anonymous path where the check comes back.
  */
 
-interface WikiPageAddress {
-  readonly projectId: string
-  readonly pageId: string
-}
-
-const WikiPageContext = createContext<WikiPageAddress | null>(null)
+const ProjectBlockContext = createContext<string | null>(null)
 
 /**
- * Names the page a document's live blocks belong to.
+ * Names the project a document's live blocks are read against.
  *
- * Wrap the renderer for a saved wiki page. Everything else — descriptions, comments, the editor's
- * preview of an unsaved draft — deliberately renders without one.
+ * Wrap the renderer for a wiki page. Everything else — descriptions, comments, the editor's preview —
+ * deliberately renders without one, and their blocks say so rather than resolving.
+ *
+ * <h2>⚠️ It used to name the PAGE, and TSSR-19 is why it no longer can</h2>
+ *
+ * The old route answered a directive only when its exact line appeared in the page's **stored** markdown
+ * — a check Tessera can no longer make, because the page is now Kiwi's and asking Kiwi for it first
+ * would be exactly the backend-to-backend call KW-1 §1 refuses.
+ *
+ * KW-1's fourth finding is why dropping the check is safe rather than a loss: **the matcher bought
+ * nothing for an authenticated reader.** Every resolver already authorises the person, so a directive
+ * tells them nothing this product's own API would refuse them. ⚠️ It returns for the *anonymous* path,
+ * where the caller's choice is the only input there is — INVT-0092.
+ *
+ * <h2>⚠️ One visible consequence: `NOT_ON_THIS_PAGE` can no longer happen</h2>
+ *
+ * A block typed and not yet saved used to come back with it. Now it resolves immediately, which is what
+ * a preview should have done all along. The notice is kept because the status still exists on the
+ * page-scoped route that {@code TSSR-0099} has yet to delete.
  */
-export function WikiPageBlockProvider({
-  projectId,
-  pageId,
-  children,
-}: {
-  projectId: string
-  pageId: string
-  children: ReactNode
-}) {
-  const address = useMemo(() => ({ projectId, pageId }), [projectId, pageId])
-
-  return <WikiPageContext.Provider value={address}>{children}</WikiPageContext.Provider>
+export function ProjectBlockProvider({ projectId, children }: { projectId: string; children: ReactNode }) {
+  return <ProjectBlockContext.Provider value={projectId}>{children}</ProjectBlockContext.Provider>
 }
 
 /** The directive names this plugin claims. Kept beside the renderer that knows how to draw each one. */
@@ -90,7 +94,7 @@ export function liveBlockPlugin(): MarkdownPlugin<unknown> {
  * and `useQuery` here are ordinary and their order is stable, since the plugin list is.
  */
 function useLiveBlocks(requests: readonly DataBlockRequest[]) {
-  const page = useContext(WikiPageContext)
+  const projectId = useContext(ProjectBlockContext)
 
   const directives = useMemo(
     () => requests.map((request) => ({ name: request.name, argument: request.argument })),
@@ -102,11 +106,11 @@ function useLiveBlocks(requests: readonly DataBlockRequest[]) {
     [directives],
   )
 
-  const enabled = page !== null && directives.length > 0
+  const enabled = projectId !== null && directives.length > 0
 
   const { data, isFetching } = useQuery({
-    queryKey: ["wiki-blocks", page?.projectId, page?.pageId, key],
-    queryFn: () => resolveWikiBlocks(page!.projectId, page!.pageId, directives),
+    queryKey: ["project-blocks", projectId, key],
+    queryFn: () => resolveProjectBlocks(projectId as string, directives),
     enabled,
     // Live means live, but not live enough to refetch while somebody scrolls past it twice.
     staleTime: 30_000,
@@ -118,7 +122,7 @@ function useLiveBlocks(requests: readonly DataBlockRequest[]) {
     [data],
   )
 
-  return { results, loading: isFetching, available: page !== null }
+  return { results, loading: isFetching, available: projectId !== null }
 }
 
 /**

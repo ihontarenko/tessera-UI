@@ -1,6 +1,5 @@
 import { ArrowDown, ArrowUp, Plus, Star, X } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge, Button } from "@jmouse/ui"
 import { IssueTypeIcon } from "@/components/issues/issueVisuals"
 import type { IssueTypeResponse } from "@/api/configurationAdministration"
 

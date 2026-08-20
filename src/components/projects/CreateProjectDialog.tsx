@@ -2,8 +2,8 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -11,10 +11,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@jmouse/ui"
 import { ProjectIconPicker } from "@/components/projects/ProjectIconPicker"
 import { createProject } from "@/api/projects"
 import type { BoardScopeStrategy } from "@/api/sprints"
@@ -131,7 +135,7 @@ export function CreateProjectDialog() {
               {key || "TIC"}-2, …
             </p>
             {key.length > 0 && !keyIsValid && (
-              <p className="text-xs text-destructive">Must be uppercase, starting with a letter.</p>
+              <p className="text-xs text-destructive-ink">Must be uppercase, starting with a letter.</p>
             )}
           </div>
 

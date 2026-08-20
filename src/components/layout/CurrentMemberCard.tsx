@@ -1,5 +1,4 @@
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Badge, Skeleton } from "@jmouse/ui"
 import { MemberChip } from "@/components/MemberChip"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
 

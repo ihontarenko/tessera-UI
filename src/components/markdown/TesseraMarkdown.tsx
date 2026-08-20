@@ -5,8 +5,8 @@ import {
   MarkdownEditor,
   MarkdownRenderer,
   MarkdownUiProvider,
-} from "@/markdown"
-import type { MarkdownPlugin } from "@/markdown"
+} from "@jmouse/markdown"
+import type { MarkdownPlugin } from "@jmouse/markdown"
 import { IssueReferenceProvider } from "@/components/markdown/issueReference"
 import { TESSERA_MARKDOWN_UI } from "@/components/markdown/tesseraUiKit"
 import {
@@ -16,6 +16,8 @@ import {
   TESSERA_WRITING_PLUGINS,
 } from "@/components/markdown/tesseraMarkdownStack"
 import { cn } from "@/lib/helpers"
+// The library's own stylesheet first, then the bridge that gives it its colours.
+import "@jmouse/markdown/styles.css"
 import "@/components/markdown/markdown.css"
 
 /**

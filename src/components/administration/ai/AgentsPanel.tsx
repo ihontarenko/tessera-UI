@@ -12,12 +12,7 @@ import {
   Unplug,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Switch } from "@/components/ui/switch"
+import { Alert, AlertDescription, AlertTitle, Badge, Button, Input, Skeleton, Switch } from "@jmouse/ui"
 import {
   useAgents,
   useDiscardAgent,
@@ -353,7 +348,7 @@ function AuthorityControl({
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2">
       <p className="text-xs text-muted-foreground">
         {agent.authority === "RESTRICTED"
-          ? "Holds its own permissions, and never more than its owner holds."
+          ? "Holds its own permissions — its own, and nothing implied. Not capped by its owner: it may hold what the account it acts for does not."
           : "Acts with everything its owner can do, and follows them into new projects."}
       </p>
 

@@ -27,17 +27,17 @@ export interface ProjectResponse {
   keyStrategy: string
   keyPattern: string | null
   /**
-   * Which WiQ section this project's wiki lives in, or null where nobody has chosen one (WIQ-1 §3).
+   * Which Kiwi section this project's wiki lives in, or null where nobody has chosen one (KW-1 §3).
    *
    * ⚠️ **An identifier in another service.** Tessera stores it and never validates it — the category
-   * lives in WiQ's database, and asking would make this backend a client of WiQ, which is the
-   * backend-to-backend call WIQ-1 §1 refuses. A root that stops resolving is a state the wiki tab
+   * lives in Kiwi's database, and asking would make this backend a client of Kiwi, which is the
+   * backend-to-backend call KW-1 §1 refuses. A root that stops resolving is a state the wiki tab
    * handles.
    *
    * ⚠️ **Null is ordinary**, and the two empty states it produces are different: *"pick a category"* to
    * an administrator, *"the wiki is not configured"* to everybody else.
    */
-  wiqRootCategoryId: string | null
+  kiwiRootCategoryId: string | null
   myPermissions: string[]
   createdAt: string
   updatedAt: string
@@ -66,8 +66,8 @@ export interface UpdateProjectRequest {
   keyStrategy?: string
   /** ⚠️ Read only by CUSTOM, and refused server-side unless it contains a `sequence` placeholder. */
   keyPattern?: string | null
-  /** ⚠️ A WiQ category id, picked from WiQ's own tree. Blank clears it — "not configured" is a state. */
-  wiqRootCategoryId?: string | null
+  /** ⚠️ A Kiwi category id, picked from Kiwi's own tree. Blank clears it — "not configured" is a state. */
+  kiwiRootCategoryId?: string | null
 }
 
 /**
@@ -228,5 +228,31 @@ export function fetchIssueKeyPreview(projectId: string, keyStrategy: string, key
     .get<IssueKeyPreview>(`/projects/${projectId}/key-preview`, {
       params: keyPattern ? { keyStrategy, keyPattern } : { keyStrategy },
     })
+    .then((response) => response.data)
+}
+
+/**
+ * Changing a project's key, and every issue key under it.
+ *
+ * ⚠️ **The one project edit that changes an identifier other people are holding.** It is its own
+ * endpoint rather than a field on the ordinary save, so that it cannot happen while somebody is saving
+ * a name — see `ProjectRekeyService` for what it does and does not rewrite.
+ */
+export interface RekeyProjectRequest {
+  key: string
+  /** ⚠️ The project's CURRENT key, typed back. Checked on the server too, not only in the dialog. */
+  confirmation: string
+}
+
+export interface RekeyProjectResponse {
+  project: ProjectResponse
+  /** The prefix every stale link out there still carries. */
+  previousKey: string
+  rewrittenIssues: number
+}
+
+export function rekeyProject(projectId: string, request: RekeyProjectRequest) {
+  return httpClient
+    .post<RekeyProjectResponse>(`/projects/${projectId}/key`, request)
     .then((response) => response.data)
 }

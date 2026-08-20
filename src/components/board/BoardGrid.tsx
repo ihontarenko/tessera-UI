@@ -134,7 +134,7 @@ function ColumnHeader({ column, count }: { column: BoardColumnView; count: numbe
         className={cn(
           "shrink-0 rounded px-1.5 py-0.5 text-xs tabular-nums",
           overMax
-            ? "bg-destructive/15 text-destructive"
+            ? "bg-destructive/15 text-destructive-ink"
             : underMin
               ? "bg-amber-500/15 text-amber-600"
               : "bg-background text-muted-foreground",

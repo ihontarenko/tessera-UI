@@ -1,13 +1,13 @@
 import { useMemo } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import {
+  type ChartConfig,
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
+} from "@jmouse/ui"
 import { useLanguage } from "@/context/LanguageContext"
 import type { Translate } from "@/lib/translatableText"
 import type { VelocityPoint } from "@/api/reports"

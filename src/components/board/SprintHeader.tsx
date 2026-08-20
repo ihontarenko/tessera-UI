@@ -1,5 +1,5 @@
 import { CalendarClock, FlagTriangleRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@jmouse/ui"
 import { useLanguage } from "@/context/LanguageContext"
 import type { ActiveSprintView } from "@/api/sprints"
 import { cn } from "@/lib/helpers"
@@ -32,7 +32,7 @@ export function SprintHeader({ sprint, onComplete }: { sprint: ActiveSprintView;
           <span
             className={cn(
               "rounded px-1.5 py-0.5 text-xs tabular-nums",
-              isOverdue ? "bg-destructive/15 text-destructive" : "bg-background text-muted-foreground",
+              isOverdue ? "bg-destructive/15 text-destructive-ink" : "bg-background text-muted-foreground",
             )}
           >
             {isOverdue

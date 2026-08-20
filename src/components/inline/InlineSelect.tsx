@@ -1,4 +1,4 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@jmouse/ui"
 import { cn } from "@/lib/helpers"
 
 export interface InlineSelectOption {

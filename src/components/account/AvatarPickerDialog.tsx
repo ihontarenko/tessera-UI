@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Dices, ImageUp, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
+  ScrollArea,
+} from "@jmouse/ui"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import { PixelFace } from "@/components/PixelFace"
 import { ImageSquareCropper, type CropperHandle } from "@/components/account/ImageSquareCropper"

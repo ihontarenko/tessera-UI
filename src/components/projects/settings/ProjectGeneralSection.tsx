@@ -1,17 +1,23 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Button,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Separator,
+} from "@jmouse/ui"
 import { MemberChip } from "@/components/MemberChip"
 import { ProjectIcon } from "@/components/projects/ProjectIcon"
 import { ProjectIconPicker } from "@/components/projects/ProjectIconPicker"
 import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
 import { DetailRow, SettingsSection } from "@/components/projects/settings/SettingsSection"
 import { IssueKeyFormatEditor } from "@/components/projects/settings/IssueKeyFormatEditor"
-import { WiqRootPicker } from "@/components/projects/WiqRootPicker"
+import { KiwiRootPicker } from "@/components/projects/KiwiRootPicker"
 import { useProjectUpdate } from "@/components/projects/settings/useProjectUpdate"
 import { searchMembers } from "@/api/members"
 import type { ProjectResponse } from "@/api/projects"
@@ -101,15 +107,15 @@ export function ProjectGeneralSection({
 
           <Separator />
 
-          {/* Which WiQ section this project's wiki lives in (WIQ-10; WIQ-1 §3).
+          {/* Which Kiwi section this project's wiki lives in (KW-10; KW-1 §3).
               ⚠️ The pages are stored in another product, and who may read them is decided there —
-              choosing a root here grants nobody anything. See WiqRootPicker, which also handles WiQ
+              choosing a root here grants nobody anything. See KiwiRootPicker, which also handles Kiwi
               being unreachable, since that is a normal state rather than an error. */}
           <div className="space-y-1.5">
-            <Label>{t("project.settings.general.wikiRoot", "Wiki section (WiQ)")}</Label>
-            <WiqRootPicker
-              value={project.wiqRootCategoryId}
-              onChange={(wiqRootCategoryId) => mutation.mutate({ wiqRootCategoryId })}
+            <Label>{t("project.settings.general.wikiRoot", "Wiki section (Kiwi)")}</Label>
+            <KiwiRootPicker
+              value={project.kiwiRootCategoryId}
+              onChange={(kiwiRootCategoryId) => mutation.mutate({ kiwiRootCategoryId })}
             />
           </div>
 
@@ -145,12 +151,12 @@ export function ProjectGeneralSection({
         <DetailRow label={t("project.settings.general.keyStrategy", "Key strategy")}>
           <span className="font-mono text-xs">{project.keyStrategy}</span>
         </DetailRow>
-        {/* ⚠️ Two empty states, not one, and they are different situations (WIQ-1 §3): an
+        {/* ⚠️ Two empty states, not one, and they are different situations (KW-1 §3): an
             administrator sees the picker above and is being asked to do something; everybody else sees
             this, which says the wiki is not configured rather than that it is empty. */}
-        <DetailRow label={t("project.settings.general.wikiRoot", "Wiki section (WiQ)")}>
-          {project.wiqRootCategoryId ? (
-            <span className="font-mono text-xs">{project.wiqRootCategoryId}</span>
+        <DetailRow label={t("project.settings.general.wikiRoot", "Wiki section (Kiwi)")}>
+          {project.kiwiRootCategoryId ? (
+            <span className="font-mono text-xs">{project.kiwiRootCategoryId}</span>
           ) : (
             <span className="text-muted-foreground">
               {t("project.settings.general.wikiNotConfigured", "The wiki is not configured.")}

@@ -1,6 +1,6 @@
 import { LogOut } from "lucide-react"
 import { useAuth } from "react-oidc-context"
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@jmouse/ui"
 import { useLanguage } from "@/context/LanguageContext"
 
 // Lives in the sidebar footer, matching Innoventa's own user-menu-holds-sign-out placement — desktop

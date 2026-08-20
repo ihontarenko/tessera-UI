@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Loader2, Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { Button, Textarea } from "@jmouse/ui"
 import { EmptyState } from "@/components/EmptyState"
 import { PageHeader } from "@/components/PageHeader"
 import { AssistantTranscript } from "@/components/assistant/AssistantTranscript"
@@ -150,7 +149,7 @@ export function AssistantPage() {
             )}
 
             {ask.isError && (
-              <p className="rounded-md border border-destructive/35 bg-destructive/5 px-3 py-2 text-[13px] text-destructive">
+              <p className="rounded-md border border-destructive/35 bg-destructive/5 px-3 py-2 text-[13px] text-destructive-ink">
                 {t("assistant.failed", "That did not get through. Your question is back in the box — send it again.")}
               </p>
             )}

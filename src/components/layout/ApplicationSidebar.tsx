@@ -3,16 +3,16 @@ import { TesseraMark } from "@/components/icons/TesseraMark"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarFooter,
-} from "@/components/ui/sidebar"
+} from "@jmouse/ui"
 import { navigationGroups, type NavigationGroup, type NavigationLocation } from "@/navigation"
 import { AccountMenu } from "@/components/layout/AccountMenu"
 import { ProjectSwitcher } from "@/components/layout/ProjectSwitcher"

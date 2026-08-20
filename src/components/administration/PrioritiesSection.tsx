@@ -1,10 +1,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button, Input, Label, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@jmouse/ui"
 import {
   AdministrationSection,
   CatalogDialog,

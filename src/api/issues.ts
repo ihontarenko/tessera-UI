@@ -182,6 +182,16 @@ export function getIssueByKey(issueKey: string) {
 
 // ── Cross-project search (ticket 10) ─────────────────────────────────────────────────────────────
 
+/**
+ * The hierarchy level at which a parent may hold work in another project (TSSR-56).
+ *
+ * ⚠️ **A second copy of `IssueHierarchyService.PROJECT_SPANNING_LEVEL`, and there is no way around it.**
+ * The server owns the rule and refuses on it; this exists so a picker does not offer what is about to be
+ * refused. It is stated here rather than derived so the two are compared by somebody reading them, and
+ * a client that got it wrong offers a bad candidate — it never lets one through.
+ */
+export const PROJECT_SPANNING_LEVEL = 2
+
 export interface IssueSearchItem {
   /** Named per row because a result is only meaningful once you know which project it came from. */
   project: { id: string; key: string; name: string }
@@ -356,8 +366,8 @@ export interface CommentTopicSummary {
 export interface Comment {
   id: string
   author: MemberSummary | null
-  /** The agent that wrote it, where one did — null where the person typed it themselves. */
-  agentName: string | null
+  // ⚠️ `agentName` was here and is gone (TSSR-34). `author` IS the agent where one wrote it, and
+  // `author.kind` says so — one reference instead of a chip plus a string beside it.
   /** What it is about, where somebody said — null for an ordinary remark. */
   topic: CommentTopicSummary | null
   /** ⚠️ The comment this one answers. Replies go **one level deep** — a reply has no replies. */
@@ -409,8 +419,7 @@ export interface ActivityLogItem {
 export interface ActivityLog {
   id: string
   actor: MemberSummary | null
-  /** The agent that made the change, where one did — null where the person did it themselves. */
-  agentName: string | null
+  // ⚠️ `agentName` was here and is gone (TSSR-34) — `actor.kind` says whether a client did it.
   createdAt: string
   items: ActivityLogItem[]
 }

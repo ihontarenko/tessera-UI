@@ -62,6 +62,31 @@ export interface PageBlockView {
   board: BoardBlock | null
 }
 
+/**
+ * Resolve directives for a document **this product does not store** (TSSR-19, TSSR-0097).
+ *
+ * ⚠️ **No page in the address, and that is the seam rather than a shortcut.** The page-scoped route
+ * below gated a directive on its exact line appearing in the page's stored markdown — a check that
+ * cannot be made about a page living in Kiwi, and one that KW-1's fourth finding shows bought nothing
+ * for a signed-in reader: every resolver already authorises the person, so this route tells them
+ * nothing Tessera's own API would refuse them.
+ *
+ * ⚠️ It **is** worth something for an anonymous reader, whose choice of directive is the only input
+ * there is. That path keeps the gate — INVT-0092.
+ */
+export function resolveProjectBlocks(
+  projectId: string,
+  directives: ReadonlyArray<{ name: string; argument: string }>,
+) {
+  return httpClient
+    .post<PageBlockView[]>(`/projects/${projectId}/blocks/resolve`, { directives })
+    .then((response) => response.data)
+}
+
+/**
+ * ⚠️ **Only for a page Tessera still stores**, which after TSSR-0099 will be none of them. Kept until
+ * that ticket deletes the route it calls.
+ */
 export function resolveWikiBlocks(
   projectId: string,
   pageId: string,

@@ -1,11 +1,17 @@
-import { Button as ShadcnButton } from "@/components/ui/button"
-import { Input as ShadcnInput } from "@/components/ui/input"
-import { Textarea as ShadcnTextarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import type { MarkdownUiKit } from "@/markdown"
+import {
+  Button as ShadcnButton,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input as ShadcnInput,
+  Textarea as ShadcnTextarea,
+} from "@jmouse/ui"
+import type { MarkdownUiKit } from "@jmouse/markdown"
 
 /**
- * The seven widgets `@/markdown` asks its host for, bound to Tessera's own.
+ * The seven widgets `@jmouse/markdown` asks its host for, bound to Tessera's own.
  *
  * <p>The library draws documents, not chrome: every modal it ships — the block palette, the link
  * dialog — is built out of these, so it inherits this application's buttons and modal behaviour rather

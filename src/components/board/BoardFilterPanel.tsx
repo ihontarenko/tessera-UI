@@ -2,15 +2,15 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Check, Copy, Filter, Pencil, Plus, Trash2, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@jmouse/ui"
 import { BoardFilterEditor } from "@/components/board/BoardFilterEditor"
 import { useLanguage } from "@/context/LanguageContext"
 import { apiErrorMessage } from "@/api/errors"
@@ -206,7 +206,7 @@ function FilterGroup({
 
               {onDelete && filter.editable && (
                 <RowAction label="Delete" onClick={() => onDelete(filter)}>
-                  <Trash2 className="size-3 text-destructive" />
+                  <Trash2 className="size-3 text-destructive-ink" />
                 </RowAction>
               )}
             </span>

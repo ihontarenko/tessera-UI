@@ -2,9 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import { ExternalLink, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Skeleton } from "@jmouse/ui"
 import { IssueTypeIcon } from "@/components/issues/issueVisuals"
 import { IssueDetailPanel } from "@/components/issues/detail/IssueDetailPanel"
 import { issueQueryKey } from "@/components/issues/detail/useIssueEditing"
@@ -51,7 +49,13 @@ export function IssueDetailModal({ issueId, projectId, permissions, open, onOpen
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* 768px is a one-column dialog. Two columns need room, and the rail's 290px has to come out of
           somewhere other than the description. */}
-      <DialogContent className="max-h-[88vh] gap-3 overflow-y-auto sm:max-w-[900px]">
+      {/* ⚠️ `grid-cols-[minmax(0,1fr)]` is load-bearing, not decoration. `DialogContent` is a GRID, and a
+          grid item's automatic minimum size is its min-content width — so `max-w` caps what the dialog
+          *asks* for while the column happily grows past it, and the summary, the rail and the transition
+          buttons end up outside the border with a horizontal scrollbar under them. A column declared
+          `minmax(0, 1fr)` is allowed to be narrower than its content, which is what lets every `min-w-0`
+          inside actually take effect. */}
+      <DialogContent className="grid-cols-[minmax(0,1fr)] max-h-[88vh] gap-3 overflow-y-auto sm:max-w-[900px]">
         {isLoading || !issue ? (
           <>
             <DialogHeader>
@@ -63,13 +67,18 @@ export function IssueDetailModal({ issueId, projectId, permissions, open, onOpen
           </>
         ) : (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+            {/* `pr-8` keeps the summary out from under the close button, which is positioned over the
+                dialog's own padding and does not reserve room for itself. */}
+            <DialogHeader className="pr-8">
+              <DialogTitle className="flex min-w-0 items-center gap-2">
                 <IssueTypeIcon type={issue.type} />
-                <Link to={`/issues/${issue.issueKey}`} className="font-mono text-sm text-muted-foreground hover:underline">
+                <Link
+                  to={`/issues/${issue.issueKey}`}
+                  className="shrink-0 font-mono text-sm text-muted-foreground hover:underline"
+                >
                   {issue.issueKey}
                 </Link>
-                <span className="truncate">{issue.summary}</span>
+                <span className="min-w-0 flex-1 truncate">{issue.summary}</span>
               </DialogTitle>
             </DialogHeader>
 
@@ -83,7 +92,7 @@ export function IssueDetailModal({ issueId, projectId, permissions, open, onOpen
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive-ink hover:text-destructive-ink"
                   onClick={() => deleteMutation.mutate()}
                   disabled={deleteMutation.isPending}
                 >

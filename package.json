@@ -16,6 +16,9 @@
     "@codemirror/state": "^6.7.1",
     "@codemirror/view": "^6.43.8",
     "@hookform/resolvers": "^5.4.0",
+    "@jmouse/markdown": "file:../../../jmouse-ui/packages/markdown",
+    "@jmouse/files": "file:../../../jmouse-ui/packages/files",
+    "@jmouse/ui": "file:../../../jmouse-ui/packages/ui",
     "@lezer/common": "^1.5.2",
     "@lezer/highlight": "^1.2.3",
     "@tailwindcss/vite": "^4.3.3",
@@ -27,6 +30,7 @@
     "date-fns": "^4.4.0",
     "katex": "^0.16.47",
     "lucide-react": "^1.25.0",
+    "mdast-util-find-and-replace": "^3.0.2",
     "mermaid": "^11.16.1",
     "oidc-client-ts": "^3.5.0",
     "radix-ui": "^1.6.2",
@@ -49,6 +53,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/mdast": "^4.0.4",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

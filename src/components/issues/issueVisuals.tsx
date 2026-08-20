@@ -22,6 +22,7 @@ import {
   Sparkles,
   SquareStack,
   TrendingUp,
+  Waypoints,
   Wrench,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -53,6 +54,8 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   // Wider containers.
   initiative: Rocket,
   milestone: Flag,
+  // ⚠️ Spokes meeting at a centre, not a stack: a hub gathers work it does not contain.
+  hub: Waypoints,
   // Kinds of work a team distinguishes.
   improvement: TrendingUp,
   feature: Sparkles,
@@ -93,6 +96,7 @@ const TYPE_COLORS: Record<string, { text: string; border: string }> = {
   "sub-task": { text: "text-slate-500 dark:text-slate-400", border: "border-l-slate-400" },
   initiative: { text: "text-violet-600 dark:text-violet-400", border: "border-l-violet-500" },
   milestone: { text: "text-amber-600 dark:text-amber-400", border: "border-l-amber-500" },
+  hub: { text: "text-indigo-600 dark:text-indigo-400", border: "border-l-indigo-500" },
   improvement: { text: "text-emerald-600 dark:text-emerald-400", border: "border-l-emerald-500" },
   feature: { text: "text-fuchsia-600 dark:text-fuchsia-400", border: "border-l-fuchsia-500" },
   spike: { text: "text-cyan-600 dark:text-cyan-400", border: "border-l-cyan-500" },

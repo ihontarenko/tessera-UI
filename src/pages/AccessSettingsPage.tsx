@@ -4,18 +4,32 @@ import { ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/PageHeader"
 import { EmptyState } from "@/components/EmptyState"
+import { HighlightedCode } from "@/components/HighlightedCode"
 import { MemberChip } from "@/components/MemberChip"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Switch } from "@/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Input,
+  Skeleton,
+  Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@jmouse/ui"
 import {
   assignRole,
   getAccessOverview,
+  getPolicyProjection,
   grantPermission,
   revokePermission,
   setRoleBundle,
@@ -41,10 +55,15 @@ import { apiErrorMessage } from "@/api/errors"
  * the file. The banner says so, because the alternative is an administrator discovering it after a
  * deploy and concluding the screen is broken.
  *
- * The three tabs are three different questions, and keeping them apart is deliberate: what a role
- * *means*, who *holds* one, and what somebody was given or refused *personally*. The last is where a
+ * The first three tabs are three different questions, and keeping them apart is deliberate: what a role
+ * *means*, who *holds* one, and what somebody was given or refused *personally*. The third is where a
  * surprise usually lives — a deny beats every role that grants it, from anywhere, so a person who
  * "should" be able to do something and cannot is almost always in that table.
+ *
+ * ⚠️ **The fourth is all three at once, as a document.** Three lists are three things to hold in your
+ * head, and *"who can do what here"* is one question — so the projection renders the rows back into the
+ * policy language, read-only. It answers from the rows and never from `policy/tessera.jmp`, which is
+ * only the seed and has drifted from them since the first edit made on this screen.
  */
 export function AccessSettingsPage() {
   const { data, isLoading } = useQuery({ queryKey: ["access", "overview"], queryFn: getAccessOverview })
@@ -76,6 +95,7 @@ function AccessTabs({ overview }: { overview: AccessOverview }) {
         <TabsTrigger value="roles">Roles</TabsTrigger>
         <TabsTrigger value="holdings">Who holds what</TabsTrigger>
         <TabsTrigger value="personal">Personal grants</TabsTrigger>
+        <TabsTrigger value="projection">As a policy</TabsTrigger>
       </TabsList>
 
       <TabsContent value="roles" className="space-y-6">
@@ -91,8 +111,71 @@ function AccessTabs({ overview }: { overview: AccessOverview }) {
       <TabsContent value="personal">
         <DirectHoldings overview={overview} />
       </TabsContent>
+
+      {/* ⚠️ The other three tabs are three questions; this one is the answer to all of them at once,
+          which is why it is last rather than first. Somebody comes here after reading a list and still
+          not being able to say what is in force. */}
+      <TabsContent value="projection">
+        <PolicyProjectionTab />
+      </TabsContent>
     </Tabs>
   )
+}
+
+/**
+ * The whole authorization as a `.jmp` document, read-only (TSSR-20).
+ *
+ * ⚠️ **Rendered from the rows, never from `policy/tessera.jmp`.** The file is the seed; the engine reads
+ * rows, and they part company the moment somebody saves a bundle on the first tab.
+ */
+function PolicyProjectionTab() {
+  const projection = useQuery({ queryKey: ["access", "projection"], queryFn: getPolicyProjection })
+
+  if (projection.isLoading) {
+    return <Skeleton className="h-96 w-full" />
+  }
+
+  // ⚠️ A failed fetch must SAY SO, and this is the one tab where that is easy to get wrong: `data` is a
+  // string, so the obvious `data ?? ""` renders an empty bordered box — a screen that reads as an
+  // installation with no authorization at all rather than as a request that did not arrive.
+  if (projection.isError || projection.data === undefined) {
+    return (
+      <EmptyState
+        icon={ShieldCheck}
+        title="Could not render the policy"
+        message="Nothing is wrong with the authorization itself — the other three tabs read it from a different route. This one either failed or is not there, which is what a backend older than the tab looks like."
+        action={
+          <Button size="sm" variant="outline" onClick={() => projection.refetch()}>
+            Try again
+          </Button>
+        }
+      />
+    )
+  }
+
+  // ⚠️ Never empty when the route answers — `PolicyProjection.render` always writes its generated header
+  // and the opening `policy "…" {`. So a body that does not open with that header is not a short policy,
+  // it is something else arriving at status 200, and colouring it through the `.jmp` grammar would dress
+  // whatever it is up as authorization.
+  if (!projection.data.trimStart().startsWith("#")) {
+    return (
+      <EmptyState
+        icon={ShieldCheck}
+        title="That was not a policy"
+        message="The route answered, but with something other than a rendered document. A rendered policy always carries its header, so something between here and the renderer replaced or dropped the body."
+        action={
+          <Button size="sm" variant="outline" onClick={() => projection.refetch()}>
+            Try again
+          </Button>
+        }
+      />
+    )
+  }
+
+  // ⚠️ Highlighted through the `.jmp` grammar, which exists for exactly this document. A policy read as
+  // undifferentiated grey is one whose `deny` lines get skimmed past, and a deny is the sharpest line in
+  // the file.
+  return <HighlightedCode code={projection.data} language="jmp" />
 }
 
 /**

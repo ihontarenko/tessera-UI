@@ -4,13 +4,10 @@ import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 import { Bot, MessageSquare, PencilLine } from "lucide-react"
 import { MemberAvatar } from "@/components/MemberAvatar"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Textarea } from "@/components/ui/textarea"
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea } from "@jmouse/ui"
 import { TesseraMarkdown } from "@/components/markdown/TesseraMarkdown"
 import { SegmentedControl } from "@/components/SegmentedControl"
-import type { MemberSummary } from "@/api/members"
+import { isAgent, type MemberSummary } from "@/api/members"
 import { memberName } from "@/lib/memberDisplay"
 import {
   addComment,
@@ -415,9 +412,9 @@ export function IssueActivityStream({
               <StreamAvatar member={entry.event.actor} />
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{memberName(entry.event.actor)}</span>{" "}
-                {entry.event.agentName && (
+                {isAgent(entry.event.actor) && (
                   <>
-                    <AgentBadge name={entry.event.agentName} />{" "}
+                    <AgentBadge member={entry.event.actor} />{" "}
                   </>
                 )}
                 <KindBadge kind="change" />{" "}
@@ -510,7 +507,7 @@ function CommentEntry({
             the time. */}
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="truncate text-sm font-medium">{memberName(comment.author)}</span>
-          {comment.agentName && <AgentBadge name={comment.agentName} />}
+          {isAgent(comment.author) && <AgentBadge member={comment.author} />}
           <KindBadge kind="comment" />
           {/* Nothing at all when there is none — an em dash on nine rows out of ten is noise. */}
           {comment.topic && <TopicBadge topic={comment.topic} />}
@@ -607,7 +604,7 @@ function ActivityAction({
         "rounded border px-1.5 py-0.5 text-[11px] leading-none transition-colors",
         "border-border/70 text-muted-foreground disabled:opacity-50",
         destructive
-          ? "hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+          ? "hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive-ink"
           : "hover:border-border hover:bg-muted hover:text-foreground",
       )}
     >
@@ -787,14 +784,33 @@ function KindBadge({ kind }: { kind: "comment" | "change" }) {
  * small caps; this one is an annotation, so it is outlined and reads in ordinary case. The icon carries
  * the colour, which keeps the chip legible across every theme without competing with the name.
  */
-function AgentBadge({ name }: { name: string }) {
+/**
+ * That this line was written by a client rather than by somebody typing (TSSR-36).
+ *
+ * ⚠️ **It takes the member, not a name, and that is the whole change.** It used to be handed a bare
+ * string carried in a column beside the author, and it rendered *"SU · via Claude Code"* — a person's
+ * chip with somebody else's identity glued to it. The client is the author now, so the chip beside this
+ * badge already **is** the agent: its own name, its own generated face. The badge says what kind of
+ * thing that is, and stops claiming anything about who.
+ *
+ * ⚠️ **A retired client keeps its by-line**, which is the point of never deleting the row: history has
+ * to outlive what it names. The badge says so rather than the line going blank.
+ */
+function AgentBadge({ member }: { member: MemberSummary | null }) {
+  const name = memberName(member)
+  const retired = member?.retired === true
+
   return (
     <span
-      title={`Written through ${name}, acting for the person named beside it`}
+      title={
+        retired
+          ? `Written through ${name}, a client that has since been switched off`
+          : `Written through ${name}, a client acting for the person who approved it`
+      }
       className="inline-flex max-w-[14rem] shrink-0 translate-y-px items-center gap-1 rounded border border-primary/25 bg-primary/[0.06] px-1.5 py-px text-[10px] font-medium text-foreground/70"
     >
       <Bot className="size-2.5 shrink-0 text-primary" />
-      <span className="truncate">via {name}</span>
+      <span className="truncate">{retired ? "client, retired" : "client"}</span>
     </span>
   )
 }

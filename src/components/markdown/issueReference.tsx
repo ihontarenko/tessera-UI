@@ -1,8 +1,10 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
+import { findAndReplace } from "mdast-util-find-and-replace"
+import type { Root } from "mdast"
 import { httpClient } from "@/api/httpClient"
-import type { MarkdownPlugin } from "@/markdown"
+import type { MarkdownPlugin } from "@jmouse/markdown"
 
 /**
  * `TES-42` in prose, rendered as a live link carrying the issue's status and summary.
@@ -26,26 +28,57 @@ import type { MarkdownPlugin } from "@/markdown"
  *
  * <h2>How the key becomes a link</h2>
  *
- * `transform` rewrites a bare key into an ordinary Markdown link with a scheme nothing else uses, and
- * the `a` override renders that scheme specially. Two consequences worth stating:
+ * A remark plugin rewrites the key **in the parsed tree** into an ordinary link node with a scheme
+ * nothing else uses, and the `a` override renders that scheme specially. Two consequences worth
+ * stating:
  *
- * - ⚠️ **It survives a plugin that is not installed.** Without this plugin the transform never runs and
- *   `TES-42` is what it always was — text. Nothing breaks, which is the same portability rule the whole
- *   library rests on.
- * - ⚠️ **A key already inside a link is left alone.** The pattern requires the key not to be preceded by
- *   `[` or `(`, so `[see TES-42](…)` and an existing `(tessera-issue:TES-42)` are not rewritten into
- *   nonsense on a second pass.
+ * - ⚠️ **It survives a plugin that is not installed.** Without this plugin nothing rewrites anything
+ *   and `TES-42` is what it always was — text. Nothing breaks, which is the same portability rule the
+ *   whole library rests on.
+ * - ⚠️ **Only text is rewritten.** Link text, link destinations, `` `inline code` `` and fenced blocks
+ *   are all left exactly as written.
+ *
+ * <h2>⚠️ Why this is not the `transform` slot, which is what it used to be</h2>
+ *
+ * `transform` is a **source pre-pass**: a `String.replace` over the raw document before anything parses
+ * it, which cannot tell prose from syntax. Three things were wrong with it, and the first is the one
+ * that was reported:
+ *
+ * - **It was not idempotent.** A document already containing `[TES-42](tessera-issue:TES-42)` — which
+ *   is what an agent writes, and what pasting a reference produces — had its *second* key rewritten
+ *   again, because the character before it is `:` rather than the `[` the guard looked for. The result
+ *   is `[TES-42](tessera-issue:[TES-42](tessera-issue:TES-42))`: a destination that resolves to no
+ *   issue, so the reader gets the Markdown source printed at them.
+ * - **It reached into code.** `` `TES-42` `` and a key inside a fenced block are quoted text; a pre-pass
+ *   over the raw string turned both into links.
+ * - **It missed a key in parentheses.** The guard excluded a preceding `(` to protect link
+ *   destinations, so `(see TES-42)` in ordinary prose silently stayed text.
+ *
+ * A tree does not have those problems, because by the time it exists the parser has already decided
+ * what is prose and what is syntax. `findAndReplace` visits **text nodes only**, so code never comes
+ * near it, and `ignore` keeps it out of the two node types whose text is still part of a link.
  */
 
 const SCHEME = "tessera-issue:"
 
 /**
- * ⚠️ **Anchored to a word boundary on both sides, and the trailing one is a negative lookahead rather
- * than `\b`.** `TES-42` inside `TES-421` must not match its first five characters — a word boundary
- * after `2` would happily sit before `1`. Requiring a non-digit is what makes the shorter key stop
- * claiming the longer one.
+ * ⚠️ **Anchored on both sides, and both anchors are assertions rather than `\b`.**
+ *
+ * - Ahead: `TES-42` inside `TES-421` must not match its first five characters — a word boundary after
+ *   `2` would happily sit before `1`. Requiring a non-digit is what makes the shorter key stop claiming
+ *   the longer one, and excluding `-` keeps it off `TES-42-1`.
+ * - Behind: `\w` stops `xTES-42`, and `-` stops the `BAR-12` inside `FOO-BAR-12`.
+ *
+ * ⚠️ **A pattern, and a factory — never one shared instance.** A global regular expression carries
+ * `lastIndex`, `findAndReplace` advances it, and `matchAll` copies it from the regex it is handed. One
+ * shared object therefore means {@link issueKeysIn} starting its scan wherever the last render's
+ * rewrite happened to stop.
  */
-const ISSUE_KEY = /(^|[^[(\w-])([A-Z][A-Z0-9]{1,31}-\d+)(?![\d-])/g
+const ISSUE_KEY_PATTERN = String.raw`(?<![\w-])[A-Z][A-Z0-9]{1,31}-\d+(?![\d-])`
+
+function issueKeyMatcher(): RegExp {
+  return new RegExp(ISSUE_KEY_PATTERN, "g")
+}
 
 export interface IssueReferenceSummary {
   issueKey: string
@@ -61,12 +94,18 @@ interface Resolved {
 
 const IssueReferenceContext = createContext<Resolved>({ byKey: new Map(), loading: false })
 
-/** Every issue key a document mentions, in the order a reader meets them and each one once. */
+/**
+ * Every issue key a document mentions, in the order a reader meets them and each one once.
+ *
+ * ⚠️ **Over the raw source, deliberately.** A key inside a fenced block is not rendered as a link and
+ * needs no answer, but excluding it would mean parsing the document a second time to decide — and the
+ * cost of the two views disagreeing is one extra key in a batch nobody sees.
+ */
 export function issueKeysIn(markdown: string): string[] {
   const found = new Set<string>()
 
-  for (const match of markdown.matchAll(ISSUE_KEY)) {
-    found.add(match[2])
+  for (const match of markdown.matchAll(issueKeyMatcher())) {
+    found.add(match[0])
   }
 
   return [...found]
@@ -114,7 +153,35 @@ export function IssueReferenceProvider({
 }
 
 /**
- * The plugin itself: a source pre-pass and one element override, and no state at all.
+ * The tree pass: every issue key in prose becomes a link node carrying {@link SCHEME}.
+ *
+ * ⚠️ **`ignore` names the two node types whose children are text that is already a link.** A key in the
+ * *text* of a link (`[see TES-42](…)`) must stay text, because a link inside a link is not a thing a
+ * document can express — and a key in a *destination* is never visited at all, destinations not being
+ * children. Between the two, running this over an already-linked document changes nothing, which is the
+ * property the source pre-pass never had.
+ */
+function remarkIssueReferences() {
+  return (tree: Root) => {
+    findAndReplace(
+      tree,
+      [
+        [
+          issueKeyMatcher(),
+          (issueKey: string) => ({
+            type: "link" as const,
+            url: `${SCHEME}${issueKey}`,
+            children: [{ type: "text" as const, value: issueKey }],
+          }),
+        ],
+      ],
+      { ignore: ["link", "linkReference"] },
+    )
+  }
+}
+
+/**
+ * The plugin itself: one tree pass and one element override, and no state at all.
  *
  * Build it once at module scope — the library's first rule is that the plugin list must be stable
  * across renders.
@@ -123,10 +190,7 @@ export function issueReferencePlugin(): MarkdownPlugin<unknown> {
   return {
     name: "issue-reference",
     prose: {
-      transform: (markdown) =>
-        markdown.replace(ISSUE_KEY, (_match, before: string, key: string) =>
-          `${before}[${key}](${SCHEME}${key})`,
-        ),
+      remarkPlugins: [remarkIssueReferences],
       components: {
         a: ({ href, children, ...rest }) => {
           if (typeof href === "string" && href.startsWith(SCHEME)) {

@@ -4,7 +4,7 @@ import { addIssueLink, changeIssueLinkType, removeIssueLink, type IssueDetail } 
 import { applyIssueUpdate } from "@/components/issues/detail/useIssueEditing"
 import { apiErrorMessage } from "@/api/errors"
 
-/** Every register list in the cache — the shape the Tracked tab reads. */
+/** Every register list in the cache — the shape the Registers tab reads. */
 export const REGISTERS_QUERY_KEY = ["issue-registers"]
 
 /**
@@ -26,7 +26,7 @@ class PartialLinkFailure extends Error {
 }
 
 /**
- * The writes the Tracked tab performs, for a register whose hub is named per call.
+ * The writes the Registers tab performs, for a register whose hub is named per call.
  *
  * ⚠️ **Why not `useIssueEditing`.** That hook closes over one `IssueDetail` — the issue whose page or modal
  * is open — and this screen shows ten registers at once, none of them loaded as a detail. So the hub is an

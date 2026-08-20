@@ -1,9 +1,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link2 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge, Button, ScrollArea } from "@jmouse/ui"
 import { SearchInput } from "@/components/SearchInput"
 import { IssueTypeIcon, StatusPill } from "@/components/issues/issueVisuals"
 import { searchIssues } from "@/api/issues"
@@ -14,7 +12,7 @@ const RESULT_LIMIT = 20
 /**
  * Finding issues and linking a handful of them in one gesture.
  *
- * ⚠️ **This is the half the rail cannot do, and the reason the Tracked tab exists** (TSSR-45). The rail's
+ * ⚠️ **This is the half the rail cannot do, and the reason the Registers tab exists** (TSSR-45). The rail's
  * picker is one select and one button: twenty tickets across four projects means twenty rounds of
  * search-choose-click-wait, and the search resets each time. Here the search stays put and the results
  * carry checkboxes, so gathering an effort is one search and one click.
@@ -78,9 +76,16 @@ export function LinkTargetPicker({
       )}
 
       {/* ⚠️ The height belongs on the viewport, not on the root — `max-h-*` on a Radix ScrollArea root
-          clips its content instead of scrolling it. */}
+          clips its content instead of scrolling it.
+
+          ⚠️ **And `[&>div]:!block` is the second half of the same trap.** Radix wraps the viewport's
+          children in a `display: table` div with `min-width: 100%`, which grows to its content rather
+          than being bounded by it — so `truncate` on a summary has nothing to truncate against, the row
+          runs past the panel, and the status pill at the end of it is simply outside. Measured at 1141px
+          of row inside a 614px viewport. Made `block` it is the width of the viewport, and every
+          `min-w-0 flex-1 truncate` below finally means something. */}
       {candidates.length > 0 && (
-        <ScrollArea className="w-full">
+        <ScrollArea className="w-full" viewportClassName="[&>div]:!block">
           <ul className="max-h-56 space-y-0.5 pr-2">
             {candidates.map((row) => (
               <li key={row.issue.id}>

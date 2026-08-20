@@ -8,18 +8,25 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@jmouse/ui"
 import { EmptyState } from "@/components/EmptyState"
 import { MemberChip } from "@/components/MemberChip"
+import { IssueListRow, IssueRowLayout } from "@/components/issues/rows/IssueListRow"
 import { EpicsPanel } from "@/components/issues/epics/EpicsPanel"
 import { useLanguage } from "@/context/LanguageContext"
 import { CreateIssueDialog } from "@/components/issues/CreateIssueDialog"
 import { IssueDetailModal } from "@/components/issues/IssueDetailModal"
-import { IssueTypeIcon, PriorityBadge, StatusPill, formatStoryPoints } from "@/components/issues/issueVisuals"
+import { PriorityBadge, StatusPill, formatStoryPoints } from "@/components/issues/issueVisuals"
 import { fetchCatalog, getIssue, listIssues, transitionIssue, type IssueRow } from "@/api/issues"
 import { CREATE_ISSUE, TRANSITION_ISSUE } from "@/api/permissions"
 import { apiErrorMessage } from "@/api/errors"
@@ -31,7 +38,7 @@ const ANY = "__any__"
  *
  * **List** is the dense ranked table (ticket 07/54/55), filtered client-side by the common fields.
  * **Epics** is the same work gathered under the epic each issue belongs to — the hierarchy counterpart of the
- * Tracked tab's link-based grouping, and the answer to "how much of this epic is done" that the flat table
+ * Registers tab's link-based grouping, and the answer to "how much of this epic is done" that the flat table
  * cannot give however it is sorted.
  *
  * The create control belongs to the panel rather than to either view: one project, one create button.
@@ -137,54 +144,39 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
           message={issues && issues.length > 0 ? "No issues match the current filters." : "Create the first issue in this project."}
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8" />
-              <TableHead className="w-24">Key</TableHead>
-              <TableHead>Summary</TableHead>
-              <TableHead className="w-28">Priority</TableHead>
-              <TableHead className="w-32">Status</TableHead>
-              <TableHead className="w-44">Assignee</TableHead>
-              <TableHead className="w-16 text-right">Points</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((issue) => (
-              <TableRow
-                key={issue.id}
-                className="cursor-pointer"
-                onClick={() => setSelectedIssueId(issue.id)}
-              >
-                <TableCell>
-                  <IssueTypeIcon type={issue.type} />
-                </TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">{issue.issueKey}</TableCell>
-                <TableCell>
-                  <span className={issue.open ? "" : "text-muted-foreground line-through"}>{issue.summary}</span>
-                </TableCell>
-                <TableCell>
+        // One row shape, shared with every other list (TSSR-53). No project column: everything here is this
+        // project's. The status stays a *control* rather than a pill, which is what `statusSlot` is for.
+        <IssueRowLayout withProject={false}>
+          {filtered.map((issue) => (
+            <IssueListRow
+              key={issue.id}
+              issueKey={issue.issueKey}
+              summary={issue.summary}
+              type={issue.type}
+              status={issue.status}
+              open={issue.open}
+              onOpen={() => setSelectedIssueId(issue.id)}
+              trailing={
+                <>
                   <PriorityBadge priority={issue.priority} />
-                </TableCell>
-                <TableCell onClick={(event) => event.stopPropagation()}>
-                  {canTransition ? (
-                    <RowStatusControl issue={issue} projectId={projectId} onNeedsResolution={setSelectedIssueId} />
-                  ) : (
-                    <StatusPill status={issue.status} />
-                  )}
-                </TableCell>
-                <TableCell>
                   {issue.assignee ? (
                     <MemberChip member={issue.assignee} />
                   ) : (
                     <span className="text-xs text-muted-foreground">Unassigned</span>
                   )}
-                </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">{formatStoryPoints(issue.storyPoints)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
+                    {formatStoryPoints(issue.storyPoints)}
+                  </span>
+                </>
+              }
+              statusSlot={
+                canTransition ? (
+                  <RowStatusControl issue={issue} projectId={projectId} onNeedsResolution={setSelectedIssueId} />
+                ) : undefined
+              }
+            />
+          ))}
+        </IssueRowLayout>
       )}
       </TabsContent>
 

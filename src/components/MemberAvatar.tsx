@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@jmouse/ui"
 import { PixelFace } from "@/components/PixelFace"
 import { memberInitials, memberName } from "@/lib/memberDisplay"
 import type { MemberAvatarView } from "@/api/members"

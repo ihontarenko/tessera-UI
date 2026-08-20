@@ -2,12 +2,18 @@ import { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { CheckCircle2, CircleAlert, HelpCircle, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Separator,
+  Textarea,
+} from "@jmouse/ui"
 import { FilterHelpPanel } from "@/components/board/FilterHelpPanel"
 import { useLanguage } from "@/context/LanguageContext"
 import { apiErrorMessage } from "@/api/errors"
@@ -320,7 +326,7 @@ function Status({
       className={cn(
         "flex items-start gap-1.5 text-xs",
         tone === "valid" && "text-emerald-600 dark:text-emerald-400",
-        tone === "invalid" && "text-destructive",
+        tone === "invalid" && "text-destructive-ink",
         tone === "muted" && "text-muted-foreground",
       )}
     >

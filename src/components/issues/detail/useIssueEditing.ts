@@ -1,7 +1,6 @@
 import { useQueryClient, useMutation, type QueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
-  addIssueLink,
   changeIssueLinkType,
   removeIssueLink,
   setIssueParent,
@@ -108,15 +107,10 @@ export function useIssueEditing(issue: IssueDetail) {
     onError: failWith("Could not update the labels"),
   })
 
-  const addLink = useMutation({
-    mutationFn: (link: { linkTypeId: string; targetIssueId: string }) =>
-      addIssueLink(issue.id, link.linkTypeId, link.targetIssueId),
-    onSuccess: (updated) => {
-      applyUpdated(updated)
-      toast.success("Link added")
-    },
-    onError: failWith("Could not add the link"),
-  })
+  // ⚠️ **Adding a link is deliberately not here** (TSSR-73). It was, one target at a time, because the
+  // rail's picker could only offer one — and `useRegisterLinking.linkAll` already links a selection
+  // sequentially, stops at the first refusal and reports how many landed. Two ways to make a link would
+  // mean two behaviours on a partial failure, and only one of them is right.
 
   const changeLinkType = useMutation({
     mutationFn: (link: { linkId: string; linkTypeId: string }) =>
@@ -131,5 +125,5 @@ export function useIssueEditing(issue: IssueDetail) {
     onError: failWith("Could not remove the link"),
   })
 
-  return { fields, transition, parent, labels, addLink, changeLinkType, removeLink }
+  return { fields, transition, parent, labels, changeLinkType, removeLink }
 }

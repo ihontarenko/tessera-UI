@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { AlertTriangle } from "lucide-react"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Skeleton } from "@/components/ui/skeleton"
+import { ScrollArea, Skeleton } from "@jmouse/ui"
 import { fetchFilterGrammar, type GrammarSection } from "@/api/savedFilters"
 import { useLanguage } from "@/context/LanguageContext"
 import { cn } from "@/lib/helpers"

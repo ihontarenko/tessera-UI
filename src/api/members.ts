@@ -42,6 +42,27 @@ export interface MemberSummary {
   displayName: string | null
   email: string | null
   avatar: MemberAvatarView
+  /**
+   * Whether this is a person or a client (TSSR-34, TSSR-36).
+   *
+   * ⚠️ **This replaced `agentName` on two payloads**, and it is why the single `MemberSummary` funnel
+   * was worth having. Provenance used to be a bare string carried beside the author, rendered as a badge
+   * glued next to somebody else's chip. Now the author *is* the agent — so a client arrives with a name,
+   * a face and this, and every payload embedding a member got it at once.
+   *
+   * ⚠️ **An offer to the interface, never a claim about authority.** An agent carries none; what a
+   * client may do is what the person who approved it may do.
+   */
+  kind: "PERSON" | "AGENT"
+  /** Whose client it is, and null on a person. ⚠️ For rendering "SU's client" — nothing else. */
+  parentId: string | null
+  /** Whether the client has been switched off. Everything it wrote keeps its name. */
+  retired: boolean
+}
+
+/** Whether a member reference is a client rather than a person. */
+export function isAgent(member: MemberSummary | null | undefined): boolean {
+  return member?.kind === "AGENT"
 }
 
 export function fetchCurrentMember() {
@@ -88,4 +109,56 @@ export function uploadAvatarPicture(file: Blob) {
 /** Drop back to drawn initials. */
 export function clearAvatar() {
   return httpClient.delete<MemberAvatarView>("/members/me/avatar").then((response) => response.data)
+}
+
+/** Which kind of member a row is — the axis the administration list's segmented control filters on. */
+export type MemberKind = MemberSummary["kind"]
+
+/**
+ * The administration list — people, clients, or both (TSSR-79).
+ *
+ * ⚠️ **A different route from {@link searchMembers}, not a parameter on it.** That one is the picker
+ * somebody adds a colleague to a project from: it stays open to every signed-in caller and stays
+ * people-only, because offering a client where one cannot be chosen would be offering a refusal. This
+ * one is behind `member:administer`.
+ */
+export function fetchAdministeredMembers(query?: string, kind?: MemberKind) {
+  return httpClient
+    .get<MemberSummary[]>("/members/administered", { params: { query, kind } })
+    .then((response) => response.data)
+}
+
+/**
+ * Renames a member — a person, or somebody else's client (TSSR-80).
+ *
+ * ⚠️ For a client the server sends this through the agent directory so the member mirror **follows**,
+ * which is what makes every by-line it has ever left read the new name.
+ */
+export function renameMember(memberId: string, displayName: string) {
+  return httpClient
+    .patch<MemberSummary>(`/members/${memberId}`, { displayName })
+    .then((response) => response.data)
+}
+
+/**
+ * A generated face for somebody else's account (TSSR-80).
+ *
+ * ⚠️ **Not `/members/me/avatar` with an identifier.** That route takes the signed-in member and
+ * structurally cannot name another; these two name one and are behind `member:administer`.
+ */
+export function chooseAvatarPresetFor(memberId: string, preset: string) {
+  return httpClient
+    .put<MemberAvatarView>(`/members/${memberId}/avatar`, { preset })
+    .then((response) => response.data)
+}
+
+/** ⚠️ `file` is expected to be already square and downscaled — see `squareToPng`. */
+export function uploadAvatarPictureFor(memberId: string, file: Blob) {
+  const body = new FormData()
+
+  body.append("file", file, "avatar.png")
+
+  return httpClient
+    .post<MemberAvatarView>(`/members/${memberId}/avatar`, body)
+    .then((response) => response.data)
 }

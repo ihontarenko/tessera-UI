@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { PackageCheck } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@jmouse/ui"
 import { EmptyState } from "@/components/EmptyState"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import { IssueDetailModal } from "@/components/issues/IssueDetailModal"

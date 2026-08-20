@@ -1,8 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import { useLocation } from "react-router-dom"
 import { useAuth } from "react-oidc-context"
-import { Skeleton } from "@/components/ui/skeleton"
-
+import { Skeleton } from "@jmouse/ui"
 interface ProtectedRouteProperties {
   children: ReactNode
 }

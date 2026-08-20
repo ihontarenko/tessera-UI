@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "react-router-dom"
 import { CircleDot } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton } from "@jmouse/ui"
 import { EmptyState } from "@/components/EmptyState"
 import { MemberChip } from "@/components/MemberChip"
 import { SearchInput } from "@/components/SearchInput"
-import { IssueTypeIcon, PriorityBadge, StatusPill } from "@/components/issues/issueVisuals"
+import { PriorityBadge } from "@/components/issues/issueVisuals"
+import { IssueListRow, IssueRowLayout } from "@/components/issues/rows/IssueListRow"
 import { fetchCatalog, searchIssues } from "@/api/issues"
 import { searchMembers } from "@/api/members"
 import { listProjects } from "@/api/projects"
@@ -116,64 +112,31 @@ export function IssueSearchPanel() {
 
       {!isLoading && items.length > 0 && (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8" />
-                <TableHead className="w-24">{t("issues.column.key", "Key")}</TableHead>
-                <TableHead className="w-32">{t("issues.column.project", "Project")}</TableHead>
-                <TableHead>{t("issues.column.summary", "Summary")}</TableHead>
-                <TableHead className="w-28">{t("issues.column.priority", "Priority")}</TableHead>
-                <TableHead className="w-32">{t("issues.column.status", "Status")}</TableHead>
-                <TableHead className="w-44">{t("issues.column.assignee", "Assignee")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map(({ project, issue }) => (
-                <TableRow key={issue.id}>
-                  <TableCell>
-                    <IssueTypeIcon type={issue.type} />
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      to={`/issues/${issue.issueKey}`}
-                      className="font-mono text-xs text-muted-foreground hover:underline"
-                    >
-                      {issue.issueKey}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link to={`/projects/${project.id}`}>
-                      <Badge variant="outline">{project.key}</Badge>
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      to={`/issues/${issue.issueKey}`}
-                      className={
-                        issue.open ? "hover:underline" : "text-muted-foreground line-through hover:underline"
-                      }
-                    >
-                      {issue.summary}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
+          {/* One row shape, shared with every other list in the product (TSSR-53) — and no header, because a
+              key, a badge, a sentence and a pill do not need to be labelled. */}
+          <IssueRowLayout>
+            {items.map(({ project, issue }) => (
+              <IssueListRow
+                key={issue.id}
+                issueKey={issue.issueKey}
+                summary={issue.summary}
+                type={issue.type}
+                status={issue.status}
+                open={issue.open}
+                projectKey={project.key}
+                trailing={
+                  <>
                     <PriorityBadge priority={issue.priority} />
-                  </TableCell>
-                  <TableCell>
-                    <StatusPill status={issue.status} />
-                  </TableCell>
-                  <TableCell>
                     {issue.assignee ? (
                       <MemberChip member={issue.assignee} />
                     ) : (
                       <span className="text-xs text-muted-foreground">{t("issues.unassigned", "Unassigned")}</span>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </>
+                }
+              />
+            ))}
+          </IssueRowLayout>
 
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">

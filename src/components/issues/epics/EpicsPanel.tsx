@@ -1,15 +1,11 @@
 import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Layers } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@jmouse/ui"
 import { EmptyState } from "@/components/EmptyState"
 import { MemberChip } from "@/components/MemberChip"
-import {
-  IssueGroup,
-  IssueGroupColumns,
-  IssueGroupRow,
-  ProgressMeter,
-} from "@/components/issues/grouping/IssueGroup"
+import { IssueGroup, ProgressMeter } from "@/components/issues/grouping/IssueGroup"
+import { IssueListRow, IssueRowLayout } from "@/components/issues/rows/IssueListRow"
 import { formatStoryPoints } from "@/components/issues/issueVisuals"
 import { groupByEpic } from "@/components/issues/epics/epicGrouping"
 import { listIssues, type IssueRow } from "@/api/issues"
@@ -17,7 +13,7 @@ import { listIssues, type IssueRow } from "@/api/issues"
 /**
  * The project's work gathered under its epics.
  *
- * ⚠️ **The same shape as the Tracked tab, from the other kind of grouping.** A register groups by *link*
+ * ⚠️ **The same shape as the Registers tab, from the other kind of grouping.** A register groups by *link*
  * across projects; this groups by *hierarchy* inside one. Both answer "these belong to that, and here is how
  * much is done", so both are {@link IssueGroup} — two markups would drift into two different-looking answers
  * to one question.
@@ -82,22 +78,25 @@ export function EpicsPanel({ projectId }: { projectId: string }) {
           // thing this screen is most useful for finding.
           // ⚠️ A transparent accent edge rather than no edge: the 4px + padding is what keeps its rows
           // aligned with every other group's, and a coloured stripe would claim a type it has not got. And
-          // the columns come from an explicit provider — see `IssueGroupColumns`.
-          <IssueGroupColumns key="__loose__" withProject={false}>
-            <section className="border-l-4 border-l-transparent py-3 pl-3 first:pt-0 last:pb-0">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                <h3 className="text-base font-semibold tracking-[-0.01em] text-muted-foreground">
-                  Not in an epic
-                </h3>
-                {group.issues.length > 0 && <ProgressMeter done={group.done} total={group.issues.length} />}
-              </div>
-              <ul className="mt-2">
-                {group.issues.map((issue) => (
-                  <EpicMemberRow key={issue.id} issue={issue} />
-                ))}
-              </ul>
-            </section>
-          </IssueGroupColumns>
+          // the columns come from an explicit provider — see `IssueRowLayout`.
+          <section
+            key="__loose__"
+            className="border-l-4 border-l-transparent py-3 pl-3 first:pt-0 last:pb-0"
+          >
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <h3 className="text-base font-semibold tracking-[-0.01em] text-muted-foreground">
+                Not in an epic
+              </h3>
+              {group.issues.length > 0 && <ProgressMeter done={group.done} total={group.issues.length} />}
+            </div>
+            {/* The layout comes from an explicit provider: this group has no heading issue, so it cannot use
+                `IssueGroup`, and rows that read a context default would misalign the day the default moved. */}
+            <IssueRowLayout withProject={false} className="mt-2">
+              {group.issues.map((issue) => (
+                <EpicMemberRow key={issue.id} issue={issue} />
+              ))}
+            </IssueRowLayout>
+          </section>
         ),
       )}
     </div>
@@ -107,7 +106,7 @@ export function EpicsPanel({ projectId }: { projectId: string }) {
 /** One issue under an epic — the assignee and the estimate, which is what planning reads a group for. */
 function EpicMemberRow({ issue }: { issue: IssueRow }) {
   return (
-    <IssueGroupRow
+    <IssueListRow
       issueKey={issue.issueKey}
       summary={issue.summary}
       type={issue.type}

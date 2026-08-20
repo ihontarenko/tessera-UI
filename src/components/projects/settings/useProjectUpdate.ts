@@ -33,7 +33,7 @@ export function useProjectUpdate(project: ProjectResponse, successMessage: strin
         // ⚠️ Null is a value here too — it means "the wiki is not configured", which is a project's
         // ordinary state and not a missing field. A section that omitted it would silently disconnect
         // the wiki while editing something else.
-        wiqRootCategoryId: project.wiqRootCategoryId,
+        kiwiRootCategoryId: project.kiwiRootCategoryId,
         ...changes,
       }),
     onSuccess: (updated) => {

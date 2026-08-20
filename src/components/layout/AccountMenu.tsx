@@ -1,8 +1,6 @@
 import { NavLink } from "react-router-dom"
 import { Check, ChevronsUpDown, LogOut, Palette, ShieldCheck, UserRound } from "lucide-react"
 import { useAuth } from "react-oidc-context"
-import { Skeleton } from "@/components/ui/skeleton"
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +8,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  Skeleton,
+} from "@jmouse/ui"
 import { MemberChip } from "@/components/MemberChip"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
 import { useLanguage, type Language } from "@/context/LanguageContext"

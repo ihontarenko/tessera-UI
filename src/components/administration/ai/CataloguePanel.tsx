@@ -1,7 +1,5 @@
 import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@jmouse/ui"
 import { usePublishedTools } from "@/hooks/useAiAdministration"
 
 /**

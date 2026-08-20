@@ -1,12 +1,11 @@
 import type { ReactNode } from "react"
 import { Check, Snowflake } from "lucide-react"
-import { Switch } from "@/components/ui/switch"
+import { Switch, useTheme, type ContrastMode, type FontScale } from "@jmouse/ui"
+import { darkThemes, lightThemes, seasonalThemes } from "@jmouse/ui/presets"
 import { PageHeader } from "@/components/PageHeader"
 import { SegmentedControl } from "@/components/SegmentedControl"
-import { useTheme } from "@/context/ThemeContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { cn } from "@/lib/helpers"
-import { darkThemes, lightThemes, seasonalThemes, type ContrastMode, type FontScale } from "@/theming"
 
 const FONT_SCALES: Array<{ value: FontScale; label: string }> = [
   { value: "small", label: "S" },

@@ -2,14 +2,16 @@ import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Check } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { ProjectIcon } from "@/components/projects/ProjectIcon"
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Input,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@jmouse/ui"
+import { ProjectIcon } from "@/components/projects/ProjectIcon"
 import { listProjects } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId"
@@ -97,13 +99,11 @@ export function ProjectSwitcher() {
                 onClick={() => navigate(`/projects/${project.id}`)}
                 className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
               >
-                {/* Fixed width so the keys below it still line up — an emoji and the fallback glyph
-                    are not the same width, and a ragged left edge is what a list of icons costs
-                    otherwise. */}
+                {/* Fixed width so the names line up — an emoji and the fallback glyph are not the
+                    same width, and a ragged left edge is what a list of icons costs otherwise. */}
                 <span className="flex w-4 shrink-0 justify-center">
                   <ProjectIcon icon={project.icon} size="sm" />
                 </span>
-                <span className="font-mono text-xs text-muted-foreground">{project.key}</span>
                 <span className="truncate">{project.name}</span>
                 {project.id === currentProjectId && <Check className="ml-auto size-4 shrink-0" />}
               </div>

@@ -32,7 +32,7 @@ const GROUPS = [
     // permissions. A group that would render empty is dropped rather than left as a bare heading.
     id: "platform",
     label: { key: "administration.nav.group.platform", text: "Platform" },
-    sections: ["ai"],
+    sections: ["members", "ai"],
   },
 ] as const
 
@@ -54,6 +54,7 @@ export const ADMINISTRATION_SECTION_LABELS: Record<AdministrationSection, { key:
   resolutions: { key: "administration.nav.resolutions", text: "Resolutions" },
   "link-types": { key: "administration.nav.linkTypes", text: "Link types" },
   "comment-topics": { key: "administration.nav.commentTopics", text: "Comment topics" },
+  members: { key: "administration.nav.members", text: "Members" },
   ai: { key: "administration.nav.ai", text: "AI" },
 }
 

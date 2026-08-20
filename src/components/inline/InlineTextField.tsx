@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Input, Textarea } from "@jmouse/ui"
 import { cn } from "@/lib/helpers"
 
 /**

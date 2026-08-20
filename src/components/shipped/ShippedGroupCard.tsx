@@ -1,7 +1,8 @@
 import { Archive, ArchiveRestore } from "lucide-react"
 import { MemberChip } from "@/components/MemberChip"
-import { Badge } from "@/components/ui/badge"
-import { IssueTypeIcon, StatusPill, formatStoryPoints } from "@/components/issues/issueVisuals"
+import { Badge } from "@jmouse/ui"
+import { formatStoryPoints } from "@/components/issues/issueVisuals"
+import { IssueListRow, IssueRowLayout } from "@/components/issues/rows/IssueListRow"
 import { useLanguage } from "@/context/LanguageContext"
 import { formatPointTotal } from "@/lib/helpers"
 import type { ShippedGroup } from "@/api/shipped"
@@ -44,7 +45,9 @@ export function ShippedGroupCard({
         </span>
       </header>
 
-      <div className="flex flex-col gap-1 p-2">
+      {/* ⚠️ The rows were bordered, shadowed cards of their own — a third way of drawing an issue, inside a
+          card that already had a border. They are `IssueRow` now, like every other list (TSSR-53). */}
+      <IssueRowLayout withProject={false} className="px-2 py-1">
         {group.issues.map((issue) => (
           <ShippedRow
             key={issue.id}
@@ -56,7 +59,7 @@ export function ShippedGroupCard({
             onRestore={onRestore}
           />
         ))}
-      </div>
+      </IssueRowLayout>
     </section>
   )
 }
@@ -80,46 +83,40 @@ function ShippedRow({
   const isArchived = issue.archivedAt !== null
 
   return (
-    <div
-      className={`flex items-center gap-2 rounded-md border bg-background px-2.5 py-1.5 shadow-sm transition-colors hover:border-primary/40 ${
-        isArchived ? "opacity-60" : ""
-      }`}
-    >
-      <IssueTypeIcon type={issue.type} />
+    <IssueListRow
+      issueKey={issue.issueKey}
+      summary={issue.summary}
+      type={issue.type}
+      status={issue.status}
+      // Everything here is finished by definition, so nothing on this screen is struck through.
+      open
+      dimmed={isArchived}
+      onOpen={() => onSelectIssue(issue.id)}
+      trailing={
+        <>
+          {/* The badge rather than a separate list: the reader is looking at what shipped, and whether a
+              given item has been put away is one attribute of it, not a different subject. */}
+          {isArchived && <Badge variant="secondary">{t("shipped.archived", "Archived")}</Badge>}
 
-      <button
-        type="button"
-        onClick={() => onSelectIssue(issue.id)}
-        className="flex min-w-0 flex-1 items-center gap-2 text-left"
-      >
-        <span className="shrink-0 font-mono text-xs text-muted-foreground">{issue.issueKey}</span>
-        <span className="truncate text-sm">{issue.summary}</span>
-      </button>
+          {issue.assignee ? <MemberChip member={issue.assignee} className="[&_.text-sm]:hidden" /> : null}
+          <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
+            {formatStoryPoints(issue.storyPoints)}
+          </span>
 
-      <div className="flex shrink-0 items-center gap-2">
-        {/* The badge rather than a separate list: the reader is looking at what shipped, and whether a
-            given item has been put away is one attribute of it, not a different subject. */}
-        {isArchived && <Badge variant="secondary">{t("shipped.archived", "Archived")}</Badge>}
-
-        <StatusPill status={issue.status} />
-        {issue.assignee ? <MemberChip member={issue.assignee} className="[&_.text-sm]:hidden" /> : null}
-        <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
-          {formatStoryPoints(issue.storyPoints)}
-        </span>
-
-        {canArchive && (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => (isArchived ? onRestore(issue.id) : onArchive(issue.id))}
-            className="text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-            title={isArchived ? t("shipped.restore", "Restore") : t("shipped.archive", "Archive")}
-            aria-label={isArchived ? t("shipped.restore", "Restore") : t("shipped.archive", "Archive")}
-          >
-            {isArchived ? <ArchiveRestore className="size-3.5" /> : <Archive className="size-3.5" />}
-          </button>
-        )}
-      </div>
-    </div>
+          {canArchive && (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => (isArchived ? onRestore(issue.id) : onArchive(issue.id))}
+              className="text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+              title={isArchived ? t("shipped.restore", "Restore") : t("shipped.archive", "Archive")}
+              aria-label={isArchived ? t("shipped.restore", "Restore") : t("shipped.archive", "Archive")}
+            >
+              {isArchived ? <ArchiveRestore className="size-3.5" /> : <Archive className="size-3.5" />}
+            </button>
+          )}
+        </>
+      }
+    />
   )
 }

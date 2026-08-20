@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { sectionNavigationItemClass } from "@/lib/sectionNavigation"
 import { useLanguage } from "@/context/LanguageContext"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
-import { ADMINISTER_AI, ADMINISTER_CONFIGURATION, READ_AI } from "@/api/permissions"
+import { ADMINISTER_AI, ADMINISTER_CONFIGURATION, ADMINISTER_MEMBERS, READ_AI } from "@/api/permissions"
 import {
   ADMINISTRATION_SECTIONS,
   ADMINISTRATION_SECTION_GROUPS,
@@ -11,6 +11,7 @@ import {
   isAdministrationSection,
 } from "@/components/administration/administrationSections"
 import { AiSection } from "@/components/administration/AiSection"
+import { MembersSection } from "@/components/administration/MembersSection"
 import { CommentTopicsSection } from "@/components/administration/CommentTopicsSection"
 import { IssueTypesSection } from "@/components/administration/IssueTypesSection"
 import { LinkTypesSection } from "@/components/administration/LinkTypesSection"
@@ -44,13 +45,23 @@ export function AdministrationPage() {
   const canAdminister = held.includes(ADMINISTER_CONFIGURATION)
   const canReadAi = held.includes(READ_AI)
   const canAdministerAi = held.includes(ADMINISTER_AI)
+  const canAdministerMembers = held.includes(ADMINISTER_MEMBERS)
 
   // ⚠️ The one section the navigation hides rather than shows read-only, and the asymmetry is on
   // purpose: the catalogs keep their reads open because every picker in the product is built from
   // them, whereas the AI screen's reads are gated server-side. Offering a tab that can only answer
   // 403 is worse than not offering it — and a member who arrives by URL still meets the section's own
   // refusal, which names the permission to ask for.
-  const isOffered = (candidate: string) => candidate !== "ai" || canReadAi
+  const isOffered = (candidate: string) => {
+    if (candidate === "ai") {
+      return canReadAi
+    }
+    if (candidate === "members") {
+      return canAdministerMembers
+    }
+
+    return true
+  }
 
   // A group whose every section is hidden is dropped rather than left as a heading with nothing under it.
   const groups = ADMINISTRATION_SECTION_GROUPS.map((group) => ({
@@ -124,6 +135,7 @@ export function AdministrationPage() {
           {/* Rendered whether or not the permission is held — the navigation hides this section, but a
               member who arrives by URL should meet the section's own refusal, which names what to ask
               for, rather than a blank pane. */}
+          {section === "members" && <MembersSection canAdminister={canAdministerMembers} />}
           {section === "ai" && <AiSection canRead={canReadAi} canAdminister={canAdministerAi} />}
         </div>
       </div>

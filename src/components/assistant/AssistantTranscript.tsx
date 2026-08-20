@@ -110,7 +110,7 @@ function ActionLine({ action }: { action: AssistantAction }) {
           </span>
         )}
         {action.reason && (
-          <span className="rounded bg-destructive/10 px-1.5 text-[11px] text-destructive">
+          <span className="rounded bg-destructive/10 px-1.5 text-[11px] text-destructive-ink">
             {action.reason.toLowerCase().replace(/_/g, " ")}
           </span>
         )}

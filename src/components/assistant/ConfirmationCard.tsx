@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@jmouse/ui"
 import { confirmationInstruction } from "@/lib/assistantTranscript"
 import type { ConfirmationPreview } from "@/lib/assistantTranscript"
 import { cn } from "@/lib/helpers"
@@ -46,7 +46,7 @@ export function ConfirmationCard({ preview, action, live, busy, onConfirm }: Con
         <span
           className={cn(
             "text-[11px] font-bold tracking-wide uppercase",
-            decided ? "text-muted-foreground" : "text-destructive",
+            decided ? "text-muted-foreground" : "text-destructive-ink",
           )}
         >
           Confirmation needed

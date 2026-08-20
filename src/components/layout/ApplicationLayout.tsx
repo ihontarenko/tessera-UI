@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom"
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@jmouse/ui"
 import { ApplicationSidebar } from "@/components/layout/ApplicationSidebar"
 import { SeasonalEffect } from "@/components/layout/SeasonalEffect"
 

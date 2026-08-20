@@ -2,9 +2,7 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { ChevronDown, ChevronRight, ChevronUp, Plus, Trash2, X } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Badge, Button, Input } from "@jmouse/ui"
 import { InlineSelect } from "@/components/inline/InlineSelect"
 import { InlineTextField } from "@/components/inline/InlineTextField"
 import {
@@ -75,8 +73,10 @@ const CATEGORY_LABEL: Record<StatusCategory, TranslatableText> = {
  * the status mappings, which are the only part that needs room. Nothing has a Save button; a field
  * commits when it loses focus, exactly as an issue's fields do.
  *
- * The panel has two homes — Settings › Board and the sheet the board opens as a shortcut — and both
- * mutate through the same shared board query, so whichever is open shows the other's edits.
+ * The panel has one home — Settings › Board. It had two until the board grew a sheet of its own over
+ * the same component, which meant every question about the board had two right answers and either
+ * surface could quietly gain a control the other lacked; the board keeps a button, and the button now
+ * navigates here.
  */
 export function BoardSettingsPanel({ projectId, board }: { projectId: string; board: BoardResponse }) {
   const { t } = useLanguage()
@@ -458,7 +458,7 @@ function ColumnRow({
         <button
           type="button"
           onClick={onDelete}
-          className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+          className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive-ink"
           aria-label={t("common.delete", "Delete")}
         >
           <Trash2 className="size-3.5" />

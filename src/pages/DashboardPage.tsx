@@ -1,14 +1,20 @@
+import type { ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { CircleDot, FolderKanban, Inbox, type LucideIcon } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Badge, Skeleton } from "@jmouse/ui"
 import { EmptyState } from "@/components/EmptyState"
 import { MemberChip } from "@/components/MemberChip"
 import { PageHeader } from "@/components/PageHeader"
 import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
 import { IssueTypeIcon, PriorityBadge, StatusPill } from "@/components/issues/issueVisuals"
+import { FlowChart } from "@/components/dashboard/FlowChart"
+import { AgeingList } from "@/components/dashboard/AgeingList"
+import { BlockedList } from "@/components/dashboard/BlockedList"
+import { StatusMovementChart } from "@/components/dashboard/StatusMovementChart"
+import { ProgressMeter } from "@/components/dashboard/ProgressMeter"
 import { searchIssues, type IssueSearchItem } from "@/api/issues"
+import { fetchDashboardSummary } from "@/api/dashboard"
 import { listProjects } from "@/api/projects"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
 import { useLanguage } from "@/context/LanguageContext"
@@ -16,15 +22,24 @@ import { useLanguage } from "@/context/LanguageContext"
 /** Enough to be a list rather than a report; the page it links to is where you go for all of them. */
 const LIST_SIZE = 8
 
+/** The window the charts look back over — a week, which is what "lately" means without a number. */
+const WINDOW_DAYS = 7
+
 /**
  * The first screen after signing in, and until now the only one that lied: it advertised Projects,
  * Boards and Issues as "coming" long after all three shipped.
  *
- * It answers three questions a member actually opens a tracker with — what is on me, what has moved,
- * and where do I work — and it answers them from reads that already exist. The cross-project search
- * carries the first two (it is scoped to the caller by construction: the projects they may browse, and
- * nothing else — ADR-0008), and the projects list carries the third. No aggregate endpoint was
- * invented for a screen whose job is to point at other screens.
+ * It answers four questions a member actually opens a tracker with — what is on me, what has moved,
+ * what kind of week was it, and where do I work. The first, second and fourth come from reads that
+ * already exist: the cross-project search (scoped to the caller by construction — the projects they may
+ * browse and nothing else, ADR-0008) and the projects list.
+ *
+ * ⚠️ **The third needed an aggregate endpoint, and that reversed an earlier decision here.** This screen
+ * was deliberately built without one, on the principle that a screen whose job is to point at other
+ * screens should read what those screens read. Charts broke it: a week of daily counts drawn from the
+ * search means fetching every issue raised that week to count it in the browser, and a meter per project
+ * means fetching every issue in every project. `GET /api/dashboard/summary` counts where the rows are,
+ * and is confined to the caller's browsable projects before anything is counted rather than after.
  */
 export function DashboardPage() {
   const { t } = useLanguage()
@@ -54,6 +69,17 @@ export function DashboardPage() {
     queryKey: ["issue-search", openParameters],
     queryFn: () => searchIssues(openParameters),
   })
+
+  // ⚠️ The one aggregate read. This screen was built deliberately without one — it pointed at other
+  // screens and read what they read — and charts are what changed that: a week of daily counts drawn
+  // from the search would mean fetching every issue raised that week to count it here, and a meter per
+  // project would mean fetching every issue in every project. Counting belongs where the rows are.
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: ["dashboard-summary", WINDOW_DAYS],
+    queryFn: () => fetchDashboardSummary(WINDOW_DAYS),
+  })
+
+  const progressByProject = new Map((summary?.projects ?? []).map((row) => [row.projectId, row]))
 
   return (
     <>
@@ -90,6 +116,86 @@ export function DashboardPage() {
           hint={t("dashboard.stat.projectsHint", "you belong to")}
           to="/projects"
         />
+      </div>
+
+      {/* The two charts sit above the lists on purpose: they answer "what kind of week was it", which
+          is the question you can only answer by looking, while the lists below answer "what next",
+          which you answer by reading. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          title={t("dashboard.created.title", "Raised")}
+          headline={summary?.createdToday}
+          headlineHint={t("dashboard.created.today", "today")}
+          aside={
+            summary &&
+            t("dashboard.created.window", "{count} in {days} days")
+              .replace("{count}", String(summary.createdInWindow))
+              .replace("{days}", String(summary.days))
+          }
+          isLoading={summaryLoading}
+        >
+          {summary && <FlowChart series={summary.flowPerDay} />}
+        </ChartCard>
+
+        <ChartCard
+          title={t("dashboard.movement.title", "Moved into")}
+          headline={summary?.resolvedInWindow}
+          headlineHint={t("dashboard.movement.resolved", "resolved")}
+          aside={
+            summary &&
+            t("dashboard.movement.window", "in the last {days} days").replace(
+              "{days}",
+              String(summary.days),
+            )
+          }
+          isLoading={summaryLoading}
+        >
+          {summary && summary.movedInto.length > 0 && (
+            <StatusMovementChart movements={summary.movedInto} />
+          )}
+          {summary && summary.movedInto.length === 0 && (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {t("dashboard.movement.empty", "Nothing changed status this week.")}
+            </p>
+          )}
+        </ChartCard>
+      </div>
+
+      {/* What is stuck, and what cannot move at all. Both are ranked lists rather than plots because
+          the answer somebody acts on is a list of issues — so the rows are links, which no chart mark
+          can be. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          title={t("dashboard.ageing.title", "Sitting longest")}
+          // ⚠️ Coalesced rather than left undefined: ChartCard reads undefined as "still loading" and
+          // draws a skeleton, so an installation with nothing open would show one for ever.
+          headline={summary ? (summary.ageing[0]?.days ?? 0) : undefined}
+          headlineHint={t("dashboard.ageing.hint", "days, the oldest")}
+          aside={
+            summary &&
+            t("dashboard.ageing.open", "{count} open").replace("{count}", String(summary.openTotal))
+          }
+          isLoading={summaryLoading}
+        >
+          {summary && <AgeingList ageing={summary.ageing} openTotal={summary.openTotal} />}
+        </ChartCard>
+
+        <ChartCard
+          title={t("dashboard.blocked.title", "Blocked")}
+          headline={summary?.blockedTotal}
+          headlineHint={t("dashboard.blocked.hint", "cannot start")}
+          aside={
+            summary &&
+            summary.blocked.length > 0 &&
+            t("dashboard.blocked.longest", "longest {days} days").replace(
+              "{days}",
+              String(summary.blocked[0].days),
+            )
+          }
+          isLoading={summaryLoading}
+        >
+          {summary && <BlockedList blocked={summary.blocked} blockedTotal={summary.blockedTotal} />}
+        </ChartCard>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -135,16 +241,68 @@ export function DashboardPage() {
             <Link
               key={project.id}
               to={`/projects/${project.id}`}
-              className="flex items-center gap-2 rounded-lg border p-2.5 transition-colors hover:border-primary/40 hover:bg-accent/40"
+              className="flex flex-col gap-2 rounded-lg border p-2.5 transition-colors hover:border-primary/40 hover:bg-accent/40"
             >
-              <span className="font-mono text-xs text-muted-foreground">{project.key}</span>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{project.name}</span>
-              <ProjectStyleBadge boardScopeStrategy={project.boardScopeStrategy} />
+              <span className="flex items-center gap-2">
+                <span className="font-mono text-xs text-muted-foreground">{project.key}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{project.name}</span>
+                <ProjectStyleBadge boardScopeStrategy={project.boardScopeStrategy} />
+              </span>
+
+              {/* ⚠️ The meter waits for its own read rather than rendering zeros. Three empty segments
+                  and "no issues yet" is a statement about the project, and printing it while the
+                  numbers are still in flight would be a lie the card tells for a second. */}
+              {summaryLoading && <Skeleton className="h-1.5 w-full" />}
+              {!summaryLoading && progressByProject.has(project.id) && (
+                <ProgressMeter progress={progressByProject.get(project.id)!} />
+              )}
             </Link>
           ))}
         </div>
       </section>
     </>
+  )
+}
+
+/**
+ * A chart with a headline number over it.
+ *
+ * ⚠️ **The number is not decoration and it is not the chart's subject.** The chart answers "what shape
+ * was the week", which no single number can; the headline answers "how much", which the chart makes you
+ * count. Putting the one thing worth reading at a glance in ink, above the marks, is what stops the
+ * chart from having to carry a value label on every bar.
+ */
+function ChartCard({
+  title,
+  headline,
+  headlineHint,
+  aside,
+  isLoading,
+  children,
+}: {
+  title: string
+  headline: number | undefined
+  headlineHint: string
+  aside: string | false | undefined
+  isLoading: boolean
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-2 rounded-lg border p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">{title}</h2>
+        {aside && <span className="text-xs text-muted-foreground tabular-nums">{aside}</span>}
+      </div>
+
+      <p className="flex items-baseline gap-1.5">
+        <span className="font-display text-2xl leading-none font-semibold tabular-nums">
+          {headline ?? <Skeleton className="inline-block h-6 w-10 align-middle" />}
+        </span>
+        <span className="text-xs text-muted-foreground">{headlineHint}</span>
+      </p>
+
+      {isLoading ? <Skeleton className="h-40 w-full" /> : children}
+    </section>
   )
 }
 

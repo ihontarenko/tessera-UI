@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@jmouse/ui"
 import { BoardSettingsPanel } from "@/components/board/BoardSettingsPanel"
 import { ReadOnlyNotice, SettingsSection } from "@/components/projects/settings/SettingsSection"
 import { getBoard } from "@/api/boards"
 import { useLanguage } from "@/context/LanguageContext"
 
 /**
- * Board configuration where every other project decision is made (ticket 06). The sheet on the board
- * still opens the same panel; this is the copy an administrator finds by looking for settings rather
- * than by remembering that one screen hides a control the others do not.
+ * Board configuration where every other project decision is made (ticket 06) — and now the only place
+ * it is made. The board itself used to open a sheet over the same panel; that shortcut is a link here
+ * now, so an administrator looking for settings and one looking at a board arrive at the same screen.
  *
  * The board is read unfiltered here — the filter belongs to looking at a board, not to configuring one
  * — which is why this query is keyed without a filter expression while the board screen's carries one.

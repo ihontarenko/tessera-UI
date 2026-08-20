@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { Plus, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@jmouse/ui"
 import { InlineSelect } from "@/components/inline/InlineSelect"
-import { IssueGroup, IssueGroupRow } from "@/components/issues/grouping/IssueGroup"
+import { IssueGroup } from "@/components/issues/grouping/IssueGroup"
+import { IssueListRow } from "@/components/issues/rows/IssueListRow"
 import { LinkTargetPicker } from "@/components/issues/registers/LinkTargetPicker"
 import { useRegisterLinking } from "@/components/issues/registers/useRegisterLinking"
 import type { IssueRegisterItem, LinkType } from "@/api/issues"
@@ -12,7 +13,7 @@ import type { IssueRegisterItem, LinkType } from "@/api/issues"
  *
  * ⚠️ **It was a card wrapping a table and is now a heading wrapping a list** — see {@link IssueGroup} for
  * why. What this file still owns is the *management*: retyping a link in place, unlinking, and gathering
- * more issues in one gesture. That is the whole reason the Tracked tab exists rather than the rail being
+ * more issues in one gesture. That is the whole reason the Registers tab exists rather than the rail being
  * enough (TSSR-45).
  */
 export function RegisterSection({
@@ -107,7 +108,7 @@ export function RegisterSection({
       }
     >
       {register.entries.map((entry) => (
-        <IssueGroupRow
+        <IssueListRow
           key={entry.linkId}
           issueKey={entry.issue.issueKey}
           summary={entry.issue.summary}
@@ -142,7 +143,7 @@ export function RegisterSection({
                   // reads as a list of delete buttons.
                   // ⚠️ Faint, never invisible. `opacity-0` is the defect the comment controls were rewritten
                   // out of in this same change: a hover-only control does not exist on a touch screen.
-                  className="text-muted-foreground opacity-50 transition-opacity hover:text-destructive focus:opacity-100 group-hover/row:opacity-100"
+                  className="text-muted-foreground opacity-50 transition-opacity hover:text-destructive-ink focus:opacity-100 group-hover/row:opacity-100"
                   onClick={() => unlink.mutate({ hubIssueId: hub.id, linkId: entry.linkId })}
                   disabled={isPending}
                   aria-label={`Remove the link to ${entry.issue.issueKey}`}

@@ -1,18 +1,25 @@
 import { useState } from "react"
 import { Info } from "lucide-react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@jmouse/ui"
 import { CatalogDialog } from "@/components/administration/AdministrationPieces"
 import {
   useCreateProviderConfiguration,
@@ -176,7 +183,7 @@ export function ProviderPanel({ canAdminister }: { canAdminister: boolean }) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-destructive"
+                      className="text-destructive-ink"
                       disabled={busy || configuration.active}
                       title={
                         configuration.active

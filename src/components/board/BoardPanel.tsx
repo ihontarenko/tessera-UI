@@ -3,15 +3,24 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { Columns3, ListTodo, Settings } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+} from "@jmouse/ui"
 import { EmptyState } from "@/components/EmptyState"
 import { IssueDetailModal } from "@/components/issues/IssueDetailModal"
 import { BoardGrid } from "@/components/board/BoardGrid"
-import { BoardSettingsSheet } from "@/components/board/BoardSettingsSheet"
 import { BoardToolbar } from "@/components/board/BoardToolbar"
 import { SprintHeader } from "@/components/board/SprintHeader"
 import { CompleteSprintDialog } from "@/components/board/CompleteSprintDialog"
@@ -59,7 +68,6 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
   const [, setSearchParameters] = useSearchParams()
 
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [pendingMove, setPendingMove] = useState<BoardMoveRequest | null>(null)
   const [resolutionId, setResolutionId] = useState(CHOOSE)
   const [activeFilterIds, setActiveFilterIds] = useState<string[]>([])
@@ -224,14 +232,18 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
     )
   }
 
+  // ⚠️ Navigation, not a sheet. Board configuration used to live in BOTH places — a sheet here and
+  // Settings › Board — over one BoardSettingsPanel, so "where do I change the board" had two right
+  // answers and either surface could grow a control the other lacked. There is one destination now,
+  // and this is the shortcut to it rather than a second copy of it.
   const settingsButton = canAdminister ? (
-    <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => setSearchParameters({ tab: "settings", section: "board" }, { replace: true })}
+    >
       <Settings className="mr-1.5 size-3.5" /> {t("board.settings.title", "Board settings")}
     </Button>
-  ) : null
-
-  const settingsSheet = canAdminister ? (
-    <BoardSettingsSheet projectId={projectId} board={board} open={settingsOpen} onOpenChange={setSettingsOpen} />
   ) : null
 
   // A sprint-scoped board with nothing running holds no cards by design — say so, and point at where a
@@ -257,8 +269,6 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
             </Button>
           }
         />
-
-        {settingsSheet}
       </div>
     )
   }
@@ -366,8 +376,6 @@ export function BoardPanel({ projectId, permissions }: { projectId: string; perm
           onComplete={(request) => completeSprintMutation.mutate(request)}
         />
       )}
-
-      {settingsSheet}
     </div>
   )
 }

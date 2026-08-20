@@ -12,14 +12,14 @@ import {
   snippetPickerPlugin,
   tablePlugin,
   TOOLBAR_SPACER,
-} from "@/markdown"
+} from "@jmouse/markdown"
 import type {
   BlockDescriptor,
   Highlighter,
   MarkdownPlugin,
   SnippetTemplate,
   ToolbarLayout,
-} from "@/markdown"
+} from "@jmouse/markdown"
 import { issueReferencePlugin } from "@/components/markdown/issueReference"
 import { liveBlockPlugin } from "@/components/markdown/liveBlocks"
 import { TESSERA_MARKDOWN_GRAMMAR } from "@/lib/codemirror/markdownGrammar"
@@ -75,7 +75,7 @@ function markdownGrammarPlugin(): MarkdownPlugin<unknown> {
  *
  * <p>Not installed, and each for a reason rather than an oversight: `wavedrom` and `jme` are
  * Innoventa's electronics and form-engine domains and are not even in this copy (see
- * `@/markdown/README.md`).
+ * `@jmouse/markdown`’s README).
  *
  * <p>⚠️ **`externalLink` is deliberately absent** even though a tracker wants outward links in a new
  * tab. It and `issueReferencePlugin` both claim the `a` component, so installing both means one

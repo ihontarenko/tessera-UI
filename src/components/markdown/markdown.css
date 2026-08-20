@@ -2,16 +2,12 @@
    The Markdown surface: the token bridge the library asks for, and the prose
    voice a rendered document is read in.
 
-   `src/markdown/` is vendored, not written for this application, and its one
-   rule about colour is that it defines none — "every colour is a design token
-   the host defines" (core/editor.module.css). Innoventa is the host it was
-   written against, so it asks for `--paper`, `--line`, `--ink-*`, `--accent`.
-   Tessera renamed that whole vocabulary onto shadcn's (`--background`,
-   `--border`, `--foreground`, `--primary`), which meant every one of those
-   lookups resolved to nothing: an invisible frame, transparent buttons and a
-   toolbar you could not see. Bridging them here is the host holding up its end
-   of the contract — and it keeps the vendored copy a *copy*, so re-syncing it
-   from Innoventa stays a file operation rather than a merge.
+   `@jmouse/markdown` is a dependency now, not a vendored copy (MD-5), and its
+   one rule about colour is that it defines none — "every colour is a design
+   token the host defines". It asks for them under `--markdown-*`, and this file
+   is where Tessera answers, in shadcn's vocabulary. Get it wrong and you get
+   what this application shipped for a while: an invisible frame, transparent
+   buttons and a toolbar you could not see.
    ============================================================================ */
 
 /* ── Syntax colour ───────────────────────────────────────────────────────────
@@ -75,35 +71,43 @@
 }
 
 /* ── The bridge ──────────────────────────────────────────────────────────────
-   Scoped, never global: these are a vendored library's names, and putting a
-   shadow vocabulary on `:root` invites the rest of the application to start
-   using it.
+   Scoped, never global: these are a library's names, and putting a shadow
+   vocabulary on `:root` invites the rest of the application to start using it.
 
-   ⚠️ `--brand`/`--brand-soft` are the one place the vendored copy was edited
-   rather than bridged, because `--accent` means opposite things in the two
-   products and Tailwind v4 leaves no way to re-point it — the reasoning is at
-   the top of `markdown/core/editor.module.css`, where somebody re-syncing that
-   file will actually see it. */
+   ⚠️ **The `--brand`/`--brand-soft` workaround is gone**, and with it the last
+   reason this copy was ever edited. `@jmouse/markdown` now asks under its own
+   `--markdown-*` namespace (MD-2), so nothing it reads can collide with
+   anything shadcn owns — the two `--accent`s never meet, and Tailwind v4's
+   inability to re-point `bg-accent` stops mattering. This block is now the
+   whole of Tessera's side of the contract. */
 .tessera-markdown {
-    --paper: var(--background);
-    --paper-2: var(--muted);
-    --line: var(--border);
+    --markdown-paper: var(--background);
+    --markdown-paper-2: var(--muted);
+    --markdown-line: var(--border);
 
-    --ink: var(--foreground);
-    --ink-2: var(--secondary-foreground);
-    --ink-3: var(--muted-foreground);
-    /* --ink-4 needs no bridge: Tessera defines it under its own name, having
-       found no shadcn slot for it when the palettes were ported. */
+    --markdown-ink: var(--foreground);
+    --markdown-ink-2: var(--secondary-foreground);
+    --markdown-ink-3: var(--muted-foreground);
+    --markdown-ink-4: var(--ink-4);
 
-    --brand: var(--primary);
-    --brand-soft: var(--accent);
+    --markdown-accent: var(--primary);
+    --markdown-accent-soft: var(--accent);
+    /* ⚠️ Innoventa's `--teal` is its brand hue, and the library reads it for the
+       marks that must not take the theme's accent — a block badge, a fence's
+       label. Tessera never had a token by that name, so those six lookups have
+       been resolving to nothing since the copy was taken; naming them made the
+       gap visible, which is the argument for the namespace in one line. */
+    --markdown-teal: var(--primary);
 
-    --danger: var(--destructive);
-    --warn: var(--warning);
-    --ok: var(--success);
+    --markdown-danger: var(--destructive);
+    --markdown-warn: var(--warning);
+    --markdown-ok: var(--success);
 
-    --r: var(--radius-sm);
-    --r-md: var(--radius-md);
+    --markdown-r: var(--radius-sm);
+    --markdown-r-md: var(--radius-md);
+
+    --markdown-font-mono: var(--font-mono);
+    --markdown-font-sans: var(--font-sans);
 
     /* The library's own default is 60vh — right for Innoventa's full-page
        editor, absurd for a description field, where it opened a screen-high

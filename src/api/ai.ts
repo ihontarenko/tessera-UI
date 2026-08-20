@@ -5,9 +5,13 @@ import { userManager } from "@/auth/userManager"
  * The machinery behind the assistant and the protocol endpoint, as one screen reads it.
  *
  * ⚠️ **Every route here belongs to `jmouse-ai-management`, not to Tessera** — which is why they answer
- * at `/jmouse-ai` rather than under `/api`. The library's default prefix is kept deliberately: a route
- * that is visibly not this product's is a route a reader will go and look up. Moving them is one
- * `jmouse.ai.management.prefix` line in the backend and the matching Vite proxy entry.
+ * at `/jmai/api` rather than under `/api`. An address nobody would invent by accident is deliberate: a
+ * route that is visibly not this product's is a route a reader will go and look up.
+ *
+ * ⚠️ **That address is written in three files and nothing checks that they agree** — the backend's
+ * `jmouse.ai.management.prefix`, the Vite proxy entry, and the base path below. When they drift every
+ * call here 404s, the screens' queries surface no error of their own, and the panels render as an
+ * installation with no tools and no agents rather than as a routing mistake. Change one, change three.
  *
  * ⚠️ **Being outside `/api` is not being outside authorization.** The reads are gated on `ai:read` and
  * the writes on `ai:administer`, at `GLOBAL` — stated in `security/access/AiManagementAccess`, because a
@@ -24,7 +28,7 @@ import { userManager } from "@/auth/userManager"
  * ⚠️ It repeats `httpClient`'s bearer-token interceptor rather than importing it, since that instance is
  * pinned to `/api`. If a third base path ever appears, the interceptor is what to extract — not this.
  */
-const managementClient = axios.create({ baseURL: "/jmouse-ai" })
+const managementClient = axios.create({ baseURL: "/jmai/api" })
 
 managementClient.interceptors.request.use(async (requestConfiguration) => {
   const user = await userManager.getUser()

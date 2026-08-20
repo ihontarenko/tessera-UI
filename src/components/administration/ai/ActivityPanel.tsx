@@ -1,9 +1,18 @@
 import { useState } from "react"
 import { Info } from "lucide-react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Input,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@jmouse/ui"
 import { useToolCalls, useUsageTotals } from "@/hooks/useAiAdministration"
 
 /**

@@ -1,6 +1,5 @@
 import { Rows3 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@jmouse/ui"
 import type { BoardFilter } from "@/components/board/boardFilters"
 import { BoardFilterPanel } from "@/components/board/BoardFilterPanel"
 import { SWIMLANE_LABEL } from "@/components/board/swimlanes"

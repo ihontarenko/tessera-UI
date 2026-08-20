@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { X } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@jmouse/ui"
 import {
   clamp,
   cropWindowFor,
@@ -107,7 +107,7 @@ export const ImageSquareCropper = forwardRef<CropperHandle, { file: File; onDisc
 
     if (failure) {
       return (
-        <div className="flex h-56 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm text-destructive">
+        <div className="flex h-56 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm text-destructive-ink">
           {failure}
           <Button type="button" variant="outline" size="sm" onClick={onDiscard}>
             Choose another

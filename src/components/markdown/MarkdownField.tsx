@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useRef, useState } from "react"
+import { Button } from "@jmouse/ui"
 import { TesseraMarkdown, TesseraMarkdownEditor } from "@/components/markdown/TesseraMarkdown"
+import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut"
 import { cn } from "@/lib/helpers"
 
 /**
@@ -18,6 +19,14 @@ import { cn } from "@/lib/helpers"
  * pattern and the reason it cannot simply reuse it. The editor's toolbar opens dialogs; a dialog takes
  * focus; commit-on-blur would save a half-finished document every time somebody reached for the link
  * button. Escape still abandons, because that is the one habit worth keeping.
+ *
+ * <h2>⚠️ Who opens the editor is the caller's decision, not this component's</h2>
+ *
+ * <p>A comment is prose and a click into it means "let me fix that word". **A description is not**: it renders
+ * live blocks — checkboxes, diagrams, applets — that somebody is meant to *use*, and a click that
+ * replaces the thing under the cursor with its own source is the field eating the interaction. So a
+ * surface carrying live blocks passes `openOnClick={false}` and drives {@link editing} from a button
+ * and a shortcut of its own; a surface of plain remarks keeps the click.
  */
 export function MarkdownField({
   value,
@@ -26,6 +35,9 @@ export function MarkdownField({
   placeholder,
   emptyText,
   className,
+  editing: editingFromCaller,
+  onEditingChange,
+  openOnClick = true,
 }: {
   value: string
   onCommit: (next: string) => void
@@ -34,9 +46,22 @@ export function MarkdownField({
   /** What an empty field says to somebody who cannot edit it — an invitation would be a lie. */
   emptyText?: string
   className?: string
+  /** Drive the mode from outside — a toolbar button, a keyboard shortcut. Omit to let it own itself. */
+  editing?: boolean
+  onEditingChange?: (editing: boolean) => void
+  /** Whether clicking the rendered document opens the editor. See the note on live blocks above. */
+  openOnClick?: boolean
 }) {
-  const [editing, setEditing] = useState(false)
+  const [editingItself, setEditingItself] = useState(false)
   const [draft, setDraft] = useState(value)
+  const container = useRef<HTMLDivElement>(null)
+
+  const editing = editingFromCaller ?? editingItself
+
+  function changeEditing(next: boolean) {
+    setEditingItself(next)
+    onEditingChange?.(next)
+  }
 
   // A commit elsewhere — the modal, another tab, a tool call — has to win over a draft nobody is
   // typing into. Re-syncing while not editing is what keeps two surfaces one issue rather than two
@@ -47,19 +72,46 @@ export function MarkdownField({
     }
   }, [value, editing])
 
+  // Opening the editor and then having to click into it is a step nobody wants, and it is the whole
+  // difference between a shortcut that saves a keystroke and one that costs a click.
+  useEffect(() => {
+    if (editing) {
+      container.current?.querySelector<HTMLElement>(".cm-content")?.focus()
+    }
+  }, [editing])
+
   function commit() {
     onCommit(draft)
-    setEditing(false)
+    changeEditing(false)
   }
 
   function abandon() {
     setDraft(value)
-    setEditing(false)
+    changeEditing(false)
   }
+
+  // ⚠️ At the window rather than on the editor, because the point of Ctrl+S is that it works wherever
+  // the hands happen to be — and because the browser's own Save dialog has to lose that combination
+  // for as long as a document is open for writing. With two fields open at once (a page and a comment
+  // under it) the keystroke goes to the one being typed into, and to this one only when nobody is.
+  useKeyboardShortcut({
+    key: "s",
+    withControl: true,
+    enabled: editing,
+    onTrigger: (event) => {
+      const fieldTypedInto = (event.target as HTMLElement | null)?.closest?.("[data-markdown-field]")
+
+      if (!fieldTypedInto || fieldTypedInto === container.current) {
+        commit()
+      }
+    },
+  })
 
   if (editing) {
     return (
       <div
+        ref={container}
+        data-markdown-field
         className="space-y-2"
         onKeyDown={(event) => {
           if (event.key === "Escape") {
@@ -84,20 +136,22 @@ export function MarkdownField({
             Cancel
           </Button>
           <span className="ml-auto text-xs text-muted-foreground">
-            Markdown · <kbd className="font-mono">⌘↵</kbd> to save · <kbd className="font-mono">Esc</kbd> to
-            discard
+            Markdown · <kbd className="font-mono">⌘S</kbd> or <kbd className="font-mono">⌘↵</kbd> to
+            save · <kbd className="font-mono">Esc</kbd> to discard
           </span>
         </div>
       </div>
     )
   }
 
+  // ⚠️ The empty state keeps its click whatever `openOnClick` says: there is no rendered document to
+  // interact with, and a blank field with no way in is a page nobody can start writing.
   if (!value.trim()) {
     return canEdit ? (
       <button
         type="button"
         className={cn("w-full rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent", className)}
-        onClick={() => setEditing(true)}
+        onClick={() => changeEditing(true)}
       >
         {placeholder ?? "Add a description…"}
       </button>
@@ -108,15 +162,17 @@ export function MarkdownField({
     )
   }
 
+  const clickOpensTheEditor = canEdit && openOnClick
+
   return (
     <div
-      className={cn("rounded-md px-2 py-1.5", canEdit && "cursor-text hover:bg-accent/40", className)}
+      className={cn("rounded-md px-2 py-1.5", clickOpensTheEditor && "cursor-text hover:bg-accent/40", className)}
       // ⚠️ A click that landed on a link inside the document must follow the link rather than open the
       // editor. Reading a reference is what the references are for, and having to dodge the edit mode
       // to do it would make them worse than plain text.
       onClick={(event) => {
-        if (canEdit && !(event.target as HTMLElement).closest("a, button")) {
-          setEditing(true)
+        if (clickOpensTheEditor && !(event.target as HTMLElement).closest("a, button")) {
+          changeEditing(true)
         }
       }}
     >

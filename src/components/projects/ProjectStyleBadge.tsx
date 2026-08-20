@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@jmouse/ui"
 import type { BoardScopeStrategy } from "@/api/sprints"
 import { projectStyleLabel } from "@/lib/projectStyle"
 

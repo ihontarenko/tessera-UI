@@ -1,37 +1,24 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "react-router-dom"
-import { Link2, X } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import { Badge, Separator } from "@jmouse/ui"
 import { MemberChip } from "@/components/MemberChip"
 import { SegmentedControl } from "@/components/SegmentedControl"
-import { PriorityBadge, StatusPill } from "@/components/issues/issueVisuals"
+import { PriorityBadge } from "@/components/issues/issueVisuals"
 import { StoryPointsControl } from "@/components/issues/StoryPointsSelect"
-import { InlineSelect } from "@/components/inline/InlineSelect"
+import { InlineSelect, type InlineSelectOption } from "@/components/inline/InlineSelect"
 import { InlineTextField } from "@/components/inline/InlineTextField"
 import { IssueActivityStream } from "@/components/issues/detail/IssueActivityStream"
+import { IssueLinksBlock } from "@/components/issues/detail/IssueLinksBlock"
+import { IssueReferenceLink } from "@/components/issues/detail/IssueReferenceLink"
 import { IssueTransitionAction } from "@/components/issues/detail/IssueTransitionAction"
+import { ParentPicker } from "@/components/issues/detail/ParentPicker"
 import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"
-import {
-  fetchCatalog,
-  fetchLinkTypes,
-  listIssues,
-  searchIssues,
-  type IssueDetail,
-  type IssueLinkView,
-  type IssueReference,
-} from "@/api/issues"
-import { searchMembers } from "@/api/members"
+import { fetchCatalog, type IssueDetail } from "@/api/issues"
+import { isAgent, searchMembers, type MemberSummary } from "@/api/members"
 import { memberName } from "@/lib/memberDisplay"
-import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useEstimationScheme } from "@/hooks/useEstimationScheme"
 
 const UNASSIGNED = "__unassigned__"
-const NO_PARENT = "__none__"
-const CHOOSE = "__choose__"
 
 export interface IssuePermissions {
   canEdit: boolean
@@ -104,13 +91,12 @@ export function IssueRail({
 
       {isQuick && pane === "activity" && <IssueActivityStream issueId={issue.id} canComment={canComment} compact />}
 
-      {(!isQuick || pane === "relations") && (
-        <>
-          {!isQuick && <Separator />}
-          <HierarchyRows issue={issue} canEdit={permissions.canEdit} editing={editing} />
-          {!isQuick && <Separator />}
-          <LinkRows issue={issue} canEdit={permissions.canEdit} editing={editing} />
-        </>
+      {/* ⚠️ **Only in a dialog.** On a page the relations live in the content column, where a link row has
+          the width of the sentence it is (TSSR-73); rendering them here as well would be the same list
+          twice, disagreeing the moment one of them was edited. In a dialog there is no content column to
+          put them in, so the pane is where they are. */}
+      {isQuick && pane === "relations" && (
+        <IssueLinksBlock issue={issue} canEdit={permissions.canEdit} editing={editing} variant="quick" />
       )}
     </div>
   )
@@ -129,6 +115,49 @@ function RailRow({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
+/**
+ * Who the assignee may be set to — the directory, plus whoever currently holds it.
+ *
+ * <h2>⚠️ The directory is people only, and the assignee need not be a person</h2>
+ *
+ * `GET /api/members` answers with `MemberKind.PERSON` and nothing else, deliberately (TSSR-33): an agent
+ * is a member so that authorship has one face, not so that it can be invited. But an agent *can* hold an
+ * issue — it takes its own work through `issues_assign` (TSSR-74) — so the control was being handed a
+ * value that was in none of its options, and a select with an unmatched value renders **empty**. An issue
+ * held by a client read as unassigned, which is the worst way for this to fail: it looks like a fact
+ * rather than like a bug.
+ *
+ * ⚠️ **The extra option is derived from the current assignee, which is what makes it safe to offer.** It
+ * exists exactly when it is already selected, so it disappears the moment somebody picks somebody else —
+ * and it can therefore never be *chosen*, only displayed. That matters, because the server would refuse
+ * the choice: `IssueService.resolveAssignee` lets an agent be assigned only by itself, so a person
+ * handing work to a client is a `403` by design. A person may still take it *off* one, which this keeps
+ * possible.
+ *
+ * Retired clients and people who have left the directory fall out of the same rule, for the same reason.
+ */
+function assigneeChoices(assignee: IssueDetail["assignee"], members: MemberSummary[]): InlineSelectOption[] {
+  const choices: InlineSelectOption[] = [
+    { value: UNASSIGNED, label: "Unassigned" },
+    ...members.map((member) => ({ value: member.id, label: memberName(member) })),
+  ]
+
+  if (assignee && !members.some((member) => member.id === assignee.id)) {
+    choices.splice(1, 0, { value: assignee.id, label: assigneeLabel(assignee) })
+  }
+
+  return choices
+}
+
+/** The name, saying what it is where that is not a person — the activity stream's own wording. */
+function assigneeLabel(assignee: NonNullable<IssueDetail["assignee"]>): string {
+  if (!isAgent(assignee)) {
+    return memberName(assignee)
+  }
+
+  return `${memberName(assignee)} — ${assignee.retired ? "client, retired" : "client"}`
+}
+
 function PropertyRows({
   issue,
   canEdit,
@@ -141,6 +170,7 @@ function PropertyRows({
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
   const { data: members = [] } = useQuery({ queryKey: ["members", "all"], queryFn: () => searchMembers() })
   const estimationScheme = useEstimationScheme(issue.projectId)
+  const assigneeOptions = assigneeChoices(issue.assignee, members)
 
   return (
     <div className="space-y-1.5">
@@ -149,16 +179,32 @@ function PropertyRows({
           <InlineSelect
             ariaLabel="Assignee"
             value={issue.assignee?.id ?? UNASSIGNED}
-            options={[
-              { value: UNASSIGNED, label: "Unassigned" },
-              ...members.map((member) => ({ value: member.id, label: memberName(member) })),
-            ]}
+            options={assigneeOptions}
             onChange={(value) => editing.fields.mutate({ assigneeMemberId: value === UNASSIGNED ? null : value })}
           />
         ) : issue.assignee ? (
           <MemberChip member={issue.assignee} />
         ) : (
           <span className="text-muted-foreground">Unassigned</span>
+        )}
+      </RailRow>
+
+      {/* ⚠️ The parent stays a property while the children became relations (TSSR-73), and that is not an
+          inconsistency: this is the one field that says where the issue *belongs*, it is edited here, and
+          it is one value rather than a list. The children are a list of other issues, which is what the
+          relations block is.
+
+          ⚠️ A search rather than a select (TSSR-58). A parent may live in any project the reader browses,
+          which is not a list that fits in a dropdown — and the select it replaces could not represent a
+          redacted parent at all, because such a reference carries no `id` and the control fell back to
+          `None`, detaching it on the next unrelated edit. */}
+      <RailRow label="Parent">
+        {canEdit ? (
+          <ParentPicker issue={issue} onChange={(parentId) => editing.parent.mutate(parentId)} />
+        ) : issue.parent ? (
+          <IssueReferenceLink issue={issue.parent} />
+        ) : (
+          <span className="text-muted-foreground">None</span>
         )}
       </RailRow>
 
@@ -218,303 +264,6 @@ function PropertyRows({
           <span className="text-muted-foreground">—</span>
         )}
       </RailRow>
-    </div>
-  )
-}
-
-/**
- * A key that reads as a key and goes where a key should go — the issue's own page (ticket 07).
- *
- * ⚠️ <strong>`shrink-0` on the key is load-bearing.</strong> Without it the key is an ordinary
- * shrinkable flex item, so a long summary squeezes it until it breaks mid-token — `JMF-2` wrapping to
- * `JMF-` and `2`, and the row growing a second line to hold one digit. The summary is the part that
- * should give; the key is four characters and is what the row is identified by.
- *
- * ⚠️ And `flex w-full` rather than `inline-flex`: an inline flex box is sized by its content, so
- * `truncate` has no width to truncate against and the summary overflows the card instead of clipping.
- * Truncation needs a bounded parent, which is what the `w-full` and the `min-w-0` on the text give it.
- */
-/**
- * Another issue, as much of it as the reader may see.
- *
- * ⚠️ **A redacted reference is shown, not hidden** (TSSR-43). The far side of a link can live in a
- * project the reader is not a member of, and dropping it would make a tracking hub's register silently
- * short — a list that lies with nothing to say it did. The key and the status travel; the summary and
- * the link through do not.
- */
-function IssueRefLink({ issue }: { issue: IssueReference }) {
-  // ⚠️ The status travels either way, redacted or not. A status name is installation-wide
-  // configuration rather than anybody's private text — and without it a tracking hub could not say how
-  // much of an effort is done, which is most of what a hub is for.
-  const state = issue.status && <StatusPill status={issue.status} />
-
-  if (!issue.readable) {
-    return (
-      <span
-        title={`${issue.issueKey} — in a project you are not a member of`}
-        className="flex w-full min-w-0 items-baseline gap-1.5"
-      >
-        <span className="shrink-0 font-mono text-xs text-muted-foreground">{issue.issueKey}</span>
-        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground italic">
-          in a project you cannot see
-        </span>
-        {state}
-      </span>
-    )
-  }
-
-  return (
-    <Link
-      to={`/issues/${issue.issueKey}`}
-      title={`${issue.issueKey} · ${issue.summary}`}
-      className="flex w-full min-w-0 items-baseline gap-1.5 hover:underline"
-    >
-      <span className="shrink-0 font-mono text-xs text-muted-foreground">{issue.issueKey}</span>
-      <span className="min-w-0 flex-1 truncate">{issue.summary}</span>
-      {state}
-    </Link>
-  )
-}
-
-function HierarchyRows({
-  issue,
-  canEdit,
-  editing,
-}: {
-  issue: IssueDetail
-  canEdit: boolean
-  editing: ReturnType<typeof useIssueEditing>
-}) {
-  const { data: projectIssues = [] } = useQuery({
-    queryKey: ["issues", issue.projectId],
-    queryFn: () => listIssues(issue.projectId),
-  })
-  const candidates = projectIssues.filter((row) => row.id !== issue.id)
-
-  return (
-    <div className="space-y-1.5">
-      <RailRow label="Parent">
-        {canEdit ? (
-          <InlineSelect
-            ariaLabel="Parent issue"
-            value={issue.parent?.id ?? NO_PARENT}
-            options={[
-              { value: NO_PARENT, label: "None" },
-              ...candidates.map((row) => ({ value: row.id, label: `${row.issueKey} · ${row.summary}` })),
-            ]}
-            onChange={(value) => editing.parent.mutate(value === NO_PARENT ? null : value)}
-          />
-        ) : issue.parent ? (
-          <IssueRefLink issue={issue.parent} />
-        ) : (
-          <span className="text-muted-foreground">None</span>
-        )}
-      </RailRow>
-
-      {issue.children.length > 0 && (
-        <div className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Children · {issue.children.length}
-          </span>
-          <ul className="space-y-1">
-            {issue.children.map((child) => (
-              <li key={child.id} className="flex min-w-0 rounded bg-muted/40 px-2 py-1 text-sm">
-                <IssueRefLink issue={child} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * The links, gathered under the words they read as (TSSR-43).
- *
- * ⚠️ **Grouped by label, not by type.** A symmetric type says the same word both ways and belongs in one
- * group; an asymmetric one reads `blocks` in one direction and `is blocked by` in the other, and those
- * are two different statements about this issue. Grouping by `linkTypeId` would file them together and
- * produce a heading that is true of only half its rows.
- *
- * ⚠️ **`open` is the canonical invariant** (ADR-0004) — no resolution — so "done" here means the same
- * thing it means everywhere else, including for a redacted reference whose summary was withheld but
- * whose state was not.
- *
- * Insertion order is kept rather than sorted: the response already returns outward links before inward
- * ones, which is the order somebody wrote them in.
- */
-function groupLinksByType(links: IssueLinkView[]): Array<{ label: string; links: IssueLinkView[]; done: number }> {
-  const groups = new Map<string, IssueLinkView[]>()
-
-  for (const link of links) {
-    const existing = groups.get(link.label) ?? []
-
-    existing.push(link)
-    groups.set(link.label, existing)
-  }
-
-  return [...groups].map(([label, grouped]) => ({
-    label,
-    links: grouped,
-    done: grouped.filter((link) => !link.issue.open).length,
-  }))
-}
-
-function LinkRows({
-  issue,
-  canEdit,
-  editing,
-}: {
-  issue: IssueDetail
-  canEdit: boolean
-  editing: ReturnType<typeof useIssueEditing>
-}) {
-  const [linkTypeId, setLinkTypeId] = useState(CHOOSE)
-  const [targetIssueId, setTargetIssueId] = useState(CHOOSE)
-  const [search, setSearch] = useState("")
-  const { data: linkTypes = [] } = useQuery({ queryKey: ["link-types"], queryFn: fetchLinkTypes })
-
-  // ⚠️ A SEARCH, NOT A LIST OF ONE PROJECT (TSSR-43). This asked `listIssues(issue.projectId)`, which
-  // is why a cross-project link could never be made from the interface even though the service always
-  // allowed one. And it is a search rather than a bigger dropdown because "every issue in every project
-  // I belong to" is not a list anybody scrolls.
-  const debouncedSearch = useDebouncedValue(search, 250)
-  const { data: results } = useQuery({
-    queryKey: ["issue-search", "link-candidates", debouncedSearch],
-    queryFn: () => searchIssues({ text: debouncedSearch || undefined, size: 20 }),
-  })
-  const candidates = (results?.items ?? []).filter((row) => row.issue.id !== issue.id)
-
-  const grouped = groupLinksByType(issue.links)
-
-  return (
-    <div className="space-y-1.5">
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        Links · {issue.links.length}
-      </span>
-
-      {issue.links.length === 0 && <p className="text-sm text-muted-foreground">None</p>}
-
-      {/* ⚠️ Grouped by label, with a count of what is finished (TSSR-43). A flat list of twenty is the
-          shape that made a tracking hub unreadable — and "12 of 20 done" is derived from what the
-          response already carries, so a register costs no entity and no snapshot to keep in step. */}
-      {grouped.map((group) => (
-        <div key={group.label} className="space-y-1 pt-0.5">
-          <span className="flex items-baseline justify-between gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            <span className="truncate">{group.label}</span>
-            <span className="shrink-0 tabular-nums normal-case">
-              {group.done} of {group.links.length} done
-            </span>
-          </span>
-
-          <ul className="space-y-1">
-            {group.links.map((link) => (
-              <li key={link.id} className="flex items-baseline gap-1.5 rounded bg-muted/40 px-2 py-1 text-sm">
-                <Link2 className="size-3.5 shrink-0 self-center text-muted-foreground" />
-
-                {/* ⚠️ The label IS the control (TSSR-40) — retyping a link in place, rather than
-                    deleting and recreating it, which is what a mistyped one used to cost. It changes
-                    the type and nothing else: an endpoint change would be a different link. */}
-                {canEdit ? (
-                  <InlineSelect
-                    ariaLabel={`Link type — ${link.label} ${link.issue.issueKey}`}
-                    className="shrink-0 text-xs text-muted-foreground"
-                    value={link.linkTypeId}
-                    options={linkTypes.map((linkType) => ({
-                      value: linkType.id,
-                      // The same end of the label the row is already showing, so switching type does
-                      // not silently flip which direction the reader thinks they are looking at.
-                      label: link.direction === "OUTWARD" ? linkType.outwardLabel : linkType.inwardLabel,
-                    }))}
-                    onChange={(nextLinkTypeId) => {
-                      if (nextLinkTypeId !== link.linkTypeId) {
-                        editing.changeLinkType.mutate({ linkId: link.id, linkTypeId: nextLinkTypeId })
-                      }
-                    }}
-                  />
-                ) : (
-                  <span className="shrink-0 text-xs text-muted-foreground">{link.label}</span>
-                )}
-
-                <IssueRefLink issue={link.issue} />
-                {canEdit && (
-                  <button
-                    type="button"
-                    className="ml-auto shrink-0 self-center text-muted-foreground hover:text-destructive"
-                    onClick={() => editing.removeLink.mutate(link.id)}
-                    aria-label="Remove link"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-
-      {canEdit && (
-        <div className="space-y-1.5 pt-1">
-          <InlineSelect
-            ariaLabel="Link type"
-            className="rounded-md border"
-            value={linkTypeId}
-            options={[
-              { value: CHOOSE, label: "Link type…" },
-              ...linkTypes.map((linkType) => ({ value: linkType.id, label: linkType.outwardLabel })),
-            ]}
-            onChange={setLinkTypeId}
-          />
-
-          {/* ⚠️ Typing is how the target is found now, not scrolling (TSSR-43). The old dropdown listed
-              one project, which is the single reason a cross-project link could not be made from here.
-              The search is already cross-project and already scoped to what the member may browse. */}
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Find an issue, any project…"
-            className="h-7 text-xs"
-          />
-
-          <InlineSelect
-            ariaLabel="Target issue"
-            className="rounded-md border"
-            value={targetIssueId}
-            options={[
-              { value: CHOOSE, label: candidates.length === 0 ? "No matches" : "Target issue…" },
-              // The project key is part of the label, not a detail: a bare key from another project
-              // means nothing to somebody who has fifty issues named TSSR-4 in their head.
-              ...candidates.map((row) => ({
-                value: row.issue.id,
-                label: `${row.project.key} · ${row.issue.issueKey} · ${row.issue.summary}`,
-              })),
-            ]}
-            onChange={setTargetIssueId}
-          />
-
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 w-full text-xs"
-            disabled={linkTypeId === CHOOSE || targetIssueId === CHOOSE || editing.addLink.isPending}
-            onClick={() =>
-              editing.addLink.mutate(
-                { linkTypeId, targetIssueId },
-                {
-                  onSuccess: () => {
-                    setLinkTypeId(CHOOSE)
-                    setTargetIssueId(CHOOSE)
-                    setSearch("")
-                  },
-                },
-              )
-            }
-          >
-            Add link
-          </Button>
-        </div>
-      )}
     </div>
   )
 }

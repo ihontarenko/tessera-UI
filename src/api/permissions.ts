@@ -87,3 +87,15 @@ export const READ_AI = "ai:read"
  * has been spent, this one decides what gets spent. Reading does not imply administering.
  */
 export const ADMINISTER_AI = "ai:administer"
+
+/**
+ * Administering the installation's people and clients — their names and their faces (TSSR-79).
+ *
+ * ⚠️ **Its own, because `configuration:administer` says so.** That one is named for the catalogs and
+ * its note states that an installation-wide concern which is not the configuration — accounts,
+ * licensing, quotas — should have to ask for a grant of its own. This is the first of those.
+ *
+ * ⚠️ **It does not gate the member directory.** `GET /api/members` stays open to every signed-in
+ * caller: it is the picker somebody adds a colleague to a project from.
+ */
+export const ADMINISTER_MEMBERS = "member:administer"

@@ -1,11 +1,13 @@
 import { Check, Languages } from "lucide-react"
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@jmouse/ui"
 import { useLanguage, type Language } from "@/context/LanguageContext"
 
 const LANGUAGE_LABELS: Record<Language, string> = {

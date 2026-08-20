@@ -135,6 +135,7 @@ export type ProjectSettingsSection =
   | "estimation"
   | "board"
   | "access"
+  | "danger"
 
 export const PROJECT_SETTINGS_SECTIONS: ProjectSettingsSection[] = [
   "general",
@@ -143,6 +144,9 @@ export const PROJECT_SETTINGS_SECTIONS: ProjectSettingsSection[] = [
   "estimation",
   "board",
   "access",
+  // ⚠️ Last, and alone down here. Everything above changes what this installation does next; this one
+  // changes what a link somebody wrote last year points at.
+  "danger",
 ]
 
 export function resolveProjectSettingsSection(requestedSection: string | null): ProjectSettingsSection {

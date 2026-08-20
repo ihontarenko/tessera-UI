@@ -1,9 +1,6 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+// `cn` is the shared render-layer helper and lives in @jmouse/ui with the primitives that use it;
+// re-exported here so the product's own call sites keep one import path for both helpers.
+export { cn } from "@jmouse/ui"
 
 /**
  * A story-point total as a panel header or a report headline shows it: whole totals read as whole

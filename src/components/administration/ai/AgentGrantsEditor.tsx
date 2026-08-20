@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react"
-import { Check, Globe, Loader2, MapPin, Plus, X } from "lucide-react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Check, Globe, Loader2, MapPin, Plus, TriangleAlert, X } from "lucide-react"
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+  Skeleton,
+} from "@jmouse/ui"
 import { useAgentGrants, useReplaceAgentGrants } from "@/hooks/useAiAdministration"
 import type { AgentOffer, AgentPlacement, AgentSurface } from "@/api/ai"
 import { cn } from "@/lib/helpers"
@@ -96,10 +98,11 @@ export function AgentGrantsEditor({
   if (offer.permissions.length === 0 && offer.roles.length === 0) {
     return (
       <Alert>
-        <AlertTitle>Its owner holds nothing to hand down</AlertTitle>
+        <AlertTitle>There is nothing to offer</AlertTitle>
         <AlertDescription>
-          A restricted agent can never hold more than the account it acts for. Give that account
-          something first, or let this one act with its owner's access instead.
+          This installation declares no permissions and no roles, which is not a thing that normally
+          happens — the vocabulary is read from the policy documents, so an empty one means they did not
+          load. This is a misconfiguration rather than a restriction.
         </AlertDescription>
       </Alert>
     )
@@ -107,6 +110,25 @@ export function AgentGrantsEditor({
 
   return (
     <div className="space-y-4 rounded-md border bg-muted/20 p-3">
+      {/* ⚠️ This banner replaced a sentence that said the opposite — "an agent can never hold more than
+          its owner" — which was true until the engine stopped intersecting a restricted agent with the
+          account it acts for. A screen repeating a ceiling that no longer exists is worse than one
+          saying nothing, because somebody grants on the strength of it. */}
+      {/* ⚠️ Every child of AlertDescription is a GRID ROW — it is `grid gap-1`, not a paragraph. A bare
+          <strong> or <em> at this level therefore lands on a line of its own, which is how the first
+          draft of this rendered as six ragged lines. Keep the prose inside <p>. */}
+      <Alert>
+        <TriangleAlert className="size-4" />
+        <AlertTitle>A slave can outpower its master ⚡</AlertTitle>
+        <AlertDescription className="text-xs">
+          <p>
+            <strong>Restricted</strong> means <em>its own</em> powers, not a weaker copy of its
+            master's. Give it something you don't have — and yes, it can become the bigger boss. 😈
+          </p>
+          <p>No safety net, no automatic rollback. The log remembers. 👀</p>
+        </AlertDescription>
+      </Alert>
+
       <PermissionChips
         offered={offer.permissions}
         chosen={permissions}
@@ -254,7 +276,7 @@ function PlacementEditor({
               <button
                 type="button"
                 aria-label={`Remove ${placement.roleName}`}
-                className="text-muted-foreground transition-colors hover:text-destructive"
+                className="text-muted-foreground transition-colors hover:text-destructive-ink"
                 onClick={() =>
                   onChange(
                     placements.filter(

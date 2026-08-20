@@ -1,281 +1,158 @@
 import { useState } from "react"
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  FolderPlus,
-  Inbox,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { ChevronDown, ChevronRight, FileText, Lock } from "lucide-react"
 import { cn } from "@/lib/helpers"
-import type { CategoryNode, WikiPageSummary } from "@/api/wiki"
+import type { KiwiCategoryNode, KiwiPageSummary } from "@/api/kiwi"
 
 /**
- * The wiki's left-hand side: sections, and the pages filed into each (TSSR-17).
+ * The wiki's left-hand side: **Kiwi's** sections, and the pages in the one being looked at
+ * (TSSR-17's anatomy, TSSR-0097's source).
  *
- * ⚠️ **One tree, and it is the category tree.** A page has no parent of its own (TSSR-5), so nothing
- * here nests a page under a page — a page is a leaf in a section, and moving it is re-filing it. That is
- * the decision this component is shaped by, and it is why there is exactly one recursive type below.
+ * <h2>⚠️ Read-only, and that is the architecture rather than a missing feature</h2>
  *
- * ⚠️ **Uncategorised is a section that is not one.** Every page starts filed nowhere, so the bucket has
- * to exist; it is drawn last, carries no controls, and cannot be renamed or removed because there is
- * nothing there to rename. Giving it the same affordances as a real section would be a lie about what it
- * is.
+ * Every control that changed a section — rename, add subsection, move up and down, remove — is gone.
+ * Kiwi owns its tree and its grants, so those live on Kiwi's own screens where the rules that govern
+ * them can be seen. A consumer offering them would be offering a button whose refusal it cannot
+ * explain, which is worse than not offering it at all.
+ *
+ * <h2>⚠️ One tree, and it is the section tree</h2>
+ *
+ * A page has no parent of its own, so nothing here nests a page under a page — a page is a leaf in a
+ * section, and moving it is re-filing it.
+ *
+ * <h2>⚠️ A section a reader cannot see is drawn, greyed, and not clickable</h2>
+ *
+ * `readable: false` is a **breadcrumb** (KW-1 §4): an ancestor of a branch they were granted, carried
+ * so the tree has a path down to it, with no slug, no contents and a count that means nothing. Hiding
+ * it would make the tree look like it starts halfway down; drawing it as an ordinary section would
+ * promise something that answers 403.
  */
 export function WikiTree({
-  categories,
+  root,
   pages,
+  isSearching,
   selectedPageId,
+  selectedSectionId,
   onSelectPage,
-  canManageSections,
-  onAddSection,
-  onRenameSection,
-  onMoveSection,
-  onRemoveSection,
+  onSelectSection,
 }: {
-  categories: CategoryNode[]
-  pages: WikiPageSummary[]
+  root: KiwiCategoryNode
+  pages: KiwiPageSummary[]
+  /** While searching the list is not one section's contents, so no section owns it. */
+  isSearching: boolean
   selectedPageId: string | null
+  selectedSectionId: string | null
   onSelectPage: (pageId: string) => void
-  canManageSections: boolean
-  onAddSection: (parentId: string | null) => void
-  onRenameSection: (category: CategoryNode, name: string) => void
-  onMoveSection: (category: CategoryNode, parentId: string | null, position: number) => void
-  onRemoveSection: (category: CategoryNode) => void
+  onSelectSection: (categoryId: string | null) => void
 }) {
-  const uncategorised = pages.filter((page) => page.categoryId === null)
+  if (isSearching) {
+    return (
+      <div className="space-y-1">
+        <p className="px-2 py-1 text-xs text-muted-foreground">
+          {pages.length === 1 ? "1 page found" : `${pages.length} pages found`}
+        </p>
+        <PageList pages={pages} depth={0} selectedPageId={selectedPageId} onSelectPage={onSelectPage} />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-1">
-      {categories.map((category, index) => (
-        <SectionBranch
-          key={category.id}
-          category={category}
-          parentId={null}
-          index={index}
-          siblingCount={categories.length}
-          depth={0}
-          pages={pages}
-          selectedPageId={selectedPageId}
-          onSelectPage={onSelectPage}
-          canManageSections={canManageSections}
-          onAddSection={onAddSection}
-          onRenameSection={onRenameSection}
-          onMoveSection={onMoveSection}
-          onRemoveSection={onRemoveSection}
-        />
-      ))}
-
-      {/* Drawn even when empty while there are sections above it, so "where did my page go" has a
-          visible answer. Hidden only when the whole wiki is uncategorised — then it is not a bucket,
-          it is just the list. */}
-      {(uncategorised.length > 0 || categories.length > 0) && (
-        <div className="pt-1">
-          {categories.length > 0 && (
-            <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-muted-foreground">
-              <Inbox className="size-3.5 shrink-0 opacity-70" />
-              <span className="truncate">Uncategorised</span>
-              <span className="ml-auto text-xs tabular-nums opacity-70">{uncategorised.length}</span>
-            </div>
-          )}
-
-          <PageList
-            pages={uncategorised}
-            depth={categories.length > 0 ? 1 : 0}
-            selectedPageId={selectedPageId}
-            onSelectPage={onSelectPage}
-          />
-        </div>
-      )}
-
-      {canManageSections && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-2 w-full justify-start text-muted-foreground"
-          onClick={() => onAddSection(null)}
-        >
-          <FolderPlus className="size-4" />
-          New section
-        </Button>
-      )}
+      <SectionBranch
+        section={root}
+        depth={0}
+        pages={pages}
+        selectedPageId={selectedPageId}
+        selectedSectionId={selectedSectionId ?? root.id}
+        onSelectPage={onSelectPage}
+        onSelectSection={onSelectSection}
+      />
     </div>
   )
 }
 
 /**
- * One section, its subsections and its pages.
+ * One section, its subsections, and — when it is the selected one — its pages.
  *
- * Collapsed state lives here rather than in the panel: it is per branch, it does not survive a reload,
- * and lifting it would mean the panel holding a map of ids it has no other reason to know about.
+ * ⚠️ **Only the selected section's pages are drawn, because only they have been fetched.** Kiwi answers
+ * a section's contents per section (`/categories/{id}/pages`); asking for every branch at once would be
+ * one request per node to draw a sidebar. Collapsed state lives here rather than in the panel: it is per
+ * branch and does not survive a reload.
  */
 function SectionBranch({
-  category,
-  parentId,
-  index,
-  siblingCount,
+  section,
   depth,
   pages,
   selectedPageId,
+  selectedSectionId,
   onSelectPage,
-  canManageSections,
-  onAddSection,
-  onRenameSection,
-  onMoveSection,
-  onRemoveSection,
+  onSelectSection,
 }: {
-  category: CategoryNode
-  /** Its own parent, carried so a reorder can send the pair the server expects in one call. */
-  parentId: string | null
-  index: number
-  siblingCount: number
+  section: KiwiCategoryNode
   depth: number
-  pages: WikiPageSummary[]
+  pages: KiwiPageSummary[]
   selectedPageId: string | null
+  selectedSectionId: string
   onSelectPage: (pageId: string) => void
-  canManageSections: boolean
-  onAddSection: (parentId: string | null) => void
-  onRenameSection: (category: CategoryNode, name: string) => void
-  onMoveSection: (category: CategoryNode, parentId: string | null, position: number) => void
-  onRemoveSection: (category: CategoryNode) => void
+  onSelectSection: (categoryId: string | null) => void
 }) {
   const [open, setOpen] = useState(true)
-  const [renaming, setRenaming] = useState(false)
-  const own = pages.filter((page) => page.categoryId === category.id)
-
-  function commitRename(name: string) {
-    setRenaming(false)
-
-    if (name.trim() && name.trim() !== category.name) {
-      onRenameSection(category, name.trim())
-    }
-  }
+  const isSelected = section.id === selectedSectionId
 
   return (
     <div>
       <div
-        className="group flex items-center gap-1 rounded-md pr-1 hover:bg-accent/50"
+        className={cn(
+          "group flex items-center gap-1 rounded-md pr-1",
+          section.readable ? "hover:bg-accent/50" : "opacity-60",
+        )}
         style={{ paddingLeft: `${depth * 12}px` }}
       >
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1.5 text-left text-[13px]"
-          onClick={() => setOpen((wasOpen) => !wasOpen)}
+          disabled={!section.readable}
+          className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1.5 text-left text-[13px] disabled:cursor-default"
+          onClick={() => {
+            setOpen((wasOpen) => (isSelected ? !wasOpen : true))
+            onSelectSection(section.id)
+          }}
         >
-          {open ? (
-            <ChevronDown className="size-3.5 shrink-0 opacity-60" />
+          {section.children.length > 0 ? (
+            open ? (
+              <ChevronDown className="size-3.5 shrink-0 opacity-60" />
+            ) : (
+              <ChevronRight className="size-3.5 shrink-0 opacity-60" />
+            )
           ) : (
-            <ChevronRight className="size-3.5 shrink-0 opacity-60" />
+            <span className="size-3.5 shrink-0" />
           )}
 
-          {renaming ? (
-            <Input
-              autoFocus
-              defaultValue={category.name}
-              className="h-6 px-1 py-0 text-[13px]"
-              onClick={(event) => event.stopPropagation()}
-              onBlur={(event) => commitRename(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  commitRename((event.target as HTMLInputElement).value)
-                }
-                if (event.key === "Escape") {
-                  setRenaming(false)
-                }
-              }}
-            />
-          ) : (
-            <span className="truncate font-medium">{category.name}</span>
-          )}
+          <span className={cn("truncate", isSelected ? "font-semibold" : "font-medium")}>{section.name}</span>
 
-          {!renaming && (
-            <span className="ml-auto pl-2 text-xs tabular-nums text-muted-foreground">{category.itemCount}</span>
+          {/* ⚠️ A breadcrumb carries no count worth printing — its zero is "not told", not "empty". */}
+          {section.readable ? (
+            <span className="ml-auto pl-2 text-xs tabular-nums text-muted-foreground">{section.itemCount}</span>
+          ) : (
+            <Lock className="ml-auto size-3 shrink-0 opacity-70" />
           )}
         </button>
-
-        {canManageSections && !renaming && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100"
-              >
-                <MoreHorizontal className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setRenaming(true)}>
-                <Pencil className="size-3.5" />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onAddSection(category.id)}>
-                <FolderPlus className="size-3.5" />
-                Add subsection
-              </DropdownMenuItem>
-              {/* ⚠️ Two buttons rather than a drag, and that is the whole of reordering in this pass.
-                  Dragging a branch between parents is the natural gesture and needs a drop target per
-                  node plus a spare one per gap — a screen's worth of work that TSSR-17 does not ask
-                  for. The endpoint behind these already takes a parent, so arriving at the drag later
-                  is a component change and not a new route. */}
-              <DropdownMenuItem
-                disabled={index === 0}
-                onSelect={() => onMoveSection(category, parentId, index - 1)}
-              >
-                <ArrowUp className="size-3.5" />
-                Move up
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={index === siblingCount - 1}
-                onSelect={() => onMoveSection(category, parentId, index + 1)}
-              >
-                <ArrowDown className="size-3.5" />
-                Move down
-              </DropdownMenuItem>
-              {/* ⚠️ Not guarded here by counting what is inside. The server refuses a section that
-                  holds anything and says which — reproducing that rule in the interface would give it
-                  two homes and one of them would eventually be wrong. */}
-              <DropdownMenuItem variant="destructive" onSelect={() => onRemoveSection(category)}>
-                <Trash2 className="size-3.5" />
-                Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
       </div>
 
       {open && (
         <>
-          <PageList pages={own} depth={depth + 1} selectedPageId={selectedPageId} onSelectPage={onSelectPage} />
+          {isSelected && (
+            <PageList pages={pages} depth={depth + 1} selectedPageId={selectedPageId} onSelectPage={onSelectPage} />
+          )}
 
-          {category.children.map((child, childIndex) => (
+          {section.children.map((child) => (
             <SectionBranch
               key={child.id}
-              category={child}
-              parentId={category.id}
-              index={childIndex}
-              siblingCount={category.children.length}
+              section={child}
               depth={depth + 1}
               pages={pages}
               selectedPageId={selectedPageId}
+              selectedSectionId={selectedSectionId}
               onSelectPage={onSelectPage}
-              canManageSections={canManageSections}
-              onAddSection={onAddSection}
-              onRenameSection={onRenameSection}
-              onMoveSection={onMoveSection}
-              onRemoveSection={onRemoveSection}
+              onSelectSection={onSelectSection}
             />
           ))}
         </>
@@ -290,7 +167,7 @@ function PageList({
   selectedPageId,
   onSelectPage,
 }: {
-  pages: WikiPageSummary[]
+  pages: KiwiPageSummary[]
   depth: number
   selectedPageId: string | null
   onSelectPage: (pageId: string) => void

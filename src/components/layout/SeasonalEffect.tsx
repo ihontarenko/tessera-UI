@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react"
-import { useTheme } from "@/context/ThemeContext"
+import { useTheme } from "@jmouse/ui"
 
 // Ported from Innoventa/UI/src/components/ui/SeasonalEffect.tsx — same particle set, same
 // deterministic-from-index positioning/timing, same "drop" keyframes (see index.css).

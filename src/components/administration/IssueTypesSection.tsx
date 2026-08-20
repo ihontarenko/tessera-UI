@@ -1,13 +1,26 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { AlertTriangle } from "lucide-react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@jmouse/ui"
 import { IssueTypeIcon } from "@/components/issues/issueVisuals"
 import {
   AdministrationSection,
@@ -37,6 +50,10 @@ import { fetchConfiguration } from "@/api/projects"
  * pretending the field is an enum, and nobody has to know that −1 means sub-task.
  */
 const LEVELS: Array<{ value: number; label: string; hint: string }> = [
+  // ⚠️ The level the model always anticipated and the picker never offered, so a type above Epic could
+  // only be made by calling the API by hand. Nothing in the backend forbade it — `IssueTypeRequest`
+  // takes a bare `int` with no range — which is exactly why the omission was invisible.
+  { value: 2, label: "Portfolio (2)", hint: "Holds containers — an Initiative, or a Hub" },
   { value: 1, label: "Container (1)", hint: "Holds other work — an Epic" },
   { value: 0, label: "Standard (0)", hint: "What a board shows and a sprint plans" },
   { value: -1, label: "Sub-task (−1)", hint: "Always belongs to a parent" },

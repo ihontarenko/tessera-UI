@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useParams, useSearchParams } from "react-router-dom"
 import { PageHeader } from "@/components/PageHeader"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@jmouse/ui"
 import { ProjectIcon } from "@/components/projects/ProjectIcon"
 import { ProjectSettingsPanel } from "@/components/projects/ProjectSettingsPanel"
 import { IssuesPanel } from "@/components/issues/IssuesPanel"
@@ -108,7 +107,15 @@ export function ProjectDetailPage() {
         )}
 
         <TabsContent value="wiki">
-          <WikiPanel projectId={project.id} permissions={project.myPermissions} />
+          {/* ⚠️ No permissions passed, and that is the point of TSSR-19: the pages are Kiwi's, and
+              Kiwi decides who may read and write them through its own `@CATEGORY` grants. What this
+              project holds is only WHICH section of Kiwi's tree its wiki lives in (KW-1 §2, §3), plus
+              whether this reader could go and change that. */}
+          <WikiPanel
+            projectId={project.id}
+            kiwiRootCategoryId={project.kiwiRootCategoryId ?? null}
+            canConfigure={canAdminister}
+          />
         </TabsContent>
 
         <TabsContent value="settings">

@@ -1,11 +1,11 @@
 import { useSearchParams } from "react-router-dom"
 import { PageHeader } from "@/components/PageHeader"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@jmouse/ui"
 import { IssueSearchPanel } from "@/components/issues/search/IssueSearchPanel"
-import { TrackedPanel } from "@/components/issues/registers/TrackedPanel"
+import { RegistersPanel } from "@/components/issues/registers/RegistersPanel"
 import { useLanguage } from "@/context/LanguageContext"
 
-const TABS = ["all", "tracked"] as const
+const TABS = ["all", "registers"] as const
 
 type IssuesTab = (typeof TABS)[number]
 
@@ -40,15 +40,15 @@ export function IssuesPage() {
       >
         <TabsList>
           <TabsTrigger value="all">{t("issues.tab.all", "All")}</TabsTrigger>
-          <TabsTrigger value="tracked">{t("issues.tab.tracked", "Tracked")}</TabsTrigger>
+          <TabsTrigger value="registers">{t("issues.tab.registers", "Registers")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all">
           <IssueSearchPanel />
         </TabsContent>
 
-        <TabsContent value="tracked">
-          <TrackedPanel />
+        <TabsContent value="registers">
+          <RegistersPanel />
         </TabsContent>
       </Tabs>
     </>

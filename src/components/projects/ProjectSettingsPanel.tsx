@@ -3,11 +3,13 @@ import { ProjectBoardSection } from "@/components/projects/settings/ProjectBoard
 import { ProjectGeneralSection } from "@/components/projects/settings/ProjectGeneralSection"
 import { ProjectIssueTypesSection } from "@/components/projects/settings/ProjectIssueTypesSection"
 import { ProjectEstimationSection } from "@/components/projects/settings/ProjectEstimationSection"
+import { ProjectDangerSection } from "@/components/projects/settings/ProjectDangerSection"
 import { ProjectWorkflowSection } from "@/components/projects/settings/ProjectWorkflowSection"
 import { SettingsSection } from "@/components/projects/settings/SettingsSection"
 import type { ProjectResponse } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
 import { sectionNavigationItemClass } from "@/lib/sectionNavigation"
+import { cn } from "@/lib/helpers"
 import { PROJECT_SETTINGS_SECTIONS, type ProjectSettingsSection } from "@/lib/projectStyle"
 
 /** The label for each section, in the order `PROJECT_SETTINGS_SECTIONS` fixes. */
@@ -18,6 +20,7 @@ const SECTION_LABELS: Record<ProjectSettingsSection, { key: string; text: string
   estimation: { key: "project.settings.nav.estimation", text: "Estimation" },
   board: { key: "project.settings.nav.board", text: "Board" },
   access: { key: "project.settings.nav.access", text: "Access" },
+  danger: { key: "project.settings.nav.danger", text: "Danger zone" },
 }
 
 /**
@@ -50,7 +53,13 @@ export function ProjectSettingsPanel({
                 type="button"
                 onClick={() => onSectionChange(candidate)}
                 aria-current={candidate === section ? "page" : undefined}
-                className={sectionNavigationItemClass(candidate === section)}
+                // ⚠️ Tinted while it is NOT the open section. Once open it takes the shared active
+                // state like every other, because a picker where one entry never looks selected reads
+                // as a broken control rather than as a warning.
+                className={cn(
+                  sectionNavigationItemClass(candidate === section),
+                  candidate === "danger" && candidate !== section && "text-destructive hover:text-destructive",
+                )}
               >
                 {t(SECTION_LABELS[candidate].key, SECTION_LABELS[candidate].text)}
               </button>
@@ -77,6 +86,9 @@ export function ProjectSettingsPanel({
           >
             <ProjectAccessPanel projectId={project.id} canAdminister={canAdminister} />
           </SettingsSection>
+        )}
+        {section === "danger" && (
+          <ProjectDangerSection project={project} canAdminister={canAdminister} />
         )}
       </div>
     </div>

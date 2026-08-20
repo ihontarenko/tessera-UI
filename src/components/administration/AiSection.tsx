@@ -1,7 +1,5 @@
 import { AlertTriangle, Ban, Sparkles } from "lucide-react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription, AlertTitle, Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@jmouse/ui"
 import { AdministrationSection } from "@/components/administration/AdministrationPieces"
 import { ActivityPanel } from "@/components/administration/ai/ActivityPanel"
 import { AgentsPanel } from "@/components/administration/ai/AgentsPanel"
@@ -16,7 +14,7 @@ import { cn } from "@/lib/helpers"
  * The machinery behind the assistant and the protocol endpoint, on one screen.
  *
  * **The server half is `jmouse-ai-management`'s, not Tessera's** — six controllers over the library's
- * own ports, answering at `/jmouse-ai`. Innoventa met these and wrote its own copy instead, because a
+ * own ports, answering at `/jmai/api`. Innoventa met these and wrote its own copy instead, because a
  * library's handler cannot carry an authorization declaration and the only gate left was a URL rule
  * keyed on a *role*. `ExternalAccessRules` is what removed that reason: Tessera states the requirement
  * *about* those types in `security/access/AiManagementAccess`, and the same engine decides them as

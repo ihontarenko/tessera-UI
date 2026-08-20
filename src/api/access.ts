@@ -137,3 +137,22 @@ export function revokePermission(memberId: string, permission: string, projectId
     data: { memberId, permission, projectId },
   })
 }
+
+/**
+ * The whole authorization, rendered back into the policy language — read-only (TSSR-20).
+ *
+ * ⚠️ **From the rows, never from `policy/tessera.jmp`.** That file is the seed; the engine reads rows,
+ * and the two drift apart the moment somebody edits a bundle on this very screen. A projection of the
+ * file would be a prettier copy of exactly the thing that is out of date.
+ */
+export function getPolicyProjection() {
+  return httpClient
+    .get<string>("/admin/access/projection", {
+      // ⚠️ axios's default transform tries `JSON.parse` on every body and quietly keeps the string when
+      // it throws — which is why this works without the option. Said out loud instead: the route serves
+      // `text/plain`, so nothing here should be parsing it.
+      responseType: "text",
+      transformResponse: [(data: string) => data],
+    })
+    .then((response) => response.data)
+}
