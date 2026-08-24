@@ -1,9 +1,10 @@
 import { useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronRight, Download, FileText, ImageIcon, Loader2, Paperclip, Trash2, Upload } from "lucide-react"
+import { Download, FileText, ImageIcon, Loader2, Paperclip, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@jmouse/ui"
 import { MemberAvatar } from "@/components/MemberAvatar"
+import { IssueContentSection } from "@/components/issues/detail/IssueContentSection"
 import { useStoredPreference } from "@/hooks/useStoredPreference"
 import { apiErrorMessage } from "@/api/errors"
 import { downloadAttachment, useAttachmentBytes } from "@/api/attachmentBytes"
@@ -58,7 +59,11 @@ export function IssueAttachmentsBlock({
   const isPage = variant === "page"
   const queryClient = useQueryClient()
 
-  const [preference, remember] = useStoredPreference<"open" | "closed">(BLOCK_PREFERENCE_KEY, "open")
+  // ⚠️ **Closed until somebody opens it**, and then open for good — the preference outlives the tab.
+  // Most issues carry no attachment at all, so the open default spent four lines of a reader's screen
+  // saying "nothing here" between the description and the relations. The count in the heading is what
+  // answers that question now, without the block having to be open to do it.
+  const [preference, remember] = useStoredPreference<"open" | "closed">(BLOCK_PREFERENCE_KEY, "closed")
   const [dragging, setDragging] = useState(false)
   const [removing, setRemoving] = useState<Attachment | null>(null)
   const [viewing, setViewing] = useState<Attachment | null>(null)
@@ -106,13 +111,6 @@ export function IssueAttachmentsBlock({
     }
   }
 
-  const heading = (
-    <span className="flex items-baseline gap-2">
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Attachments</span>
-      <span className="text-[10px] tabular-nums text-muted-foreground">{attachments.length}</span>
-    </span>
-  )
-
   const body = (
     <div
       onDragOver={(event) => {
@@ -156,10 +154,10 @@ export function IssueAttachmentsBlock({
         dragging && "bg-accent/60 ring-2 ring-primary ring-offset-1",
       )}
     >
-      {isLoading && <p className="px-2 py-3 text-xs text-muted-foreground">Loading…</p>}
+      {isLoading && <p className="py-1 text-xs text-muted-foreground">Loading…</p>}
 
       {!isLoading && attachments.length === 0 && (
-        <p className="px-2 py-3 text-xs text-muted-foreground">
+        <p className="py-1 text-xs text-muted-foreground">
           {canEdit ? "Nothing attached. Drop a file here, or paste a screenshot." : "Nothing attached."}
         </p>
       )}
@@ -187,42 +185,31 @@ export function IssueAttachmentsBlock({
   )
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        {/* The same shape the Relations block uses, and for the same reason it gave: a plain button,
-            because the content is a sibling of the header rather than a child, and the Attach control
-            in the header must not fold away with the rows. */}
-        {isPage ? (
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={`attachments-${issueId}`}
-            className="flex items-center gap-1 rounded text-muted-foreground hover:text-foreground"
-            onClick={() => remember(open ? "closed" : "open")}
-          >
-            <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} />
-            {heading}
-          </button>
-        ) : (
-          heading
-        )}
-
-        {canEdit && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-1.5 text-xs text-muted-foreground"
-            disabled={upload.isPending}
-            onClick={() => fileInput.current?.click()}
-          >
-            <Upload className="mr-1 size-3" />
-            Attach
-          </Button>
-        )}
-      </div>
-
-      <div id={`attachments-${issueId}`}>{open && body}</div>
+    <>
+      <IssueContentSection
+        id={`attachments-${issueId}`}
+        title="Attachments"
+        meta={attachments.length > 0 ? attachments.length : null}
+        open={open}
+        onToggle={isPage ? () => remember(open ? "closed" : "open") : undefined}
+        action={
+          canEdit && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs text-muted-foreground"
+              disabled={upload.isPending}
+              onClick={() => fileInput.current?.click()}
+            >
+              <Upload className="mr-1 size-3" />
+              Attach
+            </Button>
+          )
+        }
+      >
+        {body}
+      </IssueContentSection>
 
       <input
         ref={fileInput}
@@ -246,7 +233,7 @@ export function IssueAttachmentsBlock({
           onConfirm={() => remove.mutate(removing)}
         />
       )}
-    </div>
+    </>
   )
 }
 

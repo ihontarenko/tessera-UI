@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/helpers"
-import { highlightToHtml, resolveParser } from "@/lib/codemirror/staticHighlight"
+import { highlightToHtml, resolveParser } from "@/lib/codemirror"
 
 /**
  * A read-only block of code, coloured by the same grammar and the same palette as the editor.
@@ -8,7 +8,7 @@ import { highlightToHtml, resolveParser } from "@/lib/codemirror/staticHighlight
  * <h2>⚠️ Code that is not highlighted is code nobody reads carefully</h2>
  *
  * <p>The machinery for this already existed — `staticHighlight.ts` renders through the editor's own
- * {@link TESSERA_HIGHLIGHT_STYLE} precisely so a token is coloured identically whether it is being
+ * the shared `SYNTAX_HIGHLIGHT_STYLE` precisely so a token is coloured identically whether it is
  * written or read — and every screen outside rendered Markdown reached for a bare `<pre>` instead. The
  * policy projection is the one that suffers most for it: `jmpSyntax.ts` carries a whole `.jmp` grammar
  * whose stated purpose is "so a policy file picks up" this styling, and the one screen in the product

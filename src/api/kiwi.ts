@@ -41,10 +41,18 @@ export interface KiwiMember {
 
 export interface KiwiPageSummary {
   id: string
-  /** ⚠️ What a link names, for good. Minted once and never re-minted (KW-1 §7). */
+  /**
+   * ⚠️ **The half of a page's identity that never moves** (KW-0093) — six random characters, drawn once.
+   * What a short link and a cross-product reference should point at.
+   */
+  hash: string
+  /**
+   * ⚠️ **What a link to it READS as, and it can be changed.** This used to be permanent (KW-1 §7), which
+   * meant it was stuck at whatever the page was called before anybody had named it. Every address a page
+   * has ever had goes on resolving, so this is the field to *show* and `hash` is the field to *store*.
+   */
   address: string
   title: string
-  slug: string
   excerpt: string | null
   categoryId: string
   author: KiwiMember | null
@@ -57,6 +65,82 @@ export interface KiwiPageDetail extends KiwiPageSummary {
   contentMarkdown: string | null
   /** ⚠️ Never zero: Kiwi writes a revision on every save from the first one (KW-1 §6). */
   revisionCount: number
+  /** What this document's relative links resolve against — see {@link resolveKiwiAssets}. */
+  assetBase: string | null
+}
+
+/**
+ * Make a Kiwi page's links resolve **against Kiwi** (TSSR-0101).
+ *
+ * <h2>⚠️ Why a document needs this at all</h2>
+ *
+ * Kiwi stores images and attachments as **root-relative** paths — `![a dot](/api/public/files/…)`. On
+ * Kiwi's own screens that is right and survives any deployment. Rendered here it is a lie: the browser
+ * resolves it against **Tessera's** origin, which has no such route, and every picture on every page is
+ * a broken image. That is exactly what the first real page drawn in the wiki tab looked like.
+ *
+ * <h2>⚠️ The base comes from Kiwi, not from a constant here</h2>
+ *
+ * Two consumers each keeping their own copy of Kiwi's address is two places to get it wrong, and the
+ * second one to get it slightly wrong is the one nobody notices. So `assetBase` travels on the payload
+ * with the markdown that needs it.
+ *
+ * <h2>⚠️ ONLY `/api/public/files/…`, and the narrowness is the whole correctness</h2>
+ *
+ * The first version of this rewrote **every** root-relative link, and it was wrong in a way the imported
+ * manual demonstrates on its second page: it contains `[Innoventa landing page](/)`. That link means
+ * *Innoventa's* landing page — the document was written inside Innoventa and its own links point there.
+ * A blanket rewrite would have silently redirected it to Kiwi's root.
+ *
+ * So the rule is not "relative links belong to Kiwi". It is: **the file route is Kiwi's, and nothing
+ * else in the document can be assumed to be.** `/api/public/files/{id}` is written by Kiwi's own editor
+ * when somebody inserts a picture, which is exactly why it can be recognised and exactly why nothing
+ * else can.
+ *
+ * <h2>⚠️ What it therefore leaves alone</h2>
+ *
+ * Every other link: absolute URLs, `mailto:`, anchors, page-relative paths, **and any other
+ * root-relative path**, which belongs to whichever product the author had in mind. Also raw
+ * `<img src="/…">` — a looser expression would eventually rewrite a path shown as an example inside a
+ * code fence, silently editing a document that was explaining something.
+ */
+export function resolveKiwiAssets(markdown: string | null, assetBase: string | null): string {
+  if (!markdown || !assetBase) {
+    return markdown ?? ""
+  }
+
+  const base = assetBase.replace(/\/+$/, "")
+
+  return markdown.split("](/api/public/files/").join(`](${base}/api/public/files/`)
+}
+
+/**
+ * Put it back the way Kiwi stores it, before saving.
+ *
+ * <h2>⚠️ This is not tidiness — without it the rewrite corrupts the document</h2>
+ *
+ * `MarkdownField` is an **editor**: whatever it was given is what comes back out of `onCommit`. Hand it
+ * the resolved text and the next save writes **Tessera's view of Kiwi's address** into Kiwi's own
+ * database — permanently, for every reader, including Kiwi's own screens. That is exactly the failure
+ * TSSR-0101 rejected storing absolute URLs to avoid, arrived at from the other side.
+ *
+ * <p>So the pair is symmetric and must stay symmetric: resolve on the way in, unresolve on the way out.
+ * ⚠️ A future editor that saves without passing through here reintroduces the bug silently — the page
+ * looks right in both products until somebody moves Kiwi.
+ *
+ * <p>⚠️ It strips **only this base**. A link somebody deliberately wrote as an absolute URL to Kiwi —
+ * because they meant it to survive being copied elsewhere — is indistinguishable from a rewritten one,
+ * and is therefore also stripped. That is the known cost, and it is smaller than the alternative:
+ * leaving a rewritten link absolute forever.
+ */
+export function unresolveKiwiAssets(markdown: string, assetBase: string | null): string {
+  if (!assetBase) {
+    return markdown
+  }
+
+  const base = assetBase.replace(/\/+$/, "")
+
+  return markdown.split(`](${base}/api/public/files/`).join("](/api/public/files/")
 }
 
 export function getKiwiTree() {

@@ -11,6 +11,9 @@ import { fetchCatalog, searchIssues } from "@/api/issues"
 import { searchMembers } from "@/api/members"
 import { listProjects } from "@/api/projects"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { QueryPanel, type AppliedQuery } from "@jmouse/query"
+import { issues as issueSubject } from "@/components/issues/query/subject"
+import { ISSUE_PRESETS } from "@/components/issues/query/presets"
 import { useLanguage } from "@/context/LanguageContext"
 
 const ANY = "__any__"
@@ -37,6 +40,8 @@ export function IssueSearchPanel() {
   const [statusId, setStatusId] = useState(ANY)
   const [assigneeMemberId, setAssigneeMemberId] = useState(ANY)
   const [page, setPage] = useState(0)
+  const [jmq, setJmq] = useState<AppliedQuery>({})
+  const [composing, setComposing] = useState(false)
 
   const debouncedText = useDebouncedValue(text)
 
@@ -44,7 +49,7 @@ export function IssueSearchPanel() {
   // empty table with no explanation.
   useEffect(() => {
     setPage(0)
-  }, [debouncedText, projectId, statusId, assigneeMemberId])
+  }, [debouncedText, projectId, statusId, assigneeMemberId, jmq])
 
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: listProjects })
   const { data: catalog } = useQuery({ queryKey: ["catalog"], queryFn: fetchCatalog })
@@ -55,6 +60,11 @@ export function IssueSearchPanel() {
     projectId: projectId === ANY ? undefined : projectId,
     statusId: statusId === ANY ? undefined : statusId,
     assigneeMemberId: assigneeMemberId === ANY ? undefined : assigneeMemberId,
+    // ⚠️ Sent alongside the controls, and the server ignores them when an expression is present. Two
+    // narrowings silently intersecting is a result nobody can explain, so one of them has to win — and
+    // it is the one somebody wrote out in full.
+    "jmq:filter": jmq.filter || undefined,
+    "jmq:order": jmq.order || undefined,
     page,
     size: PAGE_SIZE,
   }
@@ -98,7 +108,38 @@ export function IssueSearchPanel() {
             label: member.displayName || member.email || member.id,
           }))}
         />
+
+        {/*
+          ⚠️ Beside the controls, not instead of them. Each select is one question the query already knew
+          how to ask; the expression is for the questions it does not — a combination, an absence, a date
+          window. The two are offered together because a person should not have to choose a *mode*.
+        */}
+        <Button
+          type="button"
+          size="sm"
+          variant={composing ? "default" : "outline"}
+          onClick={() => setComposing((previous) => !previous)}
+        >
+          {t("issues.search.expression", "Expression")}
+        </Button>
       </div>
+
+      {/*
+        ⚠️ Below the controls rather than in a drawer: a filter somebody is composing and the rows it will
+        narrow belong on one screen. A panel that covered the list would make every adjustment a guess.
+      */}
+      {composing && (
+        <QueryPanel
+          subject={issueSubject}
+          query={jmq}
+          presets={ISSUE_PRESETS}
+          placeholder="issue.assignee == currentMember and issue.resolution is null"
+          onApply={(applied) => {
+            setJmq(applied)
+            setPage(0)
+          }}
+        />
+      )}
 
       {isLoading && <Skeleton className="h-64 w-full" />}
 

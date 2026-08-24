@@ -1,7 +1,8 @@
 import type { ReactNode } from "react"
 import { Check, Snowflake } from "lucide-react"
-import { Switch, useTheme, type ContrastMode, type FontScale } from "@jmouse/ui"
+import { useTheme, type ContrastMode, type FontScale } from "@jmouse/ui"
 import { darkThemes, lightThemes, seasonalThemes } from "@jmouse/ui/presets"
+import { CodeAppearancePicker } from "@jmouse/codemirror/react"
 import { PageHeader } from "@/components/PageHeader"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import { useLanguage } from "@/context/LanguageContext"
@@ -118,6 +119,13 @@ export function AppearanceSettingsPage() {
           </SwatchGrid>
         </Section>
 
+        {/* ⚠️ The picker is the library's, not this page's. Palette and code theme mean the same
+            thing in every interface, and a copy per product is how five of them came to render the
+            same policy five ways. */}
+        <div className="[&>section]:border-t">
+          <CodeAppearancePicker />
+        </div>
+
         <Section title="Seasonal">
           <SwatchGrid>
             {seasonalThemes.map((theme) => (
@@ -130,11 +138,10 @@ export function AppearanceSettingsPage() {
               />
             ))}
           </SwatchGrid>
-          <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 text-sm">
-            <Snowflake className="size-4 text-muted-foreground" />
-            <span>Seasonal effects</span>
-            <Switch checked={seasonalEffectEnabled} onCheckedChange={setSeasonalEffectEnabled} />
-          </label>
+          <SeasonalEffectsToggle
+            enabled={seasonalEffectEnabled}
+            onToggle={() => setSeasonalEffectEnabled(!seasonalEffectEnabled)}
+          />
         </Section>
       </div>
     </>
@@ -191,14 +198,51 @@ function Swatch({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={cn(
-        "flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors",
-        selected ? "border-primary bg-accent text-accent-foreground" : "hover:bg-accent",
-      )}
+      className={chipClassName(selected)}
     >
       <span className="size-3 shrink-0 rounded-full border" style={{ backgroundColor: color }} />
       <span className="flex-1 truncate">{label}</span>
       {selected && <Check className="size-3.5 shrink-0" />}
+    </button>
+  )
+}
+
+/**
+ * The one chip shape this page speaks in.
+ *
+ * A palette and the seasonal-effects toggle are different settings, but on the screen they are the
+ * same object — a bordered pill that is either chosen or not — so the border, the padding and the
+ * chosen state come from here rather than from each caller.
+ */
+function chipClassName(selected: boolean) {
+  return cn(
+    "flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors",
+    selected ? "border-primary bg-accent text-accent-foreground" : "hover:bg-accent",
+  )
+}
+
+/**
+ * Seasonal effects, drawn as one of the chips above rather than as a switch.
+ *
+ * ⚠️ **It was a bare `<label>` with a `Switch` hanging off the end of it** — the only unbordered
+ * control in a section made entirely of bordered chips, which is what made a small toggle read as the
+ * heaviest thing in it. Same shape now, and the same vocabulary for on: `border-primary` and a
+ * `Check`, exactly as a chosen palette says it.
+ *
+ * ⚠️ Sized to its own label rather than dropped into {@link SwatchGrid} — the grid's 9rem column is cut
+ * to a palette's one-word name, and it truncated this one to "Seasonal eff…".
+ */
+function SeasonalEffectsToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={enabled}
+      className={cn(chipClassName(enabled), "mt-1.5 w-fit")}
+    >
+      <Snowflake className={cn("size-3 shrink-0", !enabled && "text-muted-foreground")} />
+      <span>Seasonal effects</span>
+      {enabled && <Check className="size-3.5 shrink-0" />}
     </button>
   )
 }

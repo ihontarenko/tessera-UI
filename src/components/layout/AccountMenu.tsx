@@ -1,11 +1,10 @@
 import { NavLink } from "react-router-dom"
-import { Check, ChevronsUpDown, LogOut, Palette, ShieldCheck, UserRound } from "lucide-react"
+import { ChevronsUpDown, LogOut, Palette, UserRound } from "lucide-react"
 import { useAuth } from "react-oidc-context"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   SidebarMenu,
@@ -15,13 +14,7 @@ import {
 } from "@jmouse/ui"
 import { MemberChip } from "@/components/MemberChip"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
-import { useLanguage, type Language } from "@/context/LanguageContext"
-import { ADMINISTER_ACCESS } from "@/api/permissions"
-
-const LANGUAGE_LABELS: Record<Language, string> = {
-  en: "English",
-  uk: "Українська",
-}
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * The one thing in the sidebar's footer: who you are, and everything that is about you rather than
@@ -36,13 +29,14 @@ const LANGUAGE_LABELS: Record<Language, string> = {
  * are anchored by the browser now (`components/ui/anchored.tsx`), so there is one dropdown mechanism in
  * this application and this is it — including the flip that keeps a footer menu on screen.
  *
- * ⚠️ **Access is rendered only for holders**, from the caller's installation-wide permissions. It used
- * to be shown to everybody and refused by the server, because the shell had no way to ask — it has one
- * now, so a link nobody without the permission can use is no longer offered.
+ * ⚠️ **Access is not here any more, and its absence is the point.** It was offered from this menu —
+ * first to everybody and then only to holders of `access:administer` — which filed the installation's
+ * authorization under "about you". It is a section of Administration now, beside Members and the
+ * catalogs, and `/settings/access` redirects there.
  */
 export function AccountMenu() {
   const auth = useAuth()
-  const { language, setLanguage, t } = useLanguage()
+  const { t } = useLanguage()
   const { data: member, isLoading } = useCurrentMember()
 
   if (isLoading) {
@@ -57,8 +51,6 @@ export function AccountMenu() {
     return null
   }
 
-  const administersAccess = member.globalPermissions.includes(ADMINISTER_ACCESS)
-
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -70,26 +62,20 @@ export function AccountMenu() {
                   is that a role is an editable bundle and never a thing to branch on. It was wrong
                   twice over: `systemRole` gates nothing on the server, so the badge described a field
                   that decides nothing; and a role above ADMIN would leave the most powerful person
-                  unbadged. What is actually true installation-wide is `globalPermissions` — which this
-                  menu already uses to decide whether to offer Access, and which the account page
-                  shows in full. */}
+                  unbadged. What is actually true installation-wide is `globalPermissions`, which the
+                  account page shows in full. */}
               <MemberChip member={member} subtitle={member.displayName ? member.email : null} />
               <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-60" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="w-(--sidebar-width) max-w-[16rem]">
-            <DropdownMenuLabel className="text-[10px] tracking-[0.07em] text-muted-foreground uppercase">
-              {t("common.language", "Language")}
-            </DropdownMenuLabel>
-            {(Object.keys(LANGUAGE_LABELS) as Language[]).map((option) => (
-              <DropdownMenuItem key={option} onClick={() => setLanguage(option)}>
-                {LANGUAGE_LABELS[option]}
-                {language === option && <Check className="ml-auto size-4" />}
-              </DropdownMenuItem>
-            ))}
-
-            <DropdownMenuSeparator />
+            {/* ⚠️ The language switcher is HIDDEN, not removed, and it is meant to come back. It offered
+                English and Ukrainian while the Ukrainian side of the catalog is a fraction of the keys,
+                so choosing it produced a half-translated interface — worse than the untranslated one,
+                because the gaps look like faults. `LanguageProvider` and every `t(key, fallback)` call
+                are untouched and still resolve; only the control is gone. Bringing it back is a labelled
+                group of `DropdownMenuItem`s here, one per language, ticking the current one. */}
 
             {/* Who you are here, what you hold installation-wide, and how to point a Model Context
                 Protocol client at this installation. Open to everybody: the only thing on it to copy
@@ -106,14 +92,6 @@ export function AccountMenu() {
                 {t("common.appearance", "Appearance")}
               </NavLink>
             </DropdownMenuItem>
-            {administersAccess && (
-              <DropdownMenuItem asChild>
-                <NavLink to="/settings/access">
-                  <ShieldCheck className="size-4" />
-                  {t("common.access", "Access")}
-                </NavLink>
-              </DropdownMenuItem>
-            )}
 
             <DropdownMenuSeparator />
 

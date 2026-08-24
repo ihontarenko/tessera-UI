@@ -3,6 +3,7 @@ import {
   calloutPlugin,
   codeHighlightPlugin,
   FORMAT_ACTION_IDS,
+  frontmatterPlugin,
   gfmPlugin,
   imageInsertPlugin,
   linkPlugin,
@@ -22,8 +23,7 @@ import type {
 } from "@jmouse/markdown"
 import { issueReferencePlugin } from "@/components/markdown/issueReference"
 import { liveBlockPlugin } from "@/components/markdown/liveBlocks"
-import { TESSERA_MARKDOWN_GRAMMAR } from "@/lib/codemirror/markdownGrammar"
-import { highlightToHtml, resolveParser } from "@/lib/codemirror/staticHighlight"
+import { highlightToHtml, resolveParser, TESSERA_MARKDOWN_GRAMMAR } from "@/lib/codemirror"
 
 /** Highlights a fenced block with the shared grammars; an unknown language stays plain. */
 const tesseraHighlighter: Highlighter = async (language, code) => {
@@ -84,6 +84,11 @@ function markdownGrammarPlugin(): MarkdownPlugin<unknown> {
  */
 export const TESSERA_READER_PLUGINS: readonly MarkdownPlugin<undefined>[] = [
   gfmPlugin(),
+  // ⚠️ The document's own `---` metadata block. Nothing written in Tessera opens with one today, so
+  // this fixes nothing here — it keeps a document pasted from a skill file, an agent's notes or a Kiwi
+  // page saying the same thing in this interface as it does in that one. Read as prose, CommonMark
+  // makes the closing `---` a setext underline and the metadata becomes the largest heading on screen.
+  frontmatterPlugin(),
   calloutPlugin(),
   mathPlugin(),
   mermaidPlugin(),

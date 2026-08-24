@@ -3,13 +3,20 @@ import { PageHeader } from "@/components/PageHeader"
 import { sectionNavigationItemClass } from "@/lib/sectionNavigation"
 import { useLanguage } from "@/context/LanguageContext"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
-import { ADMINISTER_AI, ADMINISTER_CONFIGURATION, ADMINISTER_MEMBERS, READ_AI } from "@/api/permissions"
+import {
+  ADMINISTER_ACCESS,
+  ADMINISTER_AI,
+  ADMINISTER_CONFIGURATION,
+  ADMINISTER_MEMBERS,
+  READ_AI,
+} from "@/api/permissions"
 import {
   ADMINISTRATION_SECTIONS,
   ADMINISTRATION_SECTION_GROUPS,
   ADMINISTRATION_SECTION_LABELS,
   isAdministrationSection,
 } from "@/components/administration/administrationSections"
+import { AccessSection } from "@/components/administration/AccessSection"
 import { AiSection } from "@/components/administration/AiSection"
 import { MembersSection } from "@/components/administration/MembersSection"
 import { CommentTopicsSection } from "@/components/administration/CommentTopicsSection"
@@ -46,6 +53,7 @@ export function AdministrationPage() {
   const canReadAi = held.includes(READ_AI)
   const canAdministerAi = held.includes(ADMINISTER_AI)
   const canAdministerMembers = held.includes(ADMINISTER_MEMBERS)
+  const canAdministerAccess = held.includes(ADMINISTER_ACCESS)
 
   // ⚠️ The one section the navigation hides rather than shows read-only, and the asymmetry is on
   // purpose: the catalogs keep their reads open because every picker in the product is built from
@@ -58,6 +66,11 @@ export function AdministrationPage() {
     }
     if (candidate === "members") {
       return canAdministerMembers
+    }
+    // ⚠️ Hidden rather than shown read-only, and for the reason the account menu hid it before this
+    // screen inherited it: the whole section is controls, and every one of them would answer 403.
+    if (candidate === "access") {
+      return canAdministerAccess
     }
 
     return true
@@ -135,6 +148,7 @@ export function AdministrationPage() {
           {/* Rendered whether or not the permission is held — the navigation hides this section, but a
               member who arrives by URL should meet the section's own refusal, which names what to ask
               for, rather than a blank pane. */}
+          {section === "access" && <AccessSection />}
           {section === "members" && <MembersSection canAdminister={canAdministerMembers} />}
           {section === "ai" && <AiSection canRead={canReadAi} canAdminister={canAdministerAi} />}
         </div>

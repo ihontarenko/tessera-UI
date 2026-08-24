@@ -2,13 +2,13 @@ import { Navigate, Route, Routes } from "react-router-dom"
 import { ApplicationLayout } from "@/components/layout/ApplicationLayout"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { AppearanceSettingsPage } from "@/pages/AppearanceSettingsPage"
-import { AccessSettingsPage } from "@/pages/AccessSettingsPage"
 import { AccountSettingsPage } from "@/pages/AccountSettingsPage"
 import { AdministrationPage } from "@/pages/AdministrationPage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage"
 import { IssuePage } from "@/pages/IssuePage"
 import { IssuesPage } from "@/pages/IssuesPage"
+import { FilesPage } from "@/pages/FilesPage"
 import { AssistantPage } from "@/pages/AssistantPage"
 import { readLastProjectId } from "@/lib/lastProject"
 
@@ -39,16 +39,20 @@ export function AppRoutes() {
             resolves its own scope per call and will happily answer about a project the reader is not
             currently looking at. Putting it inside one would promise a confinement the dispatcher
             does not apply. */}
+        {/* Not under a project: the tree spans every project the reader may browse, and their own
+            folders are in no project at all. */}
+        <Route path="/files" element={<FilesPage />} />
         <Route path="/assistant" element={<AssistantPage />} />
         {/* The boards and backlog index pages are gone (ticket 09): both listed the member's projects
             and existed only to be clicked through. An old bookmark lands on that list itself. */}
         <Route path="/boards/*" element={<Navigate to="/projects" replace />} />
         <Route path="/backlog/*" element={<Navigate to="/projects" replace />} />
         <Route path="/settings/appearance" element={<AppearanceSettingsPage />} />
-        {/* ⚠️ Installation-wide, behind `access:administer` — a role is not a project's, so this is not
-            under /projects/:projectId. The server refuses anybody without it; the route is open because
-            a client-side guard is a courtesy and never the authorization. */}
-        <Route path="/settings/access" element={<AccessSettingsPage />} />
+        {/* ⚠️ Access is a section of Administration now, not a setting of yours. It lived here because
+            it arrived through the account menu, and the account menu is what is about *you* — while a
+            role is about everybody. The address survives as a redirect: it was handed out, and a
+            bookmark that answers "not found" teaches nobody where the screen went. */}
+        <Route path="/settings/access" element={<Navigate to="/administration?section=access" replace />} />
         {/* Yours, and open to everybody — it shows who you are and how to point a Model Context
             Protocol client at this installation. Nothing on it is privileged: the only thing to copy
             is a URL, and the client authenticates as the person reading the page. */}

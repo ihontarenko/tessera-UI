@@ -3,7 +3,14 @@ import { History, Trash2 } from "lucide-react"
 import { Button, Input, Skeleton } from "@jmouse/ui"
 import { MarkdownField } from "@/components/markdown/MarkdownField"
 import { ProjectBlockProvider } from "@/components/markdown/liveBlocks"
-import { flattenKiwiTree, type KiwiCategoryNode, type KiwiMember, type KiwiPageDetail } from "@/api/kiwi"
+import {
+  flattenKiwiTree,
+  resolveKiwiAssets,
+  unresolveKiwiAssets,
+  type KiwiCategoryNode,
+  type KiwiMember,
+  type KiwiPageDetail,
+} from "@/api/kiwi"
 
 /**
  * One page, read and written in place — **the page is Kiwi's** (TSSR-17's anatomy, TSSR-0097's source).
@@ -134,11 +141,16 @@ export function WikiDocument({
           the gate bought nothing for a signed-in one. It returns for the anonymous path (INVT-0092). */}
       <ProjectBlockProvider projectId={projectId}>
         <MarkdownField
-          value={page.contentMarkdown ?? ""}
+          // ⚠️ Rewritten, not passed through: Kiwi stores its images as root-relative paths, which
+          // resolve against TESSERA here and draw as broken pictures (TSSR-0101).
+          value={resolveKiwiAssets(page.contentMarkdown, page.assetBase)}
           canEdit={!isSaving}
           placeholder="Write the page…"
           emptyText="This page has nothing on it yet."
-          onCommit={(markdown) => onSave(title.trim() || page.title, markdown)}
+          // ⚠️ Unresolved on the way out, or the save writes TESSERA's view of Kiwi's address into
+          // Kiwi's own database — for every reader, including Kiwi's own screens. The pair must stay
+          // symmetric; see resolveKiwiAssets.
+          onCommit={(markdown) => onSave(title.trim() || page.title, unresolveKiwiAssets(markdown, page.assetBase))}
         />
       </ProjectBlockProvider>
 

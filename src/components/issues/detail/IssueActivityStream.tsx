@@ -7,6 +7,7 @@ import { MemberAvatar } from "@/components/MemberAvatar"
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea } from "@jmouse/ui"
 import { TesseraMarkdown } from "@/components/markdown/TesseraMarkdown"
 import { SegmentedControl } from "@/components/SegmentedControl"
+import { ISSUE_SECTION_GUTTER } from "@/components/issues/detail/IssueContentSection"
 import { isAgent, type MemberSummary } from "@/api/members"
 import { memberName } from "@/lib/memberDisplay"
 import {
@@ -262,7 +263,11 @@ export function IssueActivityStream({
   }
 
   return (
-    <section className={cn("space-y-4", compact && "space-y-2.5")}>
+    <section className={cn("space-y-4", compact && "space-y-2.5", !compact && ISSUE_SECTION_GUTTER)}>
+      {/* ⚠️ Not an `IssueContentSection`, and the exception is deliberate: this one never folds — it is
+          what the reader came down the page for, and the two above it fold precisely so it arrives
+          sooner — and in the quick view it carries no heading at all. What it does share is the shared
+          section's TYPE and its GUTTER, so the three headings in the column land on one left edge. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {!compact && (
           <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">Activity</h2>

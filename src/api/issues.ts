@@ -217,6 +217,15 @@ export interface IssueSearchParameters {
    * issues stay reachable through — an archive nothing can find again is a delete with extra steps.
    */
   includeArchived?: boolean
+  /**
+   * A jMQ expression over the issue vocabulary — the same words the board filter uses.
+   *
+   * ⚠️ It does not replace the controls above; where both arrive the **expression wins** and they are
+   * ignored, because two narrowings silently intersecting is a result nobody can explain. The `jmq:`
+   * prefix keeps an expression sort and a plain column sort from ever being confused.
+   */
+  "jmq:filter"?: string
+  "jmq:order"?: string
   page?: number
   size?: number
 }

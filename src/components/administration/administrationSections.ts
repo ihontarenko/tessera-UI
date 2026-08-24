@@ -28,11 +28,16 @@ const GROUPS = [
   },
   {
     // The only group the navigation can hide: everything above is what issues are made of and its reads
-    // are open to everybody, whereas this is the machinery behind the assistant and its own two
-    // permissions. A group that would render empty is dropped rather than left as a bare heading.
+    // are open to everybody, whereas this is the installation itself — who may do what, who the people
+    // are, and the machinery behind the assistant — each behind its own permission. A group that would
+    // render empty is dropped rather than left as a bare heading.
+    //
+    // ⚠️ Access leads it, and it did not use to be on this screen at all: it was `/settings/access`,
+    // offered from the account menu beside Appearance. That put the installation's authorization on the
+    // shelf marked "about you", which is the one thing it is not.
     id: "platform",
     label: { key: "administration.nav.group.platform", text: "Platform" },
-    sections: ["members", "ai"],
+    sections: ["access", "members", "ai"],
   },
 ] as const
 
@@ -54,6 +59,7 @@ export const ADMINISTRATION_SECTION_LABELS: Record<AdministrationSection, { key:
   resolutions: { key: "administration.nav.resolutions", text: "Resolutions" },
   "link-types": { key: "administration.nav.linkTypes", text: "Link types" },
   "comment-topics": { key: "administration.nav.commentTopics", text: "Comment topics" },
+  access: { key: "administration.nav.access", text: "Access" },
   members: { key: "administration.nav.members", text: "Members" },
   ai: { key: "administration.nav.ai", text: "AI" },
 }

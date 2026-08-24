@@ -11,7 +11,7 @@ import { IssueTypeIcon, PriorityBadge, StatusPill } from "@/components/issues/is
 import { FlowChart } from "@/components/dashboard/FlowChart"
 import { AgeingList } from "@/components/dashboard/AgeingList"
 import { BlockedList } from "@/components/dashboard/BlockedList"
-import { StatusMovementChart } from "@/components/dashboard/StatusMovementChart"
+import { StatusBarChart } from "@/components/dashboard/StatusBarChart"
 import { ProgressMeter } from "@/components/dashboard/ProgressMeter"
 import { searchIssues, type IssueSearchItem } from "@/api/issues"
 import { fetchDashboardSummary } from "@/api/dashboard"
@@ -26,13 +26,22 @@ const LIST_SIZE = 8
 const WINDOW_DAYS = 7
 
 /**
+ * How many status bars the standing card draws before folding.
+ *
+ * ⚠️ **Deliberately larger than any status catalogue somebody would configure.** The card reports empty
+ * statuses as zeros, and its rows are sorted by size — so a fold at the ordinary six would remove
+ * exactly the zeros that were asked for. It is a runaway guard, not a layout decision.
+ */
+const STANDING_ROWS = 16
+
+/**
  * The first screen after signing in, and until now the only one that lied: it advertised Projects,
  * Boards and Issues as "coming" long after all three shipped.
  *
- * It answers four questions a member actually opens a tracker with — what is on me, what has moved,
- * what kind of week was it, and where do I work. The first, second and fourth come from reads that
- * already exist: the cross-project search (scoped to the caller by construction — the projects they may
- * browse and nothing else, ADR-0008) and the projects list.
+ * It answers five questions a member actually opens a tracker with — what is on me, what has moved,
+ * where does everything stand, what kind of week was it, and where do I work. The first, second and
+ * last come from reads that already exist: the cross-project search (scoped to the caller by
+ * construction — the projects they may browse and nothing else, ADR-0008) and the projects list.
  *
  * ⚠️ **The third needed an aggregate endpoint, and that reversed an earlier decision here.** This screen
  * was deliberately built without one, on the principle that a screen whose job is to point at other
@@ -118,10 +127,14 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* The two charts sit above the lists on purpose: they answer "what kind of week was it", which
-          is the question you can only answer by looking, while the lists below answer "what next",
-          which you answer by reading. */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* The charts sit above the lists on purpose: they answer "what kind of week was it" and "where
+          does everything stand", which are questions you can only answer by looking, while the lists
+          below answer "what next", which you answer by reading.
+
+          ⚠️ Movement and standing are deliberately ADJACENT and deliberately identical in shape. They
+          are the same picture of two different facts, and a week of furious movement that ends with the
+          boards exactly as they started is precisely the case where reading one as the other is wrong. */}
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <ChartCard
           title={t("dashboard.created.title", "Raised")}
           headline={summary?.createdToday}
@@ -151,11 +164,47 @@ export function DashboardPage() {
           isLoading={summaryLoading}
         >
           {summary && summary.movedInto.length > 0 && (
-            <StatusMovementChart movements={summary.movedInto} />
+            <StatusBarChart
+              rows={summary.movedInto}
+              label={t("dashboard.movement.label", "Moved into")}
+            />
           )}
           {summary && summary.movedInto.length === 0 && (
             <p className="py-10 text-center text-sm text-muted-foreground">
               {t("dashboard.movement.empty", "Nothing changed status this week.")}
+            </p>
+          )}
+        </ChartCard>
+
+        {/* ⚠️ No window on this one, and the aside says so by naming projects instead of days. A card
+            that looked like its neighbour and quietly carried the same "in the last 7 days" would be
+            read as a week's worth of standing, which is not a thing. */}
+        <ChartCard
+          title={t("dashboard.standing.title", "Right now")}
+          headline={summary?.openTotal}
+          headlineHint={t("dashboard.standing.open", "open")}
+          aside={
+            summary &&
+            t("dashboard.standing.projects", "across {count} projects").replace(
+              "{count}",
+              String(summary.projects.length),
+            )
+          }
+          isLoading={summaryLoading}
+        >
+          {summary && summary.standing.length > 0 && (
+            <StatusBarChart
+              rows={summary.standing}
+              label={t("dashboard.standing.label", "Sitting in")}
+              // ⚠️ Well past what a catalogue holds, because the empty statuses are the point here. The
+              // rows are sorted by size, so folding at six would fold away precisely the zeros — and
+              // "nothing is in review" is one of the more useful things this card can say.
+              maxRows={STANDING_ROWS}
+            />
+          )}
+          {summary && summary.standing.length === 0 && (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {t("dashboard.standing.empty", "Every board is clear.")}
             </p>
           )}
         </ChartCard>

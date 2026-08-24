@@ -64,7 +64,9 @@ export function ApplicationSidebar() {
     .map((group) => ({
       ...group,
       items: group.items.filter(
-        (item) => !item.requiredGlobalPermission || held.includes(item.requiredGlobalPermission),
+        (item) =>
+          !item.requiredGlobalPermissions
+          || item.requiredGlobalPermissions.some((permission) => held.includes(permission)),
       ),
     }))
     .filter((group) => group.items.length > 0)

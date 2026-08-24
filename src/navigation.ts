@@ -2,12 +2,13 @@ import {
   CircleDot,
   CircleDotDashed,
   FolderKanban,
+  FolderOpen,
   LayoutDashboard,
   SlidersHorizontal,
   Sparkles,
   type LucideIcon,
 } from "lucide-react"
-import { ADMINISTER_CONFIGURATION } from "@/api/permissions"
+import { ADMINISTER_ACCESS, ADMINISTER_CONFIGURATION } from "@/api/permissions"
 
 /** Where the member is, for the entries whose destination depends on it. */
 export interface NavigationContext {
@@ -49,17 +50,23 @@ export interface NavigationItem {
   isBuilt: boolean
   description: string
   /**
-   * An **installation-wide** permission this entry needs, compared against
+   * The **installation-wide** permissions this entry needs, compared against
    * `currentMember.globalPermissions`. Absent means everybody signed in sees it.
    *
-   * ⚠️ Deliberately not a project permission. Those differ per project, so an entry gated on one would
+   * ⚠️ **Any one of them is enough, not all of them.** A screen with several sections is worth opening
+   * for whoever holds any of them — Administration carries the catalogs, Access, Members and the
+   * assistant, each behind its own permission, and each section decides for itself whether it is
+   * offered. Listing every permission the screen can serve is what keeps an access administrator who
+   * configures nothing else from losing the only screen they came for.
+   *
+   * ⚠️ Deliberately not project permissions. Those differ per project, so an entry gated on one would
    * appear and disappear as somebody switched projects — which is why the entries that vary that way
    * live inside a project rather than here.
    *
    * ⚠️ A courtesy, never the authorization: the route is open and the server refuses. Hiding a control
    * somebody cannot use is about not teasing them, and it is not a security boundary.
    */
-  requiredGlobalPermission?: string
+  requiredGlobalPermissions?: readonly string[]
 }
 
 export interface NavigationGroup {
@@ -78,7 +85,7 @@ export interface NavigationGroup {
 // Backlog left, and **Issues** now points back into a project all the same — because reaching the
 // issues of the project you are working in was two hops through a screen that shows every project's,
 // which is the confusion the entries were removed to avoid rather than an instance of it. The rule the
-// removal was really about still holds and is the one written on `requiredGlobalPermission` below: an
+// removal was really about still holds and is the one written on `requiredGlobalPermissions` below: an
 // entry may not appear and disappear as somebody switches projects. This one is always there; only
 // where it lands moves. `All issues` keeps the cross-project page, unchanged.
 export const navigationGroups: NavigationGroup[] = [
@@ -135,6 +142,21 @@ export const navigationGroups: NavigationGroup[] = [
         isBuilt: true,
         description: "",
       },
+      // Everything kept, across every project the member may browse, plus their own folders
+      // (TSSR-0102). Under Work because a screenshot on a ticket is the work, not a setting.
+      //
+      // ⚠️ NO `requiredGlobalPermissions`, deliberately, and it is the same argument the comment on that
+      // field makes. `file:read` is held AT A PROJECT for the shared tree and at `@SELF` for a personal
+      // one, and never installation-wide for an ordinary member — so gating this entry on the global set
+      // would hide it from everybody except administrators, which is the opposite of who it is for.
+      {
+        title: "Files",
+        translationKey: "nav.files",
+        path: "/files",
+        icon: FolderOpen,
+        isBuilt: true,
+        description: "",
+      },
       // Under Work rather than in a group of its own: it is a way of doing the same work, not a
       // different subject. No permission — the assistant reaches exactly what the member already
       // reaches, so a member with no projects gets one that can do nothing rather than a closed door.
@@ -162,7 +184,10 @@ export const navigationGroups: NavigationGroup[] = [
         icon: SlidersHorizontal,
         isBuilt: true,
         description: "",
-        requiredGlobalPermission: ADMINISTER_CONFIGURATION,
+        // ⚠️ Two permissions, and either one opens it. Access moved onto this screen out of the
+        // account menu, and it answers to `access:administer` — somebody who holds that and nothing
+        // else would otherwise have watched the only screen they administer disappear.
+        requiredGlobalPermissions: [ADMINISTER_CONFIGURATION, ADMINISTER_ACCESS],
       },
     ],
   },

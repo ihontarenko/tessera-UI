@@ -23,6 +23,19 @@ export interface StatusMovement {
   count: number
 }
 
+/**
+ * How many issues are sitting in one status **right now**.
+ *
+ * ⚠️ **Standing, not movement — the other half of `StatusMovement`.** An issue is counted once, where
+ * it is, so these sum to `openTotal`; movement counts moves and can exceed the number of issues that
+ * exist. Only what is on a board is here: unresolved and unarchived.
+ */
+export interface StatusStanding {
+  status: string
+  category: StatusCategory | null
+  count: number
+}
+
 /** One project's live issues in three buckets — the segments of its meter. Archived ones are excluded. */
 export interface ProjectProgress {
   projectId: string
@@ -79,6 +92,8 @@ export interface DashboardSummary {
   resolvedInWindow: number
   flowPerDay: FlowPoint[]
   movedInto: StatusMovement[]
+  /** Where the open work sits right now, busiest first — the counts sum to `openTotal`. */
+  standing: StatusStanding[]
   projects: ProjectProgress[]
   /** The longest-sitting open issues, oldest first — capped; `openTotal` says of how many. */
   ageing: AgeingIssue[]

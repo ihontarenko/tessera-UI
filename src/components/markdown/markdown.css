@@ -11,64 +11,15 @@
    ============================================================================ */
 
 /* ── Syntax colour ───────────────────────────────────────────────────────────
-   Innoventa's house palette, ported verbatim, light and dark.
+   ⚠️ **Moved out.** The nineteen `--syntax-*` tokens are now
+   `@jmouse/codemirror/styles.css`, imported from `src/index.css` — one set of
+   values for Identity, Tessera, Kiwi and both Innoventa interfaces, plus five
+   more palettes a reader can switch to. The copy that used to sit here was
+   byte-identical to three others, which is exactly how a shared look drifts.
 
-   ⚠️ Global and deliberately *not* per-theme, which is the one surprising thing
-   about it. All 27 themes recolour the frame around code and none of them touch
-   the code, because decorative colour and legible colour are different jobs:
-   painting keywords from `--primary` means every theme whose primary sits near
-   its secondary renders keywords and strings the same colour, and the darker
-   palettes drop a whole class of token to a few percent off the background.
-   The reasoning in full is at the top of `lib/codemirror/highlightStyle.ts`.
-
-   Read by two things that must agree — the CodeMirror `HighlightStyle` and the
-   stylesheet it generates for rendered fences (`lib/codemirror/staticHighlight`)
-   — so they are on `:root` rather than scoped to a markdown surface. */
-:root {
-    --syntax-heading:     #2A2A29;
-    --syntax-keyword:     #C2185B;
-    --syntax-string:      #2F7A55;
-    --syntax-literal:     #A65A17;
-    --syntax-namespace:   #1B6E97;
-    --syntax-property:    #2E8BA8;
-    --syntax-declaration: #6A3FB5;
-    --syntax-variable:    #3A3A38;
-    --syntax-comment:     #8C8A85;
-    --syntax-operator:    #6E6C67;
-    --syntax-punctuation: #8C8A85;
-    --syntax-invalid:     #B3261E;
-
-    /* Policy (.jmp) — see `lib/codemirror/tags.ts` for why a tracker paints
-       another product's language. `deny` is loud on purpose. */
-    --syntax-deny:        #B3261E;
-    --syntax-role:        #2E7D32;
-    --syntax-subject:     #9A6614;
-    --syntax-scope:       #6A3FB5;
-    --syntax-instance:    #3F8F4A;
-    --syntax-action:      #2E8BA8;
-}
-
-:root.dark {
-    --syntax-heading:     #E8E6E0;
-    --syntax-keyword:     #FF7EB6;
-    --syntax-string:      #7FD8A6;
-    --syntax-literal:     #FFAB70;
-    --syntax-namespace:   #6FC3E8;
-    --syntax-property:    #86D8F0;
-    --syntax-declaration: #C3A6FF;
-    --syntax-variable:    #D9D6CF;
-    --syntax-comment:     #8B8880;
-    --syntax-operator:    #A9A69F;
-    --syntax-punctuation: #8B8880;
-    --syntax-invalid:     #FF6B60;
-
-    --syntax-deny:        #FF6B60;
-    --syntax-role:        #7EE787;
-    --syntax-subject:     #E3B341;
-    --syntax-scope:       #C3A6FF;
-    --syntax-instance:    #9BE29B;
-    --syntax-action:      #86D8F0;
-}
+   The reasoning for why code has its own tokens at all, rather than painting
+   from `--primary`, moved with them and is at the top of that file.
+   ============================================================================ */
 
 /* ── The bridge ──────────────────────────────────────────────────────────────
    Scoped, never global: these are a library's names, and putting a shadow

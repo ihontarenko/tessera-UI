@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
-import { PageHeader } from "@/components/PageHeader"
+import { AdministrationSection } from "@/components/administration/AdministrationPieces"
 import { EmptyState } from "@/components/EmptyState"
 import { HighlightedCode } from "@/components/HighlightedCode"
 import { MemberChip } from "@/components/MemberChip"
@@ -44,7 +44,13 @@ import { searchMembers } from "@/api/members"
 import { apiErrorMessage } from "@/api/errors"
 
 /**
- * The installation's access screen.
+ * The installation's access screen — one section of Administration.
+ *
+ * ⚠️ **It used to be `/settings/access`, reached from the account menu, and that was the wrong shelf.**
+ * The account menu holds what is about *you* — your face, your language, the theme you read in. Who may
+ * do what is about *everybody*, it is edited by whoever holds `access:administer`, and it belongs beside
+ * Members and the catalogs rather than one row under Appearance. The old route still resolves: it
+ * redirects here, because that address was handed out.
  *
  * ⚠️ **What it edits is in force on the next request.** The engine resolves every route from these rows;
  * `policy/tessera.jmp` is only what a fresh installation was born with. That is the whole point of the
@@ -65,16 +71,14 @@ import { apiErrorMessage } from "@/api/errors"
  * policy language, read-only. It answers from the rows and never from `policy/tessera.jmp`, which is
  * only the seed and has drifted from them since the first edit made on this screen.
  */
-export function AccessSettingsPage() {
+export function AccessSection() {
   const { data, isLoading } = useQuery({ queryKey: ["access", "overview"], queryFn: getAccessOverview })
 
   return (
-    <>
-      <PageHeader
-        title="Access"
-        description="What each role carries, and who holds what"
-      />
-
+    <AdministrationSection
+      title="Access"
+      description="What each role carries, and who holds what — in force on the next request, installation-wide."
+    >
       {isLoading && (
         <div className="space-y-2">
           <Skeleton className="h-10 w-full" />
@@ -84,7 +88,7 @@ export function AccessSettingsPage() {
       )}
 
       {!isLoading && data && <AccessTabs overview={data} />}
-    </>
+    </AdministrationSection>
   )
 }
 

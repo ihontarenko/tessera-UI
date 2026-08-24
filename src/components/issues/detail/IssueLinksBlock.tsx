@@ -1,15 +1,15 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronRight, Link2, Plus, X } from "lucide-react"
+import { Link2, Plus, X } from "lucide-react"
 import { Button } from "@jmouse/ui"
 import { InlineSelect } from "@/components/inline/InlineSelect"
+import { IssueContentSection } from "@/components/issues/detail/IssueContentSection"
 import { IssueLinkDialog } from "@/components/issues/detail/IssueLinkDialog"
 import { IssueReferenceLink } from "@/components/issues/detail/IssueReferenceLink"
 import { LinkedIssueDialog } from "@/components/issues/detail/LinkedIssueDialog"
 import { useIssueEditing } from "@/components/issues/detail/useIssueEditing"
 import { useStoredPreference } from "@/hooks/useStoredPreference"
 import { fetchLinkTypes, type IssueDetail, type IssueLinkView, type IssueReference } from "@/api/issues"
-import { cn } from "@/lib/helpers"
 
 const BLOCK_PREFERENCE_KEY = "tessera.issue.relations"
 
@@ -113,25 +113,22 @@ export function IssueLinksBlock({
   variant?: "page" | "quick"
 }) {
   const isPage = variant === "page"
-  const [preference, remember] = useStoredPreference<"open" | "closed">(BLOCK_PREFERENCE_KEY, "open")
+  // ⚠️ **Closed until somebody opens it**, and then open for good — the preference outlives the tab.
+  // The heading says how many there are and how many are done, which is the question the block was
+  // being left open to answer.
+  const [preference, remember] = useStoredPreference<"open" | "closed">(BLOCK_PREFERENCE_KEY, "closed")
   const [linking, setLinking] = useState(false)
   const [openedIssueId, setOpenedIssueId] = useState<string | null>(null)
 
   const groups = relationGroups(issue)
   const total = issue.links.length + issue.children.length
+  const done = groups.reduce((count, group) => count + group.done, 0)
   const open = !isPage || preference === "open"
-
-  const heading = (
-    <span className="flex items-baseline gap-2">
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Relations</span>
-      <span className="text-[10px] tabular-nums text-muted-foreground">{total}</span>
-    </span>
-  )
 
   const body = (
     <div className="space-y-3">
       {total === 0 && (
-        <p className="text-sm text-muted-foreground">Nothing linked, and no children.</p>
+        <p className="py-1 text-xs text-muted-foreground">Nothing linked, and no children.</p>
       )}
 
       {groups.map((group) => (
@@ -141,52 +138,43 @@ export function IssueLinksBlock({
           canEdit={canEdit}
           editing={editing}
           onOpen={isPage ? setOpenedIssueId : undefined}
+          // ⚠️ One group needs no label: the section heading already says *Relations* and every row
+          // carries the relationship in words. Two micro-headings stacked on each other saying almost
+          // the same thing was the block reading as ragged rather than as informative.
+          labelled={groups.length > 1}
         />
       ))}
     </div>
   )
 
   return (
-    <section className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        {/* ⚠️ The whole heading is the trigger on a page and plain text in a dialog — a control that
-            cannot do anything is worse than no control, and in a dialog the block never folds.
-
-            ⚠️ **A plain button rather than Radix's `Collapsible`.** Its trigger only toggles the root it
-            is inside, and the content here is a sibling of the header rather than a child of it — the
-            header carries the Link button too, which must not fold away with the rows. A `Collapsible`
-            wrapping only its own trigger toggles nothing, which is exactly what it did. Everything that
-            component would have contributed is these three attributes. */}
-        {isPage ? (
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={`relations-${issue.id}`}
-            className="flex items-center gap-1 rounded text-muted-foreground hover:text-foreground"
-            onClick={() => remember(open ? "closed" : "open")}
-          >
-            <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} />
-            {heading}
-          </button>
-        ) : (
-          heading
-        )}
-
-        {canEdit && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-1.5 text-xs text-muted-foreground"
-            onClick={() => setLinking(true)}
-          >
-            <Plus className="mr-1 size-3" />
-            Link
-          </Button>
-        )}
-      </div>
-
-      <div id={`relations-${issue.id}`}>{open && body}</div>
+    <>
+      <IssueContentSection
+        id={`relations-${issue.id}`}
+        title="Relations"
+        // ⚠️ Not a bare total. "3" says how much there is to read; "1 of 3 done" says what the reader
+        // actually came to find out, and it is the same figure the groups derive their own from — so a
+        // folded block answers the question the group headings used to.
+        meta={total > 0 ? `${done} of ${total} done` : null}
+        open={open}
+        onToggle={isPage ? () => remember(open ? "closed" : "open") : undefined}
+        action={
+          canEdit && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs text-muted-foreground"
+              onClick={() => setLinking(true)}
+            >
+              <Plus className="mr-1 size-3" />
+              Link
+            </Button>
+          )
+        }
+      >
+        {body}
+      </IssueContentSection>
 
       {canEdit && <IssueLinkDialog issue={issue} open={linking} onOpenChange={setLinking} />}
 
@@ -201,7 +189,7 @@ export function IssueLinksBlock({
           }}
         />
       )}
-    </section>
+    </>
   )
 }
 
@@ -210,11 +198,14 @@ function RelationGroupRows({
   canEdit,
   editing,
   onOpen,
+  labelled,
 }: {
   group: RelationGroup
   canEdit: boolean
   editing: ReturnType<typeof useIssueEditing>
   onOpen?: (issueId: string) => void
+  /** False when this is the only group — the section heading is already saying all of this. */
+  labelled: boolean
 }) {
   const { data: linkTypes = [] } = useQuery({
     queryKey: ["link-types"],
@@ -226,12 +217,14 @@ function RelationGroupRows({
     <div className="space-y-1">
       {/* ⚠️ "12 of 20 done" is derived from what the response already carries, so a register costs no
           entity and no snapshot to keep in step. */}
-      <div className="flex items-baseline justify-between gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        <span className="truncate">{group.label}</span>
-        <span className="shrink-0 tabular-nums normal-case">
-          {group.done} of {group.references.length} done
-        </span>
-      </div>
+      {labelled && (
+        <div className="flex items-baseline justify-between gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="truncate">{group.label}</span>
+          <span className="shrink-0 tabular-nums normal-case">
+            {group.done} of {group.references.length} done
+          </span>
+        </div>
+      )}
 
       <ul className="space-y-1">
         {group.references.map((reference, index) => {
