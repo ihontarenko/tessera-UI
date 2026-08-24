@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@jmouse/ui"
-import { PixelFace } from "@/components/PixelFace"
+import { Avatar as GeneratedAvatar } from "@jmouse/avatars/picker"
 import { memberInitials, memberName } from "@/lib/memberDisplay"
 import type { MemberAvatarView } from "@/api/members"
 
@@ -35,7 +35,7 @@ export function MemberAvatar({ member, ...properties }: MemberAvatarProperties) 
       )}
 
       {avatar?.kind === "PRESET" && avatar.preset ? (
-        <PixelFace seed={avatar.preset} />
+        <GeneratedAvatar source={avatar.preset} size={null} className="block size-full [&>svg]:size-full" />
       ) : (
         <AvatarFallback className="text-[11px]">{memberInitials(member)}</AvatarFallback>
       )}

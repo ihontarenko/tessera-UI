@@ -12,6 +12,10 @@
 @import "@jmouse/ui/styles.css";
 @import "@jmouse/ui/presets/themes.css";
 
+/* The colours code is read in — six palettes, light and dark, shared with every other interface.
+   Deliberately NOT the theme's: decorative colour and legible colour are different jobs. */
+@import "@jmouse/codemirror/styles.css";
+
 /* ⚠️ Tailwind does not scan node_modules on its own, and every primitive is in there now. Without
    this line the package's classes are never generated and the application comes up unstyled, with no
    error anywhere to say so.
@@ -23,6 +27,9 @@
    exist. Anything in `node_modules` that DRAWS needs its own line here. */
 @source "../node_modules/@jmouse/ui/dist";
 @source "../node_modules/@jmouse/files/dist";
+@source "../node_modules/@jmouse/codemirror/dist";
+@source "../node_modules/@jmouse/avatars/dist";
+@source "../node_modules/@jmouse/query/dist";
 
 @theme {
   /* ⚠️ One typeface in all three text roles, and the reason is Cyrillic. Space Grotesk and DM Sans

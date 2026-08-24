@@ -13,16 +13,11 @@ import {
   Label,
 } from "@jmouse/ui"
 import { MemberAvatar } from "@/components/MemberAvatar"
-import { PixelFace } from "@/components/PixelFace"
+import { AvatarPicker } from "@jmouse/avatars/picker"
 import { chooseAvatarPresetFor, renameMember, uploadAvatarPictureFor } from "@/api/members"
 import { isAgent, type MemberSummary } from "@/api/members"
 import { apiErrorMessage } from "@/api/errors"
-import { PRESET_SEEDS } from "@/lib/pixelFace"
 import { ImageSquareCropper, type CropperHandle } from "@/components/account/ImageSquareCropper"
-import { cn } from "@/lib/helpers"
-
-/** How many generated faces the picker offers. The generator is total, so this is taste, not a catalog. */
-const PRESETS_OFFERED = 12
 
 /**
  * A member's name and face, edited by an administrator (TSSR-80).
@@ -61,10 +56,14 @@ export function MemberEditDialog({
   const [chosenPicture, setChosenPicture] = useState<File | null>(null)
   const cropper = useRef<CropperHandle>(null)
 
+  /** The face being tried on, before it is applied. Null means nothing has been touched yet. */
+  const [chosenFace, setChosenFace] = useState<string | null>(null)
+
   // Re-seeded whenever a different member is opened. Without this the field keeps whatever was typed
   // into it for the previous row, which is the worst possible default on a rename.
   useEffect(() => {
     setDisplayName(member?.displayName ?? "")
+    setChosenFace(null)
   }, [member?.id, member?.displayName])
 
   function refreshMembers() {
@@ -148,24 +147,34 @@ export function MemberEditDialog({
 
           {/* ⚠️ A generated face is the ordinary case for a client, not a fallback: it is provisioned
               wearing one seeded from its own identifier, so two clients of one person are told apart at
-              a glance and neither wears the face of the person who was asleep at the time. */}
-          <div className="flex flex-wrap gap-1.5">
-            {PRESET_SEEDS.slice(0, PRESETS_OFFERED).map((seed) => (
-              <button
-                key={seed}
-                type="button"
-                title={`Wear the face drawn from “${seed}”`}
-                disabled={choosePreset.isPending}
-                className={cn(
-                  "rounded-md border p-1 transition-colors hover:bg-accent",
-                  member.avatar.kind === "PRESET" && member.avatar.preset === seed && "border-primary",
-                )}
-                onClick={() => choosePreset.mutate(seed)}
-              >
-                <PixelFace seed={seed} className="size-7" />
-              </button>
-            ))}
-          </div>
+              a glance and neither wears the face of the person who was asleep at the time.
+
+              ⚠️ The SAME picker the account screen uses. This was a flat row of twelve classic faces
+              until 2026-08-24 — the shape it had before there was anything to choose between — which
+              meant an administrator dressing a client could reach one of eight strategies and none of
+              the controls. A second, lesser picker over the same column is how two screens come to
+              disagree about what a face can be. */}
+          <AvatarPicker
+            value={chosenFace ?? (member.avatar.kind === "PRESET" ? member.avatar.preset : null)}
+            onChange={setChosenFace}
+            seedHint={member.displayName ?? member.email ?? undefined}
+          />
+
+          {/* ⚠️ Applied on a button rather than on every change. The account screen has a Save in its
+              footer; this dialog's footer belongs to the rename, so the face needs its own — and
+              writing on each control tweak would put a request behind every drag of a slider. */}
+          <Button
+            type="button"
+            size="sm"
+            disabled={
+              !chosenFace ||
+              chosenFace === (member.avatar.kind === "PRESET" ? member.avatar.preset : null) ||
+              choosePreset.isPending
+            }
+            onClick={() => chosenFace && choosePreset.mutate(chosenFace)}
+          >
+            Use this face
+          </Button>
 
           {chosenPicture ? (
             /* ⚠️ The same cropper the account screen uses, rather than an automatic centre crop.
