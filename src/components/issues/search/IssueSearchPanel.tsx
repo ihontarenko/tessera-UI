@@ -14,6 +14,13 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { QueryPanel, type AppliedQuery } from "@jmouse/query"
 import { issues as issueSubject } from "@/components/issues/query/subject"
 import { ISSUE_PRESETS } from "@/components/issues/query/presets"
+import { IssueSortControl } from "@/components/issues/sorting/IssueSortControl"
+import {
+  GLOBAL_DEFAULT_SORT,
+  GLOBAL_SORTS,
+  findSort,
+  type SortDirection,
+} from "@/components/issues/sorting/issueSorting"
 import { useLanguage } from "@/context/LanguageContext"
 
 const ANY = "__any__"
@@ -43,6 +50,14 @@ export function IssueSearchPanel() {
   const [jmq, setJmq] = useState<AppliedQuery>({})
   const [composing, setComposing] = useState(false)
 
+  // ⚠️ Ordered by the SERVER, unlike the project list which orders in the browser. This one is paged in
+  // the database, so sorting the twenty-five rows in hand would reorder the page rather than the list —
+  // which is the kind of wrong that looks right. See `issueSorting.ts`.
+  const [sortId, setSortId] = useState(GLOBAL_DEFAULT_SORT)
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    findSort(GLOBAL_DEFAULT_SORT, GLOBAL_SORTS).defaultDirection,
+  )
+
   const debouncedText = useDebouncedValue(text)
 
   // Narrowing changes what page 1 even contains, so staying on page 4 of the previous search would show an
@@ -65,6 +80,11 @@ export function IssueSearchPanel() {
     // it is the one somebody wrote out in full.
     "jmq:filter": jmq.filter || undefined,
     "jmq:order": jmq.order || undefined,
+    // ⚠️ Sent only while no expression carries its own ordering. The server would ignore it anyway — an
+    // expression takes the jMQ path whole — but sending a sort that is silently dropped would leave a
+    // control on screen claiming to do something it is not doing.
+    sort: jmq.order ? undefined : sortId,
+    direction: jmq.order ? undefined : sortDirection,
     page,
     size: PAGE_SIZE,
   }
@@ -122,6 +142,32 @@ export function IssueSearchPanel() {
         >
           {t("issues.search.expression", "Expression")}
         </Button>
+
+        {/* ⚠️ Gone while an expression is applied rather than disabled beside it: the expression's own
+            `order by` is the ordering then, and a second control still on screen would be two answers to
+            one question with no way to tell which won.
+
+            ⚠️ And gone while the panel is OPEN, which is the case this guard used to miss. `!jmq.order`
+            only covers an expression already applied; with the panel open and nothing applied yet, this
+            control sat above the panel's own `Sort by` and `descending` — the same question asked twice,
+            three centimetres apart, with nothing saying which one the list was obeying. The panel is
+            where a whole query is composed, ordering included, so while it is open it is the only place
+            the sort is stated. */}
+        {!jmq.order && !composing && (
+          <IssueSortControl
+            className="ml-auto"
+            options={GLOBAL_SORTS}
+            sortId={sortId}
+            direction={sortDirection}
+            onChange={(nextSort, nextDirection) => {
+              setSortId(nextSort)
+              setSortDirection(nextDirection)
+              // Reordering changes what page one holds, so staying on page four would show rows from the
+              // middle of a list somebody has just re-asked for.
+              setPage(0)
+            }}
+          />
+        )}
       </div>
 
       {/*
