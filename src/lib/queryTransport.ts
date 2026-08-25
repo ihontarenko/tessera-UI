@@ -1,10 +1,13 @@
 import {
   playgroundTransportOver,
+  savedQueryTransportOver,
   sourceTransportOver,
   transportOver,
   type QueryTransport,
 } from "@jmouse/query"
-import { httpClient } from "@/api/httpClient"
+import { apiClient } from "@/api/httpClient"
+
+const httpClient = apiClient("/jmouse/query/api")
 
 /**
  * How the shared filter builder reaches Tessera's backend.
@@ -15,13 +18,13 @@ import { httpClient } from "@/api/httpClient"
  * package bringing its own client would mean a request that skips all of it — and the failure is a silent
  * 401 on one panel while every other screen is perfectly signed in.
  *
- * ## ⚠️ The prefix is `/query`, because the client's base is already `/api`
+ * ## ⚠️ The base is the LIBRARY's, and the prefix is therefore empty
  *
- * The library answers on `/api/query` by default (`jmouse.query.builder.prefix`). Moving it on the
- * backend means moving it here — the address lives in exactly two places and there is deliberately no
- * third.
+ * The builder answered at `/api/query` until 2026-08-25, when every library surface moved under
+ * `/jmouse/…`. So this transport is built on a client of its own rooted at `/jmouse/query/api` — the
+ * same axios factory and the same interceptors, just a different base.
  */
-const PREFIX = "/query"
+const PREFIX = ""
 
 const request = async (method: string, url: string, body?: unknown) => {
   const response =
@@ -48,13 +51,14 @@ export const queryTransport: QueryTransport = {
    *
    * ⚠️ Which listings actually keep views is still the backend subject's answer
    * (`QuerySubject.holder`), so wiring this does not give every Tessera listing a shelf by accident.
+   *
+   * ⚠️ **The five addresses were written out by hand here until 2026-08-25, and left off the subject's
+   * parameters.** Tessera got away with it — an issue listing is installation-wide, so its subjects carry
+   * no parameters to lose — while Innoventa, whose every entry listing is one form, had one form's shelf
+   * showing every other form's questions. Same missing line, one product where it does not yet show. The
+   * library builds the addresses now, so it cannot come back here the day a Tessera subject narrows.
    */
-  views: {
-    list: (subject) => request("GET", `${PREFIX}/${subject.name}/views`),
-    save: (subject, draft) => request("POST", `${PREFIX}/${subject.name}/views`, draft),
-    update: (subject, id, draft) => request("PUT", `${PREFIX}/${subject.name}/views/${id}`, draft),
-    remove: (subject, id) => request("DELETE", `${PREFIX}/${subject.name}/views/${id}`),
-  },
+  views: savedQueryTransportOver((method, url, body) => request(method, url, body), PREFIX),
 
   /**
    * ⚠️ The declaration half — reading what a listing IS, and rewriting it where that is allowed.
