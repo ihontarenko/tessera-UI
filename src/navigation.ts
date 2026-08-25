@@ -1,4 +1,5 @@
 import {
+  Bookmark,
   CircleDot,
   CircleDotDashed,
   FolderKanban,
@@ -154,6 +155,21 @@ export const navigationGroups: NavigationGroup[] = [
         translationKey: "nav.files",
         path: "/files",
         icon: FolderOpen,
+        isBuilt: true,
+        description: "",
+      },
+      // Beside "All issues" because it is that list's memory: the questions kept against it, plus the
+      // shape they are asked of.
+      //
+      // ⚠️ NO `requiredGlobalPermissions`, for the same reason Files carries none. A saved view is owned
+      // by the member who kept it, so everybody has these and nobody needs a permission to manage their
+      // own — while the ready-made ones are the installation's and are read-only to whoever may not edit
+      // them, which the server decides rather than this entry.
+      {
+        title: "Saved views",
+        translationKey: "nav.savedViews",
+        path: "/saved-views",
+        icon: Bookmark,
         isBuilt: true,
         description: "",
       },

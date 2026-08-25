@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { CircleDot } from "lucide-react"
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton } from "@jmouse/ui"
+import { CircleDot, SlidersHorizontal, X } from "lucide-react"
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, cn } from "@jmouse/ui"
 import { EmptyState } from "@/components/EmptyState"
 import { MemberChip } from "@/components/MemberChip"
 import { SearchInput } from "@/components/SearchInput"
@@ -47,7 +47,27 @@ export function IssueSearchPanel() {
   const [statusId, setStatusId] = useState(ANY)
   const [assigneeMemberId, setAssigneeMemberId] = useState(ANY)
   const [page, setPage] = useState(0)
-  const [jmq, setJmq] = useState<AppliedQuery>({})
+
+  /**
+   * ⚠️ Seeded from the URL, ONE CLAUSE PER PARAMETER — `jmq:where`, `jmq:order`.
+   *
+   * A link may narrow this list, which is what makes a saved view somewhere else openable here. What it
+   * may never do is carry a whole query document: the body of a saved view lives in the database, so a
+   * URL naming its clauses is a link, while a URL containing them is a copy that stops matching the view
+   * it came from the moment somebody edits it.
+   *
+   * ⚠️ Read once, deliberately. Re-reading on every render would fight the panel — a person narrowing
+   * the query would have their edit replaced by whatever the address bar still said.
+   */
+  const [jmq, setJmq] = useState<AppliedQuery>(() => {
+    const parameters = new URLSearchParams(window.location.search)
+
+    return {
+      filter: parameters.get("jmq:where"),
+      order: parameters.get("jmq:order"),
+    }
+  })
+
   const [composing, setComposing] = useState(false)
 
   // ⚠️ Ordered by the SERVER, unlike the project list which orders in the browser. This one is paged in
@@ -98,14 +118,33 @@ export function IssueSearchPanel() {
   const total = results?.total ?? 0
   const lastPage = Math.max(Math.ceil(total / PAGE_SIZE) - 1, 0)
 
+  const narrowed =
+    debouncedText.trim() !== "" ||
+    projectId !== ANY ||
+    statusId !== ANY ||
+    assigneeMemberId !== ANY ||
+    Boolean(jmq.filter || jmq.order)
+
+  function clearEverything() {
+    setText("")
+    setProjectId(ANY)
+    setStatusId(ANY)
+    setAssigneeMemberId(ANY)
+    setJmq({ filter: null, order: null })
+  }
+
   return (
     <div className="space-y-3">
+      {/* ⚠️ ONE height for the whole row — the toolkit's `sm`. The three selects were `h-9`, the search
+          box 34px and the button 30px: four controls that do one job, drawn at three sizes, because
+          each was given a height by hand instead of the word the toolkit already has. */}
       <div className="flex flex-wrap items-center gap-2">
         <SearchInput
           value={text}
           onChange={setText}
+          size="sm"
           placeholder={t("issues.search.placeholder", "Search summaries and keys…")}
-          className="w-full sm:w-72"
+          className="w-full sm:w-64"
         />
         <FilterSelect
           value={projectId}
@@ -133,15 +172,47 @@ export function IssueSearchPanel() {
           ⚠️ Beside the controls, not instead of them. Each select is one question the query already knew
           how to ask; the expression is for the questions it does not — a combination, an absence, a date
           window. The two are offered together because a person should not have to choose a *mode*.
+
+          ⚠️ And it stays lit while an expression is APPLIED, not merely while the panel is open. The
+          panel is closed by the person who has just finished narrowing the list, and every trace of
+          their narrowing used to leave the screen with it.
         */}
-        <Button
-          type="button"
-          size="sm"
-          variant={composing ? "default" : "outline"}
-          onClick={() => setComposing((previous) => !previous)}
-        >
-          {t("issues.search.expression", "Expression")}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant={composing || jmq.filter ? "default" : "outline"}
+            onClick={() => setComposing((previous) => !previous)}
+          >
+            <SlidersHorizontal className="size-4" />
+            {t("issues.search.expression", "Expression")}
+          </Button>
+
+          {jmq.filter || jmq.order ? (
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              title={t("issues.search.expression.clear", "Drop the expression")}
+              onClick={() => setJmq({ filter: null, order: null })}
+            >
+              <X className="size-4" />
+            </Button>
+          ) : null}
+        </div>
+
+        {/* Nothing to clear is not a disabled button — it is no button. */}
+        {narrowed ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground"
+            onClick={clearEverything}
+          >
+            {t("issues.search.clear", "Clear")}
+          </Button>
+        ) : null}
 
         {/* ⚠️ Gone while an expression is applied rather than disabled beside it: the expression's own
             `order by` is the ordering then, and a second control still on screen would be two answers to
@@ -255,9 +326,17 @@ function FilterSelect({
   placeholder: string
   options: Array<{ id: string; label: string }>
 }) {
+  // ⚠️ A select that is narrowing something is DRAWN as narrowing something. Three triggers reading
+  // "any", "any" and "Done" are told apart only by the word inside them, which is the one part of a
+  // control nobody rereads once they have set it — so the list looks unfiltered while it is not.
+  const chosen = value !== ANY
+
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-9 w-44">
+      <SelectTrigger
+        size="sm"
+        className={cn("w-40", chosen && "border-primary/50 bg-primary/5 text-foreground")}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

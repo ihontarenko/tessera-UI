@@ -10,6 +10,7 @@ import { IssuePage } from "@/pages/IssuePage"
 import { IssuesPage } from "@/pages/IssuesPage"
 import { FilesPage } from "@/pages/FilesPage"
 import { AssistantPage } from "@/pages/AssistantPage"
+import { SavedViewsPage } from "@/pages/SavedViewsPage"
 import { readLastProjectId } from "@/lib/lastProject"
 
 /**
@@ -43,6 +44,7 @@ export function AppRoutes() {
             folders are in no project at all. */}
         <Route path="/files" element={<FilesPage />} />
         <Route path="/assistant" element={<AssistantPage />} />
+        <Route path="/saved-views" element={<SavedViewsPage />} />
         {/* The boards and backlog index pages are gone (ticket 09): both listed the member's projects
             and existed only to be clicked through. An old bookmark lands on that list itself. */}
         <Route path="/boards/*" element={<Navigate to="/projects" replace />} />
