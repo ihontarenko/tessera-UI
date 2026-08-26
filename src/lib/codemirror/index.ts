@@ -2,7 +2,9 @@ import { languages } from "@codemirror/language-data"
 import { editorChrome } from "@jmouse/codemirror/editor"
 import {
   createStaticHighlighter,
+  MAPPING_LANGUAGE,
   POLICY_LANGUAGE,
+  QUERY_LANGUAGE,
   SYNTAX_HIGHLIGHT_STYLE,
 } from "@jmouse/codemirror/highlight"
 import { markdownGrammar } from "@jmouse/codemirror/markdown"
@@ -23,12 +25,21 @@ import { markdownGrammar } from "@jmouse/codemirror/markdown"
  * <p>⚠️ **This colours; it does not decide.** Whether a policy is valid is answered by Innoventa's
  * parser and never here — Tessera has no opinion about a policy beyond how it reads.
  *
+ * <p>The same test admits a saved view (` ```jmq `) and a mapping file (` ```jmm `): a ticket describing
+ * either is one of the commonest things written here, and a fence nobody can read is a description that
+ * has to be re-explained in the comments.
+ *
  * <p>⚠️ **The expression language is deliberately absent.** jME is only worth colouring where there is
- * something to evaluate, and there is nothing here.
+ * something to evaluate, and there is nothing here — a `jmq` or `jmm` fence carries its expression half
+ * inside its own grammar, so nothing is lost by leaving jME itself off this list.
+ *
+ * <p>⚠️ **A dialect missing from this list does not fail — it renders as plain text.** The catalogue is
+ * asked next, it has never heard of any of them, and the fence comes out grey. That is indistinguishable
+ * on screen from a fence somebody mislabelled, so it is checked here rather than reported by anything.
  */
 export const { highlightToHtml, resolveParser } = createStaticHighlighter({
   highlightStyle: SYNTAX_HIGHLIGHT_STYLE,
-  grammars: [POLICY_LANGUAGE],
+  grammars: [POLICY_LANGUAGE, QUERY_LANGUAGE, MAPPING_LANGUAGE],
   catalogue: languages,
 })
 
