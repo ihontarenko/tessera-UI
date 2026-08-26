@@ -36,6 +36,25 @@ export interface StatusStanding {
   count: number
 }
 
+/**
+ * How many open issues are of one kind.
+ *
+ * ⚠️ **`standing`'s other half.** That says *where* the open work sits; this says *what it is*, on the
+ * same population — so these sum to `openTotal` too.
+ *
+ * ⚠️ **No zero rows, unlike `standing`.** The issue-type catalogue is global and holds every kind any
+ * project ever configured; zero-filling it would print rows for kinds this installation has never
+ * raised. An absent type here means nobody has one open, not that the row failed to render.
+ *
+ * ⚠️ `iconKey` is the key, not a colour — the interface owns what a Bug looks like, and it is null for
+ * a type with no icon configured.
+ */
+export interface TypeStanding {
+  type: string
+  iconKey: string | null
+  count: number
+}
+
 /** One project's live issues in three buckets — the segments of its meter. Archived ones are excluded. */
 export interface ProjectProgress {
   projectId: string
@@ -55,6 +74,30 @@ export interface FlowPoint {
   date: string
   created: number
   resolved: number
+}
+
+/**
+ * One day weighed from both sides — estimate arriving against estimate leaving.
+ *
+ * ⚠️ **The same day as `FlowPoint`, in different units, and never a third bar on it.** Two counts share
+ * an axis because the comparison between them means something; a weight against a count invites a
+ * comparison that does not — "twelve raised, eight delivered" is not eight of the twelve.
+ *
+ * ⚠️ **Both sides, because one alone answers nothing.** This carried only `delivered`, as a running
+ * total, and a cumulative line only ever goes up: with no reference on the plot a good week and a bad
+ * one differ by a slope nobody reads. `raised` is that reference.
+ *
+ * ⚠️ **Both figures are POSITIVE.** The chart draws one downward — that is a choice about where zero
+ * sits, not a fact about the day.
+ *
+ * ⚠️ **Both count only issues that carried an estimate.** An unestimated one adds to neither side, so
+ * both are always under-reports — read them against `estimatedCreatedInWindow` and
+ * `estimatedResolvedInWindow`, which is the whole reason those fields exist.
+ */
+export interface WeightPoint {
+  date: string
+  raised: number
+  delivered: number
 }
 
 /**
@@ -91,9 +134,21 @@ export interface DashboardSummary {
   createdInWindow: number
   resolvedInWindow: number
   flowPerDay: FlowPoint[]
+  /**
+   * ⚠️ Together these two are the denominator the weight figures are only honest beside: every weight
+   * on this screen counts estimated issues alone, so a team that estimates half its work otherwise
+   * reads as one that did half as much.
+   */
+  estimatedCreatedInWindow: number
+  estimatedResolvedInWindow: number
+  raisedPointsToday: number
+  deliveredPointsToday: number
+  weightPerDay: WeightPoint[]
   movedInto: StatusMovement[]
   /** Where the open work sits right now, busiest first — the counts sum to `openTotal`. */
   standing: StatusStanding[]
+  /** The same open issues counted by kind, commonest first — ⚠️ no zero rows, see `TypeStanding`. */
+  byType: TypeStanding[]
   projects: ProjectProgress[]
   /** The longest-sitting open issues, oldest first — capped; `openTotal` says of how many. */
   ageing: AgeingIssue[]

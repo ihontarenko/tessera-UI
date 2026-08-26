@@ -9,9 +9,11 @@ import { PageHeader } from "@/components/PageHeader"
 import { ProjectStyleBadge } from "@/components/projects/ProjectStyleBadge"
 import { IssueTypeIcon, PriorityBadge, StatusPill } from "@/components/issues/issueVisuals"
 import { FlowChart } from "@/components/dashboard/FlowChart"
+import { BacklogWeightChart, formatSignedPoints } from "@/components/dashboard/BacklogWeightChart"
 import { AgeingList } from "@/components/dashboard/AgeingList"
 import { BlockedList } from "@/components/dashboard/BlockedList"
 import { StatusBarChart } from "@/components/dashboard/StatusBarChart"
+import { TypeMeter } from "@/components/dashboard/TypeMeter"
 import { ProgressMeter } from "@/components/dashboard/ProgressMeter"
 import { searchIssues, type IssueSearchItem } from "@/api/issues"
 import { fetchDashboardSummary } from "@/api/dashboard"
@@ -90,6 +92,11 @@ export function DashboardPage() {
 
   const progressByProject = new Map((summary?.projects ?? []).map((row) => [row.projectId, row]))
 
+  // How much of the week the weight chart can actually weigh. Zero means every estimate was missing,
+  // which is a different statement from "nothing happened" — the card says which.
+  const weighable =
+    (summary?.estimatedCreatedInWindow ?? 0) + (summary?.estimatedResolvedInWindow ?? 0)
+
   return (
     <>
       <PageHeader
@@ -131,10 +138,13 @@ export function DashboardPage() {
           does everything stand", which are questions you can only answer by looking, while the lists
           below answer "what next", which you answer by reading.
 
-          ⚠️ Movement and standing are deliberately ADJACENT and deliberately identical in shape. They
-          are the same picture of two different facts, and a week of furious movement that ends with the
-          boards exactly as they started is precisely the case where reading one as the other is wrong. */}
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          ⚠️ Two pairs, and the grid is two columns at every width above small precisely so that each
+          pair shares a row. Raised sits beside Backlog weight — the same week counted in issues and
+          weighed in points, which is exactly the comparison that must NOT happen on one axis and is
+          exactly the comparison worth making side by side. Movement sits beside standing: the same picture of two
+          different facts, and a week of furious movement that ends with the boards exactly as they
+          started is precisely the case where reading one as the other is wrong. */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
           title={t("dashboard.created.title", "Raised")}
           headline={summary?.createdToday}
@@ -148,6 +158,48 @@ export function DashboardPage() {
           isLoading={summaryLoading}
         >
           {summary && <FlowChart series={summary.flowPerDay} />}
+        </ChartCard>
+
+        {/* The same week as its neighbour, weighed instead of counted — and the two can disagree, which
+            is the point of having both: twelve issues in and twelve out broke even by count and may
+            have doubled the backlog by weight.
+
+            ⚠️ The headline is a CHANGE, so it is signed. "18 points" is an amount; "+18" is a direction,
+            and direction is the only thing a backlog-weight figure is for.
+
+            ⚠️ The aside is a FRACTION, not a total, and it is what makes this card trustworthy. Both
+            series count only issues somebody estimated, so both always under-report — "612 of 761
+            estimated" is what stops a team that estimates half its work from reading as a team that did
+            half as much. */}
+        <ChartCard
+          title={t("dashboard.weight.title", "Backlog weight")}
+          headline={
+            summary
+              ? formatSignedPoints(summary.raisedPointsToday - summary.deliveredPointsToday)
+              : undefined
+          }
+          headlineHint={t("dashboard.weight.today", "points today")}
+          aside={
+            summary &&
+            t("dashboard.weight.estimated", "{estimated} of {total} estimated")
+              .replace(
+                "{estimated}",
+                String(summary.estimatedCreatedInWindow + summary.estimatedResolvedInWindow),
+              )
+              .replace("{total}", String(summary.createdInWindow + summary.resolvedInWindow))
+          }
+          isLoading={summaryLoading}
+        >
+          {summary && weighable > 0 && <BacklogWeightChart series={summary.weightPerDay} />}
+          {/* ⚠️ Nothing ESTIMATED is not the same as nothing happening — a chart of two empty halves
+              would say the second. The two cases get different sentences for that reason. */}
+          {summary && weighable === 0 && (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {summary.createdInWindow + summary.resolvedInWindow > 0
+                ? t("dashboard.weight.unestimated", "Nothing that moved this week carried an estimate.")
+                : t("dashboard.weight.empty", "Nothing was raised or finished this week.")}
+            </p>
+          )}
         </ChartCard>
 
         <ChartCard
@@ -205,6 +257,39 @@ export function DashboardPage() {
           {summary && summary.standing.length === 0 && (
             <p className="py-10 text-center text-sm text-muted-foreground">
               {t("dashboard.standing.empty", "Every board is clear.")}
+            </p>
+          )}
+        </ChartCard>
+
+        {/* ⚠️ The same open issues as the card above, asked a question that card structurally cannot
+            answer: not where the work sits but what it IS. A hundred issues spread evenly across the
+            statuses and a hundred of which seventy are bugs are the same picture there and very
+            different ones here.
+
+            ⚠️ Its aside names KINDS where the neighbour's names projects, because the two totals are
+            the same number counted differently and a card repeating "220 open" twice would read as one
+            of them being wrong. */}
+        {/* ⚠️ Full width because it is the FIFTH card in a two-column grid, and a lone half-width card
+            beside an empty half reads as one that failed to load. It earns the width twice over now
+            that it is one bar: a segment of a few per cent is a visible mark across a full row and a
+            sliver across half of one. */}
+        <ChartCard
+          className="lg:col-span-2"
+          title={t("dashboard.byType.title", "What it is")}
+          headline={summary?.byType.length}
+          headlineHint={t("dashboard.byType.kinds", "kinds of work")}
+          aside={
+            summary &&
+            t("dashboard.byType.open", "{count} open").replace("{count}", String(summary.openTotal))
+          }
+          isLoading={summaryLoading}
+        >
+          {summary && summary.byType.length > 0 && (
+            <TypeMeter rows={summary.byType} total={summary.openTotal} />
+          )}
+          {summary && summary.byType.length === 0 && (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {t("dashboard.byType.empty", "Nothing open to categorise.")}
             </p>
           )}
         </ChartCard>
@@ -320,6 +405,12 @@ export function DashboardPage() {
  * was the week", which no single number can; the headline answers "how much", which the chart makes you
  * count. Putting the one thing worth reading at a glance in ink, above the marks, is what stops the
  * chart from having to carry a value label on every bar.
+ *
+ * ⚠️ **The headline is already formatted by the time it arrives.** Most cards count issues and hand
+ * over a number; the delivery card sums estimates, where `2.5` is a real total and `8.0` is not how
+ * anybody writes eight. Formatting belongs with whoever knows the unit, so this renders whatever it is
+ * given — but only `undefined` means "still loading", which keeps a genuine zero from drawing a
+ * skeleton for ever.
  */
 function ChartCard({
   title,
@@ -327,17 +418,20 @@ function ChartCard({
   headlineHint,
   aside,
   isLoading,
+  className,
   children,
 }: {
   title: string
-  headline: number | undefined
+  headline: number | string | undefined
   headlineHint: string
   aside: string | false | undefined
   isLoading: boolean
+  /** Grid placement only — a card that has to span the row says so where it is used, not in here. */
+  className?: string
   children: ReactNode
 }) {
   return (
-    <section className="space-y-2 rounded-lg border p-3">
+    <section className={`space-y-2 rounded-lg border p-3 ${className ?? ""}`}>
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">{title}</h2>
         {aside && <span className="text-xs text-muted-foreground tabular-nums">{aside}</span>}
