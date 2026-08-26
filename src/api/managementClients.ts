@@ -24,7 +24,7 @@ import { userManager } from "@/auth/userManager"
  */
 
 /** `jmouse-storage-management` — attachments. Matches `jmouse.files.management.prefix`. */
-export const FILES_MANAGEMENT_BASE = "/jmouse-files/api"
+export const FILES_MANAGEMENT_BASE = "/jmouse/files/api"
 
 /** A client on one of those base paths, carrying this product's bearer token. */
 export function managementClient(baseURL: string): AxiosInstance {

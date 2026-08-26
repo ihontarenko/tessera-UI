@@ -132,6 +132,22 @@ export function issueTypeBorderClass(type: IssueTypeSummary | null): string {
   return (type?.iconKey && TYPE_COLORS[type.iconKey]?.border) || "border-l-transparent"
 }
 
+/**
+ * The type's own hue as a TEXT class, for a surface that paints something other than an icon in it.
+ *
+ * ⚠️ **A fourth colour list is what this exists to prevent.** A bar, a dot or a chip tinted by type
+ * needs the same hue the icon already carries, and the way to reuse a `text-*` class on a filled shape
+ * is to set it on a wrapper and paint the shape with `bg-current` — not to add a `bg-*` column to
+ * `TYPE_COLORS` that will drift from the other two.
+ *
+ * ⚠️ Keyed by `iconKey` rather than by a summary object, because the dashboard's aggregate carries the
+ * key alone — resolving it to a colour on the server would put what a Bug looks like in two places.
+ * An unknown key falls back to muted ink, the same non-answer the icon gives.
+ */
+export function issueTypeInkClass(iconKey: string | null): string {
+  return (iconKey && TYPE_COLORS[iconKey]?.text) || "text-muted-foreground"
+}
+
 export function IssueTypeLabel({ type }: { type: IssueTypeSummary | null }) {
   return (
     <span className="inline-flex items-center gap-1.5">

@@ -27,6 +27,14 @@ import { useLanguage } from "@/context/LanguageContext"
 import { CreateIssueDialog } from "@/components/issues/CreateIssueDialog"
 import { IssueDetailModal } from "@/components/issues/IssueDetailModal"
 import { PriorityBadge, StatusPill, formatStoryPoints } from "@/components/issues/issueVisuals"
+import { IssueSortControl } from "@/components/issues/sorting/IssueSortControl"
+import {
+  PROJECT_DEFAULT_SORT,
+  PROJECT_SORTS,
+  findSort,
+  sortIssues,
+  type SortDirection,
+} from "@/components/issues/sorting/issueSorting"
 import { fetchCatalog, getIssue, listIssues, transitionIssue, type IssueRow } from "@/api/issues"
 import { CREATE_ISSUE, TRANSITION_ISSUE } from "@/api/permissions"
 import { apiErrorMessage } from "@/api/errors"
@@ -57,6 +65,14 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
   const [assigneeMemberId, setAssigneeMemberId] = useState(ANY)
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
 
+  // ⚠️ Ordered in the browser, not asked of the server. This list arrives whole — it is already filtered
+  // here — so a sort is a reordering of what is on screen rather than a round trip. The cross-project
+  // search cannot do the same, because it is paged in the database; see `issueSorting.ts`.
+  const [sortId, setSortId] = useState(PROJECT_DEFAULT_SORT)
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    findSort(PROJECT_DEFAULT_SORT, PROJECT_SORTS).defaultDirection,
+  )
+
   // ⚠️ In the URL, like every other view choice in this application — a register somebody is reading is a
   // thing they send to somebody else. And it MERGES rather than replaces: the project page owns `?tab=`, so
   // writing a bare `{ view }` would drop the tab and bounce the reader back to Board.
@@ -86,7 +102,7 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
     return [...seen.values()]
   }, [issues])
 
-  const filtered = (issues ?? []).filter((issue) => {
+  const matching = (issues ?? []).filter((issue) => {
     if (statusId !== ANY && issue.status?.id !== statusId) {
       return false
     }
@@ -101,6 +117,12 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
     }
     return true
   })
+
+  // ⚠️ Not memoised, deliberately. The filter above is not either, and a project's list is hundreds of
+  // rows — a comparison sort over it is well under a frame. Memoising would mean a dependency array
+  // listing four filters and two sort values beside a `matching` that is rebuilt every render anyway,
+  // which is a longer way to be wrong.
+  const filtered = sortIssues(matching, sortId, sortDirection, PROJECT_SORTS)
 
   return (
     <Tabs value={view} onValueChange={openView} className="space-y-3">
@@ -132,6 +154,18 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
           onChange={setAssigneeMemberId}
           placeholder="Assignee"
           options={assignees.map((assignee) => ({ id: assignee.id, label: assignee.displayName || assignee.email || assignee.id }))}
+        />
+
+        {/* Pushed to the far end: everything to its left narrows the list, this one only reorders it. */}
+        <IssueSortControl
+          className="ml-auto"
+          options={PROJECT_SORTS}
+          sortId={sortId}
+          direction={sortDirection}
+          onChange={(nextSort, nextDirection) => {
+            setSortId(nextSort)
+            setSortDirection(nextDirection)
+          }}
         />
       </div>
 

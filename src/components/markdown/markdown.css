@@ -137,6 +137,16 @@
     text-decoration-thickness: 2px;
 }
 
+/*
+ * ⚠️ There is deliberately NO rule here for the reference badge.
+ *
+ * A badge is an anchor that must not read as one — the rule above is right for a link in prose and
+ * wrong through the middle of a bordered chip. That used to be undone by a counter-rule at this spot,
+ * which meant every product consuming the shared badge needed its own copy of it and would wear the
+ * underline until somebody noticed. `ReferenceBadge` now sets `text-decoration` and `color` as INLINE
+ * styles, which outrank any selector here and ask nothing of the host.
+ */
+
 .prose-tessera img {
     max-width: 100%;
     margin: 0.5em 0;

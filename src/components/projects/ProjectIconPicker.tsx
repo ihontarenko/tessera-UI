@@ -1,31 +1,24 @@
-import { X } from "lucide-react"
-import { Input, Label } from "@jmouse/ui"
+import { EmojiPickerButton, Label } from "@jmouse/ui"
 import { useLanguage } from "@/context/LanguageContext"
-import { cn } from "@/lib/helpers"
 
 /**
- * A palette of ready-made emoji, with the tone of the things a tracker actually holds — a service, a
- * release, a bug hunt, a design job. It is not a taxonomy and nothing reads it: it is the shortlist that
- * makes the common case one click instead of a trip to the system picker.
- */
-const PRESETS = [
-  "🚀", "📦", "🧩", "🛠️", "⚙️", "🔬",
-  "🐞", "🔥", "💡", "🎯", "📊", "🗂️",
-  "🌍", "🔐", "💳", "📱", "🖥️", "🎨",
-  "📝", "🤖", "⚡", "🧪", "🏗️", "🎬",
-]
-
-/**
- * How a project's emoji is chosen (TSSR-7): a field, and a palette beside it.
+ * How a project's emoji is chosen (TSSR-7): the label, the hint, and `@jmouse/ui`'s picker between them.
  *
- * Both, deliberately. The field alone means a trip to the operating system's picker (`Win+.`) for what is
- * usually one of a dozen obvious choices; the palette alone would make somebody's own emoji unreachable,
- * and the whole point of the field is that it is theirs. The field is the source of truth — clicking a
- * preset writes into it, and nothing is stored until the form around this saves.
+ * <h2>⚠️ This used to be a text field and two dozen presets, and both are gone</h2>
  *
- * ⚠️ **Whether the value is a single emoji is the server's answer, not this component's.** A grapheme
+ * The presets were a shortlist with the tone of the things a tracker holds — a service, a release, a bug
+ * hunt — and they made the common case one click. What they could not do is answer *the emoji I actually
+ * want*, so the field beside them existed to catch everything else, which meant a control somebody had to
+ * choose between two halves of. The library picker is the whole set with a tag search over it, and it
+ * still takes a pasted character: paste into its search box and it offers what you pasted.
+ *
+ * <p>⚠️ **It lives in `@jmouse/ui` rather than here**, because Kiwi's sections and Innoventa's form
+ * glyphs are the same control, and three hand-rolled palettes is how three products come to disagree
+ * about what an icon field is. This file is now what remains after the shared half left: the strings.
+ *
+ * <p>⚠️ **Whether the value is a single emoji is the server's answer, not this component's.** A grapheme
  * cluster count is not something worth having two implementations of, and the refusal it sends back says
- * exactly what is wrong. This only stops the obviously-too-long, which the column's width already implies.
+ * exactly what is wrong.
  */
 export function ProjectIconPicker({
   icon,
@@ -44,47 +37,25 @@ export function ProjectIconPicker({
     <div className="space-y-1.5">
       <Label htmlFor={inputId}>{t("project.settings.general.icon", "Icon")}</Label>
 
-      <div className="flex items-center gap-2">
-        <Input
+      <div>
+        <EmojiPickerButton
           id={inputId}
+          size="lg"
           value={icon}
           disabled={disabled}
-          onChange={(event) => onChange(event.target.value)}
-          maxLength={16}
-          placeholder={t("project.icon.placeholder", "Paste an emoji…")}
-          className="w-28 text-center text-lg"
+          // ⚠️ Empty rather than null: the form around this stores a string, and a project with no icon
+          // is one whose column is blank — never one whose column is missing.
+          onChange={(chosen) => onChange(chosen ?? "")}
+          recentStorageKey="tessera.emoji.recent"
+          labels={{
+            open: t("project.icon.open", "Choose an icon"),
+            search: t("emoji.search", "Search emoji…"),
+            empty: t("emoji.empty", "Nothing matches that."),
+            useTyped: t("emoji.useTyped", "Use {emoji}"),
+            recent: t("emoji.recent", "Recent"),
+            clear: t("project.icon.clear", "No icon"),
+          }}
         />
-
-        {icon.length > 0 && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange("")}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-          >
-            <X className="size-3.5" /> {t("project.icon.clear", "Clear")}
-          </button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-1 pt-1">
-        {PRESETS.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(preset)}
-            aria-label={preset}
-            aria-pressed={icon === preset}
-            className={cn(
-              "flex size-8 items-center justify-center rounded-md border text-base transition-colors",
-              "hover:border-primary/40 hover:bg-accent disabled:opacity-50",
-              icon === preset ? "border-primary bg-accent" : "border-transparent",
-            )}
-          >
-            {preset}
-          </button>
-        ))}
       </div>
 
       <p className="text-xs text-muted-foreground">

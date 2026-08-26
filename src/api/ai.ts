@@ -5,7 +5,7 @@ import { userManager } from "@/auth/userManager"
  * The machinery behind the assistant and the protocol endpoint, as one screen reads it.
  *
  * ⚠️ **Every route here belongs to `jmouse-ai-management`, not to Tessera** — which is why they answer
- * at `/jmai/api` rather than under `/api`. An address nobody would invent by accident is deliberate: a
+ * at `/jmouse/ai/api` rather than under `/api`. An address nobody would invent by accident is deliberate: a
  * route that is visibly not this product's is a route a reader will go and look up.
  *
  * ⚠️ **That address is written in three files and nothing checks that they agree** — the backend's
@@ -28,7 +28,7 @@ import { userManager } from "@/auth/userManager"
  * ⚠️ It repeats `httpClient`'s bearer-token interceptor rather than importing it, since that instance is
  * pinned to `/api`. If a third base path ever appears, the interceptor is what to extract — not this.
  */
-const managementClient = axios.create({ baseURL: "/jmai/api" })
+const managementClient = axios.create({ baseURL: "/jmouse/ai/api" })
 
 managementClient.interceptors.request.use(async (requestConfiguration) => {
   const user = await userManager.getUser()

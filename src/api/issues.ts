@@ -82,6 +82,14 @@ export interface LinkType {
 export interface IssueRow {
   id: string
   issueKey: string
+  /**
+   * The permanent identifier — see `IssueDetail.hash`.
+   *
+   * ⚠️ On a **row** because a row is where somebody decides to quote something: the link dialog's issue
+   * picker reads it, and a second request per row to fetch six characters would turn a list into a
+   * waterfall.
+   */
+  hash: string
   sequence: number
   summary: string
   type: IssueTypeSummary | null
@@ -105,6 +113,14 @@ export interface IssueDetail {
   id: string
   projectId: string
   issueKey: string
+  /**
+   * The permanent identifier — six characters, drawn once, changed by nothing.
+   *
+   * ⚠️ **What a reference stored outside this tracker resolves through.** A key is formatted by the
+   * project's key strategy and can be re-minted; anything written into a page or another product's
+   * description carries this instead, and `CopyReferenceAction` is what hands it out.
+   */
+  hash: string
   sequence: number
   summary: string
   description: string | null
@@ -226,6 +242,16 @@ export interface IssueSearchParameters {
    */
   "jmq:filter"?: string
   "jmq:order"?: string
+  /**
+   * What to order by, from `IssueSortOrder`'s closed list on the server — the same vocabulary
+   * `issueSorting.ts` holds.
+   *
+   * ⚠️ **Ignored when `jmq:order` is present**, because an expression carries its own ordering. The
+   * screen stops sending it rather than relying on that, so a control is never on screen claiming to do
+   * something the server is dropping.
+   */
+  sort?: string
+  direction?: "asc" | "desc"
   page?: number
   size?: number
 }

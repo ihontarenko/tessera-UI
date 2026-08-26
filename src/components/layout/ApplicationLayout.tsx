@@ -13,12 +13,16 @@ export function ApplicationLayout() {
     <SidebarProvider>
       <SeasonalEffect />
       <ApplicationSidebar />
-      {/* ⚠️ **The frame is the window, and the scrollbar is inside it.** Without `h-svh` the inset only
-          has a *minimum* height, so a tall page grows the document and every screen that wants to fill
-          the frame — a board, a file tree, a filter rail — silently scrolls the whole application
-          instead of its own panes, taking the sidebar and the page header off the top with it. Innoventa
-          and Kiwi have had this; Tessera was the one still without it. */}
-      <SidebarInset className="h-svh overflow-hidden">
+      {/* ⚠️ **The frame is the window, and the scrollbar is inside it.** Without a fixed height the
+          inset only has a *minimum* one, so a tall page grows the document and every screen that wants
+          to fill the frame — a board, a file tree, a filter rail — silently scrolls the whole
+          application instead of its own panes, taking the sidebar and the page header off the top
+          with it.
+          ⚠️ And the height is `--viewport-height`, never `h-svh`: the font scale is applied as
+          `body.style.zoom`, which a viewport unit is immune to, so a screenful declared here is
+          painted a fifth taller than the screen and the window scrolls behind the frame — the two
+          scrollbars down the right-hand side. See the token's own note in @jmouse/ui's styles.css. */}
+      <SidebarInset className="h-(--viewport-height) overflow-hidden">
         <div className="flex h-10 shrink-0 items-center border-b px-4 md:hidden">
           <SidebarTrigger className="-ml-1" />
         </div>

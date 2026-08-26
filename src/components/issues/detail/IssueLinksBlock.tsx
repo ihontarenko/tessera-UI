@@ -23,7 +23,10 @@ const BLOCK_PREFERENCE_KEY = "tessera.issue.relations"
 interface RelationGroup {
   label: string
   references: IssueReference[]
-  /** The link each reference came from, where it came from one. Children have no link to retype. */
+  /**
+   * The link each reference came from, where it came from one. The parent and the children have no
+   * link to retype.
+   */
   links: IssueLinkView[] | null
   done: number
 }
@@ -58,14 +61,29 @@ function groupLinksByType(links: IssueLinkView[]): RelationGroup[] {
 }
 
 /**
- * ⚠️ **Children are a group beside the links, not a section beside the block.** They are the same
- * question — *what else is this issue attached to* — asked about containment rather than about a
- * lateral relationship, and two lists with the same rows in two places is two things to learn to read.
- * They carry no link, which is what says they cannot be retyped or removed here: a child is detached by
- * changing its parent, on the child.
+ * ⚠️ **The parent and the children are groups beside the links, not sections beside the block.** They
+ * are the same question — *what else is this issue attached to* — asked about containment rather than
+ * about a lateral relationship, and two lists with the same rows in two places is two things to learn
+ * to read. They carry no link, which is what says they cannot be retyped or removed here: a child is
+ * detached by changing its parent, on the child, and the parent is changed in the rail.
  */
 function relationGroups(issue: IssueDetail): RelationGroup[] {
   const groups: RelationGroup[] = []
+
+  // ⚠️ **The parent is here as a way through, and stays a property in the rail as a way to change it.**
+  // Walking down was always easy — an epic lists its children right here — and walking back up was not
+  // possible at all: for anybody who may edit, the rail's parent is a picker, so clicking the key opens
+  // a search panel instead of the issue. Those are two different jobs and one control cannot do both,
+  // because the click that navigates is the click that opens the picker. So the rail keeps the editing
+  // and this row carries the reader.
+  if (issue.parent) {
+    groups.push({
+      label: "Parent",
+      references: [issue.parent],
+      links: null,
+      done: issue.parent.open ? 0 : 1,
+    })
+  }
 
   if (issue.children.length > 0) {
     groups.push({
@@ -80,8 +98,8 @@ function relationGroups(issue: IssueDetail): RelationGroup[] {
 }
 
 /**
- * Everything this issue is attached to — its children and its links — as one block in the content
- * column (TSSR-73).
+ * Everything this issue is attached to — its parent, its children and its links — as one block in the
+ * content column.
  *
  * <h2>⚠️ Why it left the rail</h2>
  *
@@ -121,14 +139,14 @@ export function IssueLinksBlock({
   const [openedIssueId, setOpenedIssueId] = useState<string | null>(null)
 
   const groups = relationGroups(issue)
-  const total = issue.links.length + issue.children.length
+  const total = groups.reduce((count, group) => count + group.references.length, 0)
   const done = groups.reduce((count, group) => count + group.done, 0)
   const open = !isPage || preference === "open"
 
   const body = (
     <div className="space-y-3">
       {total === 0 && (
-        <p className="py-1 text-xs text-muted-foreground">Nothing linked, and no children.</p>
+        <p className="py-1 text-xs text-muted-foreground">No parent, nothing linked, and no children.</p>
       )}
 
       {groups.map((group) => (
@@ -138,10 +156,18 @@ export function IssueLinksBlock({
           canEdit={canEdit}
           editing={editing}
           onOpen={isPage ? setOpenedIssueId : undefined}
-          // ⚠️ One group needs no label: the section heading already says *Relations* and every row
-          // carries the relationship in words. Two micro-headings stacked on each other saying almost
-          // the same thing was the block reading as ragged rather than as informative.
-          labelled={groups.length > 1}
+          // ⚠️ A lone group of LINKS needs no label: the section heading already says *Relations* and
+          // every link row carries its relationship in words. Two micro-headings stacked on each other
+          // saying almost the same thing was the block reading as ragged rather than as informative.
+          //
+          // ⚠️ The parent and the children are the exception, and always keep theirs — nothing inside
+          // those rows says which they are, so an unlabelled one is a bare issue key that could equally
+          // be the thing above this issue or a thing below it.
+          labelled={group.links === null || groups.length > 1}
+          // ⚠️ A register of one is not a register, and neither is a register of everything: over a
+          // single row it restates the status pill beside it, and over the only group it restates the
+          // section's own count word for word, two lines above itself.
+          register={groups.length > 1 && group.references.length > 1}
         />
       ))}
     </div>
@@ -199,13 +225,19 @@ function RelationGroupRows({
   editing,
   onOpen,
   labelled,
+  register,
 }: {
   group: RelationGroup
   canEdit: boolean
   editing: ReturnType<typeof useIssueEditing>
   onOpen?: (issueId: string) => void
-  /** False when this is the only group — the section heading is already saying all of this. */
+  /**
+   * False when this is the only group of links — the section heading and the rows themselves are
+   * already saying all of this. A parent or a children group keeps its heading either way.
+   */
   labelled: boolean
+  /** Whether the heading carries its own "n of m done" beside the label. */
+  register: boolean
 }) {
   const { data: linkTypes = [] } = useQuery({
     queryKey: ["link-types"],
@@ -220,9 +252,11 @@ function RelationGroupRows({
       {labelled && (
         <div className="flex items-baseline justify-between gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           <span className="truncate">{group.label}</span>
-          <span className="shrink-0 tabular-nums normal-case">
-            {group.done} of {group.references.length} done
-          </span>
+          {register && (
+            <span className="shrink-0 tabular-nums normal-case">
+              {group.done} of {group.references.length} done
+            </span>
+          )}
         </div>
       )}
 

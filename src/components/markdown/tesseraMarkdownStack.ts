@@ -22,6 +22,7 @@ import type {
   ToolbarLayout,
 } from "@jmouse/markdown"
 import { issueReferencePlugin } from "@/components/markdown/issueReference"
+import { issuesAnywhere } from "@/components/markdown/issueSources"
 import { liveBlockPlugin } from "@/components/markdown/liveBlocks"
 import { highlightToHtml, resolveParser, TESSERA_MARKDOWN_GRAMMAR } from "@/lib/codemirror"
 
@@ -195,7 +196,9 @@ export const TESSERA_SNIPPETS: readonly SnippetTemplate[] = [
 export const TESSERA_WRITING_PLUGINS: readonly MarkdownPlugin<undefined>[] = [
   ...TESSERA_READER_PLUGINS,
   markdownGrammarPlugin(),
-  linkPlugin(),
+  // ⚠️ With a source now: without it the permanent form is a six-character id nothing on any screen
+  // shows you, which made a durable reference something only an agent could write.
+  linkPlugin({ sources: [issuesAnywhere] }),
   imageInsertPlugin(),
   tablePlugin(),
   blockPickerPlugin({ blocks: TESSERA_BLOCKS, trigger: /^:::$/ }),

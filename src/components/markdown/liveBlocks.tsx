@@ -21,9 +21,11 @@ import { statusColorStyle } from "@/components/issues/issueVisuals"
  * from the same component with `context={undefined}` — changing that would thread an identifier through
  * every call site that has none.
  *
- * So it arrives the way `IssueReferenceProvider` already brings a document's issue keys: a provider
- * above the renderer, read by a hook inside the plugin. ⚠️ **Where there is no provider the blocks say
- * so** rather than spinning or vanishing — an `:::issue` typed into an issue description renders a
+ * So it arrives as a provider above the renderer, read by a hook inside the plugin. ⚠️ **This is not
+ * how inline references reach their data** — those used to need a provider of the same shape and no
+ * longer do, because the library grew a `useProseData` slot for exactly that. A *project identifier* is
+ * still a host fact rather than something a plugin can read out of the document, which is why this one
+ * stays. ⚠️ **Where there is no provider the blocks say so** rather than spinning or vanishing — an `:::issue` typed into an issue description renders a
  * notice explaining it only resolves on a wiki page, which is true and is the kind of thing somebody
  * would otherwise file a bug about.
  *

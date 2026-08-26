@@ -33,7 +33,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProperties) {
   }
 
   return (
-    <div className="flex h-svh flex-col items-center justify-center gap-4 p-8">
+    <div className="flex h-(--viewport-height) flex-col items-center justify-center gap-4 p-8">
       <div className="w-full max-w-sm space-y-3">
         <Skeleton className="h-8 w-2/3" />
         <Skeleton className="h-4 w-full" />

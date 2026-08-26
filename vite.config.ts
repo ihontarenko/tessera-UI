@@ -54,21 +54,15 @@ export default defineConfig({
     proxy: {
       // Tessera's own API.
       '/api': 'http://localhost:8100',
-      // ⚠️ The AI management screens, served by `jmouse-ai-management` at `jmouse.ai.management.prefix`
-      // rather than under /api — deliberately, so every route under it is visibly not Tessera's own. It
-      // is a second proxy entry rather than a rewrite: the address is real on the backend, and
-      // pretending otherwise here would make the one thing this prefix exists to show invisible.
+      // ⚠️ **Every jMouse library in ONE rule** (Ivan, 2026-08-25): files, AI, the query builder and
+      // live blocks all answer under `/jmouse/<namespace>/api` now. It used to be an entry per library —
+      // `/jmai`, `/jmouse-files` — and a fourth one forgotten every time a module arrived.
       //
-      // ⚠️ This entry and the backend's `prefix:` are ONE address written in two files, and nothing
-      // fails loudly when they drift: every management call 404s, the screens' queries report no error
-      // of their own, and the result reads as an installation with no tools and no agents. Change one,
-      // change the other — and `api/ai.ts`'s base path, which is the third.
-      '/jmai': 'http://localhost:8100',
+      // ⚠️ The address is still written in two places nothing compares: the backend composes it, and this
+      // interface's client carries its own copy. When they drift every call 404s, the screens raise no
+      // error of their own, and it reads as an installation with nothing in it.
+      '/jmouse': 'http://localhost:8100',
 
-      // ⚠️ Attachments, served by `jmouse-storage-management` at `jmouse.files.management.prefix`
-      // rather than under /api (UIK-8) — same arrangement as /jmai, same three files to keep in step:
-      // that property, this entry, and `src/api/managementClients.ts`.
-      '/jmouse-files': 'http://localhost:8100',
       // Kiwi (the knowledge product that owns pages) — rewritten to /api on Kiwi so the browser sees a
       // same-origin call in development. ⚠️ In a DEPLOYMENT there is no proxy and this is a real
       // cross-origin request: Kiwi's own CORS allowlist is what permits it, and 5050 has to be in it.

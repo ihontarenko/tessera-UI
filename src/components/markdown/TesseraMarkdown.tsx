@@ -7,7 +7,6 @@ import {
   MarkdownUiProvider,
 } from "@jmouse/markdown"
 import type { MarkdownPlugin } from "@jmouse/markdown"
-import { IssueReferenceProvider } from "@/components/markdown/issueReference"
 import { TESSERA_MARKDOWN_UI } from "@/components/markdown/tesseraUiKit"
 import {
   FAST_PREVIEW_ACTION,
@@ -76,14 +75,12 @@ export function TesseraMarkdown({
   className?: string
 }) {
   return (
-    <IssueReferenceProvider markdown={markdown}>
-      <MarkdownRenderer
-        markdown={markdown}
-        plugins={TESSERA_READER_PLUGINS}
-        context={undefined}
-        className={cn("tessera-markdown prose-tessera", className)}
-      />
-    </IssueReferenceProvider>
+    <MarkdownRenderer
+      markdown={markdown}
+      plugins={TESSERA_READER_PLUGINS}
+      context={undefined}
+      className={cn("tessera-markdown prose-tessera", className)}
+    />
   )
 }
 
@@ -145,18 +142,16 @@ export function TesseraMarkdownEditor({
 }) {
   return (
     <MarkdownUiProvider kit={TESSERA_MARKDOWN_UI}>
-      <IssueReferenceProvider markdown={value}>
-        <div className="tessera-markdown" style={{ "--markdown-editor-height": height } as CSSProperties}>
-          <MarkdownEditor
-            value={value}
-            onChange={onChange}
-            plugins={TESSERA_EDITOR_PLUGINS}
-            context={undefined}
-            toolbar={TESSERA_TOOLBAR}
-            placeholder={placeholder}
-          />
-        </div>
-      </IssueReferenceProvider>
+      <div className="tessera-markdown" style={{ "--markdown-editor-height": height } as CSSProperties}>
+        <MarkdownEditor
+          value={value}
+          onChange={onChange}
+          plugins={TESSERA_EDITOR_PLUGINS}
+          context={undefined}
+          toolbar={TESSERA_TOOLBAR}
+          placeholder={placeholder}
+        />
+      </div>
     </MarkdownUiProvider>
   )
 }

@@ -6,6 +6,7 @@ import { Badge, Button, Skeleton } from "@jmouse/ui"
 import { PageHeader } from "@/components/PageHeader"
 import { IssueTypeIcon } from "@/components/issues/issueVisuals"
 import { IssueDetailPanel } from "@/components/issues/detail/IssueDetailPanel"
+import { CopyReferenceAction } from "@/components/issues/detail/CopyReferenceAction"
 import { issueByKeyQueryKey } from "@/components/issues/detail/useIssueEditing"
 import { useIssueArchiving } from "@/hooks/useIssueArchiving"
 import { deleteIssue, getIssueByKey } from "@/api/issues"
@@ -95,6 +96,10 @@ export function IssuePage() {
         }
         actions={
           <span className="flex items-center gap-1">
+            {/* First, and offered to everybody who can open the issue: quoting something is not a
+                privilege, and this is the only place the permanent form is reachable from a browser. */}
+            <CopyReferenceAction issueKey={issue.issueKey} hash={issue.hash} />
+
             {/* Offered beside Delete because they are the two ways work leaves a screen — and the
                 cheap, reversible one is the one shown first. Archiving is refused on an open issue,
                 so the refusal explains itself rather than the button being hidden on a guess about
