@@ -90,9 +90,9 @@ export function chooseAvatarPreset(preset: string) {
 /**
  * Wear an uploaded picture.
  *
- * ⚠️ `file` is expected to be already square and downscaled — see `squareToPng` in
- * `@/lib/squareImage`. The server's size ceiling is a megabyte, which a phone photograph clears by an
- * order of magnitude, so skipping that step means a refusal rather than a slow upload.
+ * ⚠️ `file` is expected to be already square and downscaled — it comes out of `@jmouse/ui`'s
+ * `ImageCropper` on `AVATAR_CROP`. The server's size ceiling is a megabyte, which a phone photograph
+ * clears by an order of magnitude, so skipping that step means a refusal rather than a slow upload.
  *
  * No explicit `Content-Type`: the browser must set the multipart boundary itself, and naming the type
  * here overwrites it with one that has none.
@@ -152,7 +152,7 @@ export function chooseAvatarPresetFor(memberId: string, preset: string) {
     .then((response) => response.data)
 }
 
-/** ⚠️ `file` is expected to be already square and downscaled — see `squareToPng`. */
+/** ⚠️ `file` is expected to be already square and downscaled — see {@link uploadAvatarPicture}. */
 export function uploadAvatarPictureFor(memberId: string, file: Blob) {
   const body = new FormData()
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
+  AVATAR_CROP,
   Button,
   Dialog,
   DialogContent,
@@ -9,15 +10,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ImageCropper,
   Input,
   Label,
+  type ImageCropperHandle,
 } from "@jmouse/ui"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { AvatarPicker } from "@jmouse/avatars/picker"
 import { chooseAvatarPresetFor, renameMember, uploadAvatarPictureFor } from "@/api/members"
 import { isAgent, type MemberSummary } from "@/api/members"
 import { apiErrorMessage } from "@/api/errors"
-import { ImageSquareCropper, type CropperHandle } from "@/components/account/ImageSquareCropper"
 
 /**
  * A member's name and face, edited by an administrator (TSSR-80).
@@ -54,7 +56,7 @@ export function MemberEditDialog({
 
   /** The file somebody picked, held until they have framed it. Null means the picker is showing. */
   const [chosenPicture, setChosenPicture] = useState<File | null>(null)
-  const cropper = useRef<CropperHandle>(null)
+  const cropper = useRef<ImageCropperHandle>(null)
 
   /** The face being tried on, before it is applied. Null means nothing has been touched yet. */
   const [chosenFace, setChosenFace] = useState<string | null>(null)
@@ -90,9 +92,8 @@ export function MemberEditDialog({
     // ⚠️ Squared and downscaled here. The server's ceiling is a megabyte, which a phone photograph
     // clears by an order of magnitude — sending the original means a refusal rather than a slow upload.
     //
-    // ⚠️ The crop comes from the cropper, not from this file. An earlier version called
-    // `squareToPng(file)` — which never compiled, because `squareToPng` takes a loaded image and a
-    // crop window, and a centre crop is the thing `ImageSquareCropper` exists to avoid.
+    // ⚠️ The crop comes from the cropper, not from the file somebody chose. An earlier version tried
+    // to square the file itself, and a centre crop is precisely the thing a cropper exists to avoid.
     mutationFn: async (picture: Blob) => uploadAvatarPictureFor(member!.id, picture),
     onSuccess: () => {
       setChosenPicture(null)
@@ -179,11 +180,13 @@ export function MemberEditDialog({
           {chosenPicture ? (
             /* ⚠️ The same cropper the account screen uses, rather than an automatic centre crop.
                People are rarely centred in their own photographs, and a face sliced down the middle is
-               worse than no picture — the argument is written out in `ImageSquareCropper`. */
+               worse than no picture — the argument is written out in `@jmouse/ui`'s `ImageCropper`. */
             <div className="space-y-2">
-              <ImageSquareCropper
+              <ImageCropper
                 ref={cropper}
-                file={chosenPicture}
+                source={chosenPicture}
+                specification={AVATAR_CROP}
+                stageHeight={240}
                 onDiscard={() => setChosenPicture(null)}
               />
               <div className="flex gap-2">
@@ -193,7 +196,7 @@ export function MemberEditDialog({
                   disabled={uploadPicture.isPending}
                   onClick={async () => {
                     if (cropper.current) {
-                      uploadPicture.mutate(await cropper.current.toSquarePng())
+                      uploadPicture.mutate(await cropper.current.toBlob())
                     }
                   }}
                 >

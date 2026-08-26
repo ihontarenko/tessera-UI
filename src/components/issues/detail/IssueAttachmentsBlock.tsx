@@ -1,8 +1,8 @@
-import { useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Download, FileText, ImageIcon, Loader2, Paperclip, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
-import { Button } from "@jmouse/ui"
+import { Button, ImageCropperDialog, isCroppableImage, keepingFormatOf } from "@jmouse/ui"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { IssueContentSection } from "@/components/issues/detail/IssueContentSection"
 import { useStoredPreference } from "@/hooks/useStoredPreference"
@@ -67,6 +67,8 @@ export function IssueAttachmentsBlock({
   const [dragging, setDragging] = useState(false)
   const [removing, setRemoving] = useState<Attachment | null>(null)
   const [viewing, setViewing] = useState<Attachment | null>(null)
+  /** A picture waiting to be framed, or waved through. Null means nothing is being offered a crop. */
+  const [framing, setFraming] = useState<File | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const open = !isPage || preference === "open"
@@ -96,6 +98,10 @@ export function IssueAttachmentsBlock({
     onError: (error) => toast.error(apiErrorMessage(error, "That file could not be attached.")),
   })
 
+  // Held steady across renders: the cropper re-derives its frame from whatever specification it is
+  // handed, so a fresh object every render is a frame that never settles.
+  const framingSpecification = useMemo(() => (framing ? keepingFormatOf(framing) : undefined), [framing])
+
   const remove = useMutation({
     mutationFn: (attachment: Attachment) => deleteAttachment(attachment.id),
     onSuccess: () => {
@@ -105,8 +111,23 @@ export function IssueAttachmentsBlock({
     onError: (error) => toast.error(apiErrorMessage(error, "That file could not be removed.")),
   })
 
+  /**
+   * ⚠️ **The crop is offered here, never required, and only for a single picture.**
+   *
+   * A shape a product renders at has to be framed or a machine frames it badly; an attachment is bytes
+   * somebody wants kept, and putting a dialog in front of every one turns pasting a screenshot back
+   * into the three-step chore the paste listener exists to avoid. And a crop step per file of a
+   * five-file drop is a queue of dialogs nobody who dropped five files wanted.
+   */
   const attach = (files: FileList | File[] | null) => {
-    for (const file of Array.from(files ?? [])) {
+    const chosen = Array.from(files ?? [])
+
+    if (chosen.length === 1 && isCroppableImage(chosen[0])) {
+      setFraming(chosen[0])
+      return
+    }
+
+    for (const file of chosen) {
       upload.mutate(file)
     }
   }
@@ -220,6 +241,32 @@ export function IssueAttachmentsBlock({
           attach(event.target.files)
           // Cleared so choosing the SAME file after removing it fires a change event again.
           event.target.value = ""
+        }}
+      />
+
+      <ImageCropperDialog
+        open={framing !== null}
+        onOpenChange={(next) => !next && setFraming(null)}
+        source={framing}
+        specification={framingSpecification}
+        skippable
+        busy={upload.isPending}
+        onCropped={(cropped) => {
+          upload.mutate(cropped)
+          setFraming(null)
+        }}
+        onSkipped={() => {
+          if (framing) {
+            upload.mutate(framing)
+          }
+
+          setFraming(null)
+        }}
+        labels={{
+          title: "Trim the picture?",
+          description: "Attach the whole thing, or keep just the part that matters.",
+          confirm: "Attach this crop",
+          skip: "Attach as it is",
         }}
       />
 
