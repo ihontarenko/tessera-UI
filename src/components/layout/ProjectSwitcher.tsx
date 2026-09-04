@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { matchesProject, projectPath } from "@/lib/projectReference"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Check } from "lucide-react"
@@ -14,7 +15,7 @@ import {
 import { ProjectIcon } from "@/components/projects/ProjectIcon"
 import { listProjects } from "@/api/projects"
 import { useLanguage } from "@/context/LanguageContext"
-import { useCurrentProjectId } from "@/hooks/useCurrentProjectId"
+import { useCurrentProjectReference } from "@/hooks/useCurrentProjectReference"
 
 /**
  * Moving between projects in one click (ticket 09).
@@ -40,8 +41,8 @@ export function ProjectSwitcher() {
   // resolution lives in one hook rather than in two components that could drift apart. A remembered id
   // is only ever used to look a project up in the member's own list, so one since deleted or left
   // simply finds nothing.
-  const currentProjectId = useCurrentProjectId()
-  const currentProject = projects.find((project) => project.id === currentProjectId) ?? null
+  const currentProjectReference = useCurrentProjectReference()
+  const currentProject = projects.find((project) => matchesProject(project, currentProjectReference)) ?? null
 
   const matches = useMemo(() => {
     const needle = filter.trim().toLowerCase()
@@ -96,7 +97,7 @@ export function ProjectSwitcher() {
                 data-slot="dropdown-menu-item"
                 role="menuitem"
                 tabIndex={-1}
-                onClick={() => navigate(`/projects/${project.id}`)}
+                onClick={() => navigate(projectPath(project))}
                 className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
               >
                 {/* Fixed width so the names line up — an emoji and the fallback glyph are not the
@@ -105,7 +106,7 @@ export function ProjectSwitcher() {
                   <ProjectIcon icon={project.icon} size="sm" />
                 </span>
                 <span className="truncate">{project.name}</span>
-                {project.id === currentProjectId && <Check className="ml-auto size-4 shrink-0" />}
+                {matchesProject(project, currentProjectReference) && <Check className="ml-auto size-4 shrink-0" />}
               </div>
             ))}
           </DropdownMenuContent>

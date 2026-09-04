@@ -1,3 +1,4 @@
+import { isProjectIdentifier } from "@/lib/projectReference"
 import { httpClient } from "@/api/httpClient"
 import type { StatusSummary } from "@/api/issues"
 import type { MemberSummary } from "@/api/members"
@@ -148,6 +149,24 @@ export function listProjects() {
 
 export function getProject(projectId: string) {
   return httpClient.get<ProjectResponse>(`/projects/${projectId}`).then((response) => response.data)
+}
+
+/**
+ * The same project addressed the way its URL addresses it — by key.
+ *
+ * Resolving a key to an identifier on the client would mean listing every project just to look one up,
+ * on every page load, before anything could be rendered.
+ */
+export function getProjectByKey(projectKey: string) {
+  return httpClient.get<ProjectResponse>(`/projects/by-key/${projectKey}`).then((response) => response.data)
+}
+
+/**
+ * A project named either way — the key its URL carries now, or the identifier every link built before
+ * the change carries. See `lib/projectReference`.
+ */
+export function getProjectByReference(reference: string) {
+  return isProjectIdentifier(reference) ? getProject(reference) : getProjectByKey(reference)
 }
 
 export function createProject(request: CreateProjectRequest) {

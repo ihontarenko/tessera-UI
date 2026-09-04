@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { useParams, useSearchParams } from "react-router-dom"
+import { Navigate, useParams, useSearchParams } from "react-router-dom"
 import { PageHeader } from "@/components/PageHeader"
 import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@jmouse/ui"
 import { ProjectIcon } from "@/components/projects/ProjectIcon"
@@ -11,7 +11,8 @@ import { ShippedPanel } from "@/components/shipped/ShippedPanel"
 import { ReportsPanel } from "@/components/reports/ReportsPanel"
 import { WikiPanel } from "@/components/wiki/WikiPanel"
 import { useLanguage } from "@/context/LanguageContext"
-import { ADMINISTER_PROJECT, getProject } from "@/api/projects"
+import { ADMINISTER_PROJECT, getProjectByReference } from "@/api/projects"
+import { isProjectIdentifier } from "@/lib/projectReference"
 import {
   PROJECT_TAB_LABELS,
   projectStyleLabel,
@@ -24,11 +25,13 @@ import { resolveText } from "@/lib/translatableText"
 
 export function ProjectDetailPage() {
   const { t } = useLanguage()
-  const { projectId = "" } = useParams()
+  // ⚠️ A **reference**, not an id: the URL carries the project's key now, and an identifier only when
+  // the link was built before that change. `getProjectByReference` tells them apart.
+  const { projectId: reference = "" } = useParams()
   const [searchParameters, setSearchParameters] = useSearchParams()
   const { data: project, isLoading, isError } = useQuery({
-    queryKey: ["project", projectId],
-    queryFn: () => getProject(projectId),
+    queryKey: ["project", reference],
+    queryFn: () => getProjectByReference(reference),
   })
 
   if (isLoading) {
@@ -44,6 +47,16 @@ export function ProjectDetailPage() {
     return (
       <PageHeader title="Project not found" description="This project does not exist, or you are not a member of it." />
     )
+  }
+
+  // ⚠️ **An old identifier link heals into the key form**, and it happens here rather than in the route
+  // because only a loaded project knows its own key. `replace` so the identifier does not become a
+  // history entry somebody can go Back into and be redirected out of again — and the query string is
+  // carried through, since `?tab=board` is most of why the link was sent.
+  if (isProjectIdentifier(reference)) {
+    const query = searchParameters.toString()
+
+    return <Navigate to={`/projects/${project.key}${query ? `?${query}` : ""}`} replace />
   }
 
   const canAdminister = project.myPermissions.includes(ADMINISTER_PROJECT)

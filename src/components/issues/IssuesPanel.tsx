@@ -42,6 +42,40 @@ import { apiErrorMessage } from "@/api/errors"
 const ANY = "__any__"
 
 /**
+ * What the schedule filter can be narrowed to — the same four the protocol's `issues_list` offers, by
+ * the same names, so an answer read in a conversation and a list read on screen mean one thing.
+ */
+type QueueFilter = typeof ANY | "due" | "overdue" | "upcoming" | "unscheduled"
+
+const QUEUE_OPTIONS: Array<{ id: QueueFilter; label: string }> = [
+  { id: "due", label: "Up next" },
+  { id: "overdue", label: "Overdue" },
+  { id: "upcoming", label: "Scheduled later" },
+  { id: "unscheduled", label: "No date" },
+]
+
+/**
+ * Whether a row survives the schedule filter.
+ *
+ * ⚠️ **Reads `state`, never the dates.** The precedence between the three is the server's, decided once
+ * — re-deriving it here would be a filter that disagreed with the badge on the row it kept.
+ */
+function matchesQueue(issue: IssueRow, queue: QueueFilter): boolean {
+  switch (queue) {
+    case "due":
+      return ["QUEUED", "RED_LINE", "DUE_TODAY", "OVERDUE"].includes(issue.schedule.state)
+    case "overdue":
+      return issue.schedule.state === "OVERDUE"
+    case "upcoming":
+      return issue.schedule.state === "SCHEDULED"
+    case "unscheduled":
+      return issue.schedule.state === "NONE"
+    default:
+      return true
+  }
+}
+
+/**
  * The project's issues, in two views.
  *
  * **List** is the dense ranked table (ticket 07/54/55), filtered client-side by the common fields.
@@ -63,6 +97,7 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
   const [issueTypeId, setIssueTypeId] = useState(ANY)
   const [priorityId, setPriorityId] = useState(ANY)
   const [assigneeMemberId, setAssigneeMemberId] = useState(ANY)
+  const [queue, setQueue] = useState<QueueFilter>(ANY)
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
 
   // ⚠️ Ordered in the browser, not asked of the server. This list arrives whole — it is already filtered
@@ -115,6 +150,9 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
     if (assigneeMemberId !== ANY && issue.assignee?.id !== assigneeMemberId) {
       return false
     }
+    if (!matchesQueue(issue, queue)) {
+      return false
+    }
     return true
   })
 
@@ -155,6 +193,12 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
           placeholder="Assignee"
           options={assignees.map((assignee) => ({ id: assignee.id, label: assignee.displayName || assignee.email || assignee.id }))}
         />
+        <FilterSelect
+          value={queue}
+          onChange={(value) => setQueue(value as QueueFilter)}
+          placeholder="Schedule"
+          options={QUEUE_OPTIONS}
+        />
 
         {/* Pushed to the far end: everything to its left narrows the list, this one only reorders it. */}
         <IssueSortControl
@@ -189,6 +233,7 @@ export function IssuesPanel({ projectId, permissions }: { projectId: string; per
               type={issue.type}
               status={issue.status}
               open={issue.open}
+              schedule={issue.schedule}
               onOpen={() => setSelectedIssueId(issue.id)}
               trailing={
                 <>

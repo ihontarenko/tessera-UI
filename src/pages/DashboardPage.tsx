@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { projectPath } from "@/lib/projectReference"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { CircleDot, FolderKanban, Inbox, type LucideIcon } from "lucide-react"
@@ -374,7 +375,7 @@ export function DashboardPage() {
           {projects.map((project) => (
             <Link
               key={project.id}
-              to={`/projects/${project.id}`}
+              to={projectPath(project)}
               className="flex flex-col gap-2 rounded-lg border p-2.5 transition-colors hover:border-primary/40 hover:bg-accent/40"
             >
               <span className="flex items-center gap-2">

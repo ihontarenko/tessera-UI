@@ -4,6 +4,7 @@ import { Ban } from "lucide-react"
 import { TicketCard } from "@jmouse/ui"
 import { MemberChip } from "@/components/MemberChip"
 import { IssueTypeIcon, PriorityBadge, issueTypeBorderClass } from "@/components/issues/issueVisuals"
+import { ScheduleBadge } from "@/components/issues/ScheduleBadge"
 import type { Swimlane } from "@/components/board/swimlanes"
 import { useLanguage } from "@/context/LanguageContext"
 import type { BoardCard, BoardColumnView, BoardMoveRequest } from "@/api/boards"
@@ -292,6 +293,10 @@ function IssueCard({
       }
       trailing={
         <>
+          {/* ⚠️ Compact: the icon alone, with the wording kept for a screen reader and a hover. A card
+              is already carrying a key, a type mark, a priority and a face; "3 days late" spelled out
+              on every one of them would be the loudest thing on the board and the least often read. */}
+          <ScheduleBadge schedule={card.schedule} compact />
           <PriorityBadge priority={card.priority} />
           {card.assignee ? <MemberChip member={card.assignee} className="[&_.text-sm]:hidden" /> : null}
         </>

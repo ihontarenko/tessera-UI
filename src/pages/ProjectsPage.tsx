@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
+import { projectPath } from "@/lib/projectReference"
 import { useNavigate } from "react-router-dom"
 import { FolderKanban } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
@@ -58,7 +59,7 @@ export function ProjectsPage() {
               <TableRow
                 key={project.id}
                 className="cursor-pointer"
-                onClick={() => navigate(`/projects/${project.id}`)}
+                onClick={() => navigate(projectPath(project))}
               >
                 <TableCell className="font-mono text-xs font-medium">
                   <span className="flex items-center gap-2">

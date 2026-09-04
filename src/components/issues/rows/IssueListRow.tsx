@@ -2,7 +2,8 @@ import { createContext, useContext, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "@jmouse/ui"
 import { IssueTypeIcon, StatusPill } from "@/components/issues/issueVisuals"
-import type { IssueTypeSummary, StatusSummary } from "@/api/issues"
+import { ScheduleBadge } from "@/components/issues/ScheduleBadge"
+import type { IssueSchedule, IssueTypeSummary, StatusSummary } from "@/api/issues"
 import { cn } from "@/lib/helpers"
 
 /**
@@ -79,6 +80,7 @@ export function IssueListRow({
   projectKey,
   readable = true,
   dimmed = false,
+  schedule,
   onOpen,
   trailing,
   statusSlot,
@@ -93,6 +95,16 @@ export function IssueListRow({
   readable?: boolean
   /** Put away, and saying so by receding — see Shipped, where archived rows stay in the list. */
   dimmed?: boolean
+  /**
+   * When the issue is meant to happen — drawn as a badge just before {@link trailing}.
+   *
+   * ⚠️ **A prop of the row rather than something each screen composes into `trailing`.** Every list here
+   * is a place somebody decides what to pick up next, so every one of them wants this — and a screen
+   * that forgot to pass it would not look broken, it would look like an issue nobody had scheduled.
+   * Omitted where a list genuinely has no issue behind the row (a redacted reference), and drawn as
+   * nothing when the issue carries no dates.
+   */
+  schedule?: IssueSchedule | null
   onOpen?: () => void
   trailing?: ReactNode
   statusSlot?: ReactNode
@@ -155,7 +167,10 @@ export function IssueListRow({
         </span>
       )}
 
-      <span className="flex items-center justify-end gap-2">{trailing}</span>
+      <span className="flex items-center justify-end gap-2">
+        <ScheduleBadge schedule={schedule} />
+        {trailing}
+      </span>
       <span className="flex items-center justify-end">{statusSlot ?? <StatusPill status={status} />}</span>
     </li>
   )

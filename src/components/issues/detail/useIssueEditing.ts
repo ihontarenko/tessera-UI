@@ -7,7 +7,9 @@ import {
   transitionIssue,
   updateIssue,
   updateIssueOrganization,
+  updateIssueSchedule,
   type IssueDetail,
+  type IssueSchedule,
   type UpdateIssueRequest,
 } from "@/api/issues"
 import { apiErrorMessage } from "@/api/errors"
@@ -95,6 +97,25 @@ export function useIssueEditing(issue: IssueDetail) {
     onError: failWith("Could not transition the issue"),
   })
 
+  /**
+   * One date at a time, with the other two carried through untouched.
+   *
+   * ⚠️ **The route replaces all three**, so a caller sending only what it changed would clear the rest —
+   * the same trap `fields` works around, and worse here because nobody moving a ticket to "today"
+   * expects the deadline they agreed to disappear with it.
+   */
+  const schedule = useMutation({
+    mutationFn: (changes: Partial<IssueSchedule>) =>
+      updateIssueSchedule(issue.id, {
+        queuedFor: issue.schedule.queuedFor,
+        redLine: issue.schedule.redLine,
+        deadline: issue.schedule.deadline,
+        ...changes,
+      }),
+    onSuccess: applyUpdated,
+    onError: failWith("Could not update the schedule"),
+  })
+
   const parent = useMutation({
     mutationFn: (parentId: string | null) => setIssueParent(issue.id, parentId),
     onSuccess: applyUpdated,
@@ -125,5 +146,5 @@ export function useIssueEditing(issue: IssueDetail) {
     onError: failWith("Could not remove the link"),
   })
 
-  return { fields, transition, parent, labels, changeLinkType, removeLink }
+  return { fields, transition, schedule, parent, labels, changeLinkType, removeLink }
 }

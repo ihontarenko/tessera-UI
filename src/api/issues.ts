@@ -33,6 +33,39 @@ export interface ResolutionSummary {
   name: string
 }
 
+/**
+ * How pressing an issue is **today**, derived by the server from its three dates and stored nowhere.
+ *
+ * ⚠️ **Ordered by severity, and the server decides which one wins.** A commitment outranks a plan: an
+ * issue queued for next week whose deadline was yesterday is `OVERDUE`, never `SCHEDULED`. Nothing in
+ * this interface re-derives that — a card painted amber beside a filter calling the same issue overdue
+ * is exactly the drift one source of truth exists to prevent.
+ */
+export type ScheduleState = "NONE" | "SCHEDULED" | "QUEUED" | "RED_LINE" | "DUE_TODAY" | "OVERDUE"
+
+/**
+ * When an issue is meant to happen.
+ *
+ * ⚠️ **Never null on an issue** — an unscheduled one carries `state: "NONE"` with three null dates, so
+ * a reader never has to tell "nothing scheduled" apart from "the field was not sent".
+ */
+export interface IssueSchedule {
+  /** The day somebody means to pick it up — a plan, freely moved, cleared when the issue is resolved. */
+  queuedFor: string | null
+  /** The day it stops being comfortable — a warning set ahead of the commitment. Kept after completion. */
+  redLine: string | null
+  /** The day it is due — a commitment to somebody else. Kept after completion. */
+  deadline: string | null
+  state: ScheduleState
+  /**
+   * Whole days from today to the deadline; negative once past, null with no deadline.
+   *
+   * ⚠️ Computed on the server rather than here, because it is also what a board filter compares against
+   * — and two subtractions either side of a timezone give two different numbers for one issue.
+   */
+  daysUntilDeadline: number | null
+}
+
 export interface IssueReference {
   /** ⚠️ Null when `readable` is false — a reference nobody may open carries no way to try. */
   id: string | null
@@ -100,6 +133,8 @@ export interface IssueRow {
   assignee: MemberSummary | null
   reporter: MemberSummary | null
   storyPoints: number | null
+  /** When it is meant to happen, and how pressing that is today. Never null. */
+  schedule: IssueSchedule
   parentKey: string | null
   rank: string
   /** When it entered a Done status; null while open (ADR-0011). */
@@ -134,6 +169,8 @@ export interface IssueDetail {
   parent: IssueReference | null
   children: IssueReference[]
   storyPoints: number | null
+  /** When it is meant to happen, and how pressing that is today. Never null. */
+  schedule: IssueSchedule
   rank: string
   labels: string[]
   links: IssueLinkView[]
@@ -352,6 +389,22 @@ export function unarchiveIssue(issueId: string) {
   return httpClient.delete<IssueDetail>(`/issues/${issueId}/archive`).then((response) => response.data)
 }
 
+/**
+ * When the issue is meant to happen — all three dates, replaced together.
+ *
+ * ⚠️ **A full replacement, so a missing date clears it.** JSON gives an absent field and an explicit
+ * `null` the same value on the way in, so "leave this one alone" is not something the request could
+ * express — and a shape that could not express "clear the deadline" would be a schedule nobody could
+ * cancel. Anything changing one date therefore sends the other two back unchanged, which is what
+ * `useIssueEditing.schedule` does.
+ */
+export function updateIssueSchedule(
+  issueId: string,
+  schedule: { queuedFor: string | null; redLine: string | null; deadline: string | null },
+) {
+  return httpClient.put<IssueDetail>(`/issues/${issueId}/schedule`, schedule).then((response) => response.data)
+}
+
 export function setIssueParent(issueId: string, parentId: string | null) {
   return httpClient.put<IssueDetail>(`/issues/${issueId}/parent`, { parentId }).then((response) => response.data)
 }
@@ -483,4 +536,47 @@ export function fetchCatalog() {
 
 export function fetchLinkTypes() {
   return httpClient.get<LinkType[]>("/configuration/link-types").then((response) => response.data)
+}
+
+// ── The other search: relevance, not a filtered table (TSSR-156) ─────────────────────────────────
+
+/**
+ * One issue a relevance search found, and **why**.
+ *
+ * ⚠️ **Not an `IssueSearchPage` item, and the difference is the whole feature.** That one is a row of a
+ * filtered table: the reader chose a project, a status and a sort column, so what they need is the
+ * issue's fields. This is a row of a *search*: the reader chose nothing, and their two questions are
+ * *where is this* and *why is it in front of me*.
+ *
+ * - `snippets` — the passages that matched, out of the description **or the comments**. Without them a
+ *   result cannot be judged without opening it.
+ * - `why` — the reckoning in one line, e.g. `"key EXACT ×8.0 = 8.00, summary ALL_TERMS ×4.0 = 2.08"`.
+ *   From the library's structured relevance; a ranking nobody can question is one nobody can fix.
+ *
+ * ⚠️ The snippets carry **no** highlight markup — the same strings are read by a person, a screen and a
+ * model, and only one of those wants markup. Marking the terms is this client's two lines.
+ */
+export interface IssueMatch {
+  project: { id: string; key: string; name: string }
+  issue: IssueRow
+  snippets: string[]
+  /** On the library's shared weight scale. Means nothing on its own — never render it as a percentage. */
+  score: number
+  why: string
+}
+
+/**
+ * Issues answering these words, best first, across every project the caller may browse.
+ *
+ * ⚠️ **Words, not a phrase, and it reads the comments.** `/issues/search` matches the whole query
+ * against the summary and the key only — so a two-word query fails, and a decision recorded in a thread
+ * is invisible. This is the route for *where did we write that down*; that one stays the Issues table.
+ *
+ * @param project narrow to one project. ⚠️ Narrowing only — a project the caller cannot browse answers
+ *                empty rather than reaching into it.
+ */
+export function findIssues(query: string, project?: string | null, limit?: number) {
+  return httpClient
+    .get<IssueMatch[]>("/issues/find", { params: { query, project: project ?? undefined, limit } })
+    .then((response) => response.data)
 }

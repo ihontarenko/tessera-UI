@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { projectPath } from "@/lib/projectReference"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { Archive, ArchiveRestore, Trash2 } from "lucide-react"
@@ -46,7 +47,7 @@ export function IssuePage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["issues", issue?.projectId] })
       toast.success("Issue deleted")
-      navigate(project ? `/projects/${project.id}` : "/projects")
+      navigate(project ? projectPath(project) : "/projects")
     },
     onError: (error) => toast.error(apiErrorMessage(error, "Could not delete the issue")),
   })
@@ -89,7 +90,7 @@ export function IssuePage() {
         }
         description={
           project && (
-            <Link to={`/projects/${project.id}`} className="hover:underline">
+            <Link to={projectPath(project)} className="hover:underline">
               {project.key} · {project.name}
             </Link>
           )

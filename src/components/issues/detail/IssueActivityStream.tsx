@@ -42,6 +42,9 @@ const FIELD_LABELS: Record<string, string> = {
   labels: "Labels",
   link: "Link",
   sprint: "Sprint",
+  queuedFor: "Queued for",
+  redLine: "Red line",
+  deadline: "Deadline",
 }
 
 type StreamScope = "all" | "comments" | "changes"

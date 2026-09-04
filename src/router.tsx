@@ -11,7 +11,8 @@ import { IssuesPage } from "@/pages/IssuesPage"
 import { FilesPage } from "@/pages/FilesPage"
 import { AssistantPage } from "@/pages/AssistantPage"
 import { SavedViewsPage } from "@/pages/SavedViewsPage"
-import { readLastProjectId } from "@/lib/lastProject"
+import { SearchPage } from "@/pages/SearchPage"
+import { readLastProjectReference } from "@/lib/lastProject"
 
 /**
  * Where Tessera opens (ticket 09): the project this browser was last working in, if it remembers one.
@@ -20,9 +21,9 @@ import { readLastProjectId } from "@/lib/lastProject"
  * lands on the dashboard.
  */
 function HomeRedirect() {
-  const lastProjectId = readLastProjectId()
+  const lastProjectReference = readLastProjectReference()
 
-  return <Navigate to={lastProjectId ? `/projects/${lastProjectId}` : "/dashboard"} replace />
+  return <Navigate to={lastProjectReference ? `/projects/${lastProjectReference}` : "/dashboard"} replace />
 }
 
 export function AppRoutes() {
@@ -45,6 +46,9 @@ export function AppRoutes() {
         <Route path="/files" element={<FilesPage />} />
         <Route path="/assistant" element={<AssistantPage />} />
         <Route path="/saved-views" element={<SavedViewsPage />} />
+        {/* ⚠️ NOT /issues with a query string. That screen is a filtered table; this one is ranked
+            relevance over descriptions and comments. Two questions, two routes — see SearchPage. */}
+        <Route path="/search" element={<SearchPage />} />
         {/* The boards and backlog index pages are gone (ticket 09): both listed the member's projects
             and existed only to be clicked through. An old bookmark lands on that list itself. */}
         <Route path="/boards/*" element={<Navigate to="/projects" replace />} />

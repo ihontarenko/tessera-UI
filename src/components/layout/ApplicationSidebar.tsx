@@ -18,7 +18,7 @@ import { AccountMenu } from "@/components/layout/AccountMenu"
 import { ProjectSwitcher } from "@/components/layout/ProjectSwitcher"
 import { useLanguage } from "@/context/LanguageContext"
 import { useCurrentMember } from "@/hooks/useCurrentMember"
-import { useCurrentProjectId } from "@/hooks/useCurrentProjectId"
+import { useCurrentProjectReference } from "@/hooks/useCurrentProjectReference"
 
 function isNavigationItemActive(pathname: string, itemPath: string) {
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
@@ -53,7 +53,7 @@ export function ApplicationSidebar() {
   const location = useLocation()
   const { t } = useLanguage()
   const { data: currentMember } = useCurrentMember()
-  const currentProjectId = useCurrentProjectId()
+  const currentProjectReference = useCurrentProjectReference()
 
   // ⚠️ A courtesy, not the authorization — every route below is gated server-side and refuses on its
   // own. What it buys is that somebody who cannot edit the configuration is not offered a screen full
@@ -126,7 +126,7 @@ export function ApplicationSidebar() {
                       tooltip={t(item.translationKey, item.title)}
                       isActive={activeKey === item.translationKey}
                     >
-                      <NavLink to={item.resolvePath?.({ currentProjectId }) ?? item.path}>
+                      <NavLink to={item.resolvePath?.({ currentProjectReference }) ?? item.path}>
                         <item.icon />
                         <span>{t(item.translationKey, item.title)}</span>
                       </NavLink>

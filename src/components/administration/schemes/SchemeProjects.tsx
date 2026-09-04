@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { projectPath } from "@/lib/projectReference"
 import { Badge } from "@jmouse/ui"
 import type { ProjectReference } from "@/api/configurationAdministration"
 
@@ -18,7 +19,7 @@ export function SchemeProjects({ projects }: { projects: ProjectReference[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {projects.map((project) => (
-        <Link key={project.id} to={`/projects/${project.id}`} title={project.name}>
+        <Link key={project.id} to={projectPath(project)} title={project.name}>
           <Badge variant="secondary" className="font-mono text-[11px] hover:bg-secondary/70">
             {project.key}
           </Badge>

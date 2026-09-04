@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { projectPath } from "@/lib/projectReference"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -73,7 +74,7 @@ export function CreateProjectDialog() {
       void queryClient.invalidateQueries({ queryKey: ["projects"] })
       toast.success(`Project ${project.key} created`)
       resetAndClose()
-      navigate(`/projects/${project.id}`)
+      navigate(projectPath(project))
     },
     onError: (error) => toast.error(apiErrorMessage(error, "Could not create the project")),
   })

@@ -112,6 +112,7 @@ function EpicMemberRow({ issue }: { issue: IssueRow }) {
       type={issue.type}
       status={issue.status}
       open={issue.open}
+      schedule={issue.schedule}
       trailing={
         <span className="flex shrink-0 items-center gap-2">
           {issue.storyPoints !== null && (

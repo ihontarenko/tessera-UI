@@ -34,7 +34,7 @@ export default defineConfig({
   // package's `react` there instead of here. Hooks then run against a React that never rendered
   // anything and `useState` is null. Deduping pins one copy for the whole graph; it stays correct
   // after publication, where the peer dependency would resolve here anyway.
-  dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
@@ -50,7 +50,7 @@ export default defineConfig({
     // PROGRAM, and `node.exe` under one Node installation carries no rule for another — see
     // "Reaching the dev servers from outside" in the workspace CLAUDE.md.
     host: '0.0.0.0',
-    allowedHosts,
+    allowedHosts: ["tessera.jmouse.org"],
     proxy: {
       // Tessera's own API.
       '/api': 'http://localhost:8100',

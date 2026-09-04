@@ -1,9 +1,12 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { UserRoundIcon } from "lucide-react"
 import { Badge, Separator } from "@jmouse/ui"
 import { MemberChip } from "@/components/MemberChip"
 import { SegmentedControl } from "@/components/SegmentedControl"
 import { PriorityBadge } from "@/components/issues/issueVisuals"
+import { ScheduleBadge } from "@/components/issues/ScheduleBadge"
+import { ScheduleDateControl } from "@/components/issues/detail/ScheduleDateControl"
 import { StoryPointsControl } from "@/components/issues/StoryPointsSelect"
 import { InlineSelect, type InlineSelectOption } from "@/components/inline/InlineSelect"
 import { InlineTextField } from "@/components/inline/InlineTextField"
@@ -106,13 +109,25 @@ export function IssueRail({
  * A property is a row — label left, value right — not a labelled input stacked above its control.
  * Five stacked pairs cost 280px of height to carry five words; these cost a line each.
  */
-function RailRow({ label, children }: { label: string; children: React.ReactNode }) {
+function RailRow({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[76px_minmax(0,1fr)] items-center gap-2">
       <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
       <div className="min-w-0 text-sm">{children}</div>
     </div>
   )
+}
+
+/**
+ * A value nobody may edit, indented onto the same left edge as the ones they may.
+ *
+ * ⚠️ **The padding is not decoration, it is the column.** An inline control wears `px-2` so its hover
+ * border has somewhere to be drawn; a plain value wearing nothing starts eight pixels further left, and
+ * a rail mixing the two reads as two ragged columns rather than one — which is exactly how the reporter
+ * sat beside the assignee.
+ */
+function RailValue({ children }: { children: React.ReactNode }) {
+  return <div className="min-w-0 px-2">{children}</div>
 }
 
 /**
@@ -137,25 +152,71 @@ function RailRow({ label, children }: { label: string; children: React.ReactNode
  * Retired clients and people who have left the directory fall out of the same rule, for the same reason.
  */
 function assigneeChoices(assignee: IssueDetail["assignee"], members: MemberSummary[]): InlineSelectOption[] {
-  const choices: InlineSelectOption[] = [
-    { value: UNASSIGNED, label: "Unassigned" },
-    ...members.map((member) => ({ value: member.id, label: memberName(member) })),
-  ]
+  const choices: InlineSelectOption[] = [UNASSIGNED_CHOICE, ...members.map(memberChoice)]
 
   if (assignee && !members.some((member) => member.id === assignee.id)) {
-    choices.splice(1, 0, { value: assignee.id, label: assigneeLabel(assignee) })
+    choices.splice(1, 0, memberChoice(assignee))
   }
 
   return choices
 }
 
+/**
+ * A member, drawn the way a member is drawn everywhere else: a face beside a name.
+ *
+ * ⚠️ **A `MemberChip`, not an avatar assembled here.** Who holds an issue and who reported it sit two
+ * rows apart in the same rail, and the reporter has always been a chip — a name on its own beside a face
+ * read as two different kinds of thing rather than as the same person seen twice.
+ */
+function memberChoice(member: MemberSummary): InlineSelectOption {
+  return {
+    value: member.id,
+    label: assigneeLabel(member),
+    content: <MemberChip member={member} note={agentNote(member)} />,
+  }
+}
+
+/**
+ * The empty seat: a chip with a drawn-on face rather than a word on its own.
+ *
+ * It keeps the shape and the height of a member, which is the point — the row does not jump when
+ * somebody is picked, and "nobody holds this" reads as an answer to the same question the faces answer.
+ */
+function UnassignedChip() {
+  return (
+    <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-current/50">
+        <UserRoundIcon className="size-3.5" />
+      </span>
+      <span className="truncate text-sm">Unassigned</span>
+    </div>
+  )
+}
+
+const UNASSIGNED_CHOICE: InlineSelectOption = {
+  value: UNASSIGNED,
+  label: "Unassigned",
+  content: <UnassignedChip />,
+}
+
 /** The name, saying what it is where that is not a person — the activity stream's own wording. */
-function assigneeLabel(assignee: NonNullable<IssueDetail["assignee"]>): string {
-  if (!isAgent(assignee)) {
+function assigneeLabel(assignee: MemberSummary): string {
+  const note = agentNote(assignee)
+
+  if (!note) {
     return memberName(assignee)
   }
 
-  return `${memberName(assignee)} — ${assignee.retired ? "client, retired" : "client"}`
+  return `${memberName(assignee)} — ${note}`
+}
+
+/** What an agent is, where it is one; nothing at all for a person. */
+function agentNote(member: MemberSummary): string | null {
+  if (!isAgent(member)) {
+    return null
+  }
+
+  return member.retired ? "client, retired" : "client"
 }
 
 function PropertyRows({
@@ -182,10 +243,14 @@ function PropertyRows({
             options={assigneeOptions}
             onChange={(value) => editing.fields.mutate({ assigneeMemberId: value === UNASSIGNED ? null : value })}
           />
-        ) : issue.assignee ? (
-          <MemberChip member={issue.assignee} />
         ) : (
-          <span className="text-muted-foreground">Unassigned</span>
+          <RailValue>
+            {issue.assignee ? (
+              <MemberChip member={issue.assignee} note={agentNote(issue.assignee)} />
+            ) : (
+              <UnassignedChip />
+            )}
+          </RailValue>
         )}
       </RailRow>
 
@@ -201,15 +266,34 @@ function PropertyRows({
       <RailRow label="Parent">
         {canEdit ? (
           <ParentPicker issue={issue} onChange={(parentId) => editing.parent.mutate(parentId)} />
-        ) : issue.parent ? (
-          <IssueReferenceLink issue={issue.parent} />
         ) : (
-          <span className="text-muted-foreground">None</span>
+          <RailValue>
+            {issue.parent ? (
+              <IssueReferenceLink issue={issue.parent} />
+            ) : (
+              <span className="text-muted-foreground">None</span>
+            )}
+          </RailValue>
         )}
       </RailRow>
 
+      {/* ⚠️ A disabled picker rather than a plain chip, and the reason is the column rather than the
+          field. Nobody edits a reporter — not this reader, not an administrator — so there is no
+          permission being expressed here. What there is, is a row that has to line up with the pickers
+          above and below it: same shell, same padding, same height, one left edge. */}
       <RailRow label="Reporter">
-        {issue.reporter ? <MemberChip member={issue.reporter} /> : <span className="text-muted-foreground">—</span>}
+        {issue.reporter ? (
+          <InlineSelect
+            ariaLabel="Reporter"
+            value={issue.reporter.id}
+            options={[memberChoice(issue.reporter)]}
+            disabled
+          />
+        ) : (
+          <RailValue>
+            <span className="text-muted-foreground">—</span>
+          </RailValue>
+        )}
       </RailRow>
 
       <RailRow label="Priority">
@@ -221,7 +305,9 @@ function PropertyRows({
             onChange={(value) => editing.fields.mutate({ priorityId: value })}
           />
         ) : (
-          <PriorityBadge priority={issue.priority} />
+          <RailValue>
+            <PriorityBadge priority={issue.priority} />
+          </RailValue>
         )}
       </RailRow>
 
@@ -238,6 +324,47 @@ function PropertyRows({
           />
         </RailRow>
       )}
+
+      {/* ⚠️ The badge sits on the label rather than beside a fourth row, because it is not a fourth
+          fact — it is the verdict on the three below it. A row of its own would read as another date
+          somebody could set, and it is the only thing here nobody can. */}
+      <RailRow
+        label={
+          <span className="flex items-center gap-1.5">
+            When
+            <ScheduleBadge schedule={issue.schedule} compact />
+          </span>
+        }
+      >
+        <ScheduleDateControl
+          ariaLabel="Queued for"
+          value={issue.schedule.queuedFor}
+          canEdit={canEdit}
+          quick={[
+            { label: "Today", days: 0 },
+            { label: "Tomorrow", days: 1 },
+          ]}
+          onChange={(queuedFor) => editing.schedule.mutate({ queuedFor })}
+        />
+      </RailRow>
+
+      <RailRow label="Red line">
+        <ScheduleDateControl
+          ariaLabel="Red line"
+          value={issue.schedule.redLine}
+          canEdit={canEdit}
+          onChange={(redLine) => editing.schedule.mutate({ redLine })}
+        />
+      </RailRow>
+
+      <RailRow label="Deadline">
+        <ScheduleDateControl
+          ariaLabel="Deadline"
+          value={issue.schedule.deadline}
+          canEdit={canEdit}
+          onChange={(deadline) => editing.schedule.mutate({ deadline })}
+        />
+      </RailRow>
 
       <RailRow label="Labels">
         {canEdit ? (

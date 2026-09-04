@@ -34,8 +34,13 @@ export function MemberAvatar({ member, ...properties }: MemberAvatarProperties) 
         <AvatarImage src={avatar.url} alt={memberName(member)} />
       )}
 
+      {/* ⚠️ **The `!` is load-bearing, and it is defending against a rule meant for icons.** A generated
+          avatar is a bare `<svg>` with no class of its own, and controls that expect icons inside them —
+          the select trigger, a select row, a button — carry `[&_svg:not([class*='size-'])]:size-4`. That
+          matches a face as readily as a chevron, and a portrait squashed to 16px in the corner of its own
+          28px box is what a chip looked like inside a picker. A portrait is content, not an affordance. */}
       {avatar?.kind === "PRESET" && avatar.preset ? (
-        <GeneratedAvatar source={avatar.preset} size={null} className="block size-full [&>svg]:size-full" />
+        <GeneratedAvatar source={avatar.preset} size={null} className="block size-full [&>svg]:size-full!" />
       ) : (
         <AvatarFallback className="text-[11px]">{memberInitials(member)}</AvatarFallback>
       )}

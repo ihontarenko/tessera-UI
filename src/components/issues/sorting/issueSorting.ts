@@ -133,6 +133,58 @@ const UPDATED: IssueSortOption = {
   compare: (left, right) => Date.parse(left.updatedAt) - Date.parse(right.updatedAt),
 }
 
+/**
+ * Soonest first — "what is up next" is the question this column exists to answer, so ascending is the
+ * useful direction and it opens that way.
+ *
+ * ⚠️ **An unset date sorts last whichever way round it is**, like {@link POINTS} and for the same
+ * reason: null here means *nobody has said when*, which is neither an early day nor a late one. Putting
+ * it at whichever end the direction implies would claim a plan that was never made — and anybody sorting
+ * by a schedule is looking for the rows that have one.
+ */
+function byDate(pick: (issue: IssueRow) => string | null | undefined) {
+  return (left: IssueRow, right: IssueRow) => {
+    const leftDate = pick(left)
+    const rightDate = pick(right)
+
+    if (!leftDate && !rightDate) {
+      return 0
+    }
+    if (!leftDate) {
+      return 1
+    }
+    if (!rightDate) {
+      return -1
+    }
+
+    return leftDate.localeCompare(rightDate)
+  }
+}
+
+const QUEUED_FOR: IssueSortOption = {
+  id: "queuedFor",
+  labelKey: "issues.sort.queuedFor",
+  label: "Queued for",
+  defaultDirection: "asc",
+  compare: byDate((issue) => issue.schedule.queuedFor),
+}
+
+const RED_LINE: IssueSortOption = {
+  id: "redLine",
+  labelKey: "issues.sort.redLine",
+  label: "Red line",
+  defaultDirection: "asc",
+  compare: byDate((issue) => issue.schedule.redLine),
+}
+
+const DEADLINE: IssueSortOption = {
+  id: "deadline",
+  labelKey: "issues.sort.deadline",
+  label: "Deadline",
+  defaultDirection: "asc",
+  compare: byDate((issue) => issue.schedule.deadline),
+}
+
 export const ISSUE_SORTS: IssueSortOption[] = [
   RANK,
   KEY,
@@ -141,6 +193,9 @@ export const ISSUE_SORTS: IssueSortOption[] = [
   STATUS,
   PRIORITY,
   POINTS,
+  QUEUED_FOR,
+  RED_LINE,
+  DEADLINE,
   UPDATED,
 ]
 
@@ -150,8 +205,16 @@ export const PROJECT_SORTS = ISSUE_SORTS
 /** What the cross-project list offers — everything the database can order by. */
 export const GLOBAL_SORTS = ISSUE_SORTS.filter((option) => option.global !== false)
 
-/** A project list opens where the board put things; the cross-project one, on what moved last. */
-export const PROJECT_DEFAULT_SORT = RANK.id
+/**
+ * Both lists open on what moved last, newest first.
+ *
+ * ⚠️ **The project list opened on `rank` and no longer does.** Board order is the right answer on a
+ * board, where somebody dragged the cards into it deliberately; on a flat list of a few hundred issues
+ * it is an order nobody chose — a LexoRank that mostly reflects the sequence things were created in, so
+ * the screen opened on the oldest work in the project and everything raised this week was pages down.
+ * The sort control still offers board order for anybody who wants it.
+ */
+export const PROJECT_DEFAULT_SORT = UPDATED.id
 export const GLOBAL_DEFAULT_SORT = UPDATED.id
 
 export function findSort(id: string, within: IssueSortOption[] = ISSUE_SORTS): IssueSortOption {

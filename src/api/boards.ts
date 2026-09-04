@@ -1,6 +1,6 @@
 import { httpClient } from "@/api/httpClient"
 import type { MemberSummary } from "@/api/members"
-import type { IssueTypeSummary, PrioritySummary, StatusCategory, StatusSummary } from "@/api/issues"
+import type { IssueSchedule, IssueTypeSummary, PrioritySummary, StatusCategory, StatusSummary } from "@/api/issues"
 import type { ActiveSprintView, BoardScopeStrategy } from "@/api/sprints"
 
 // ── Board payload (mirrors the backend dto/board.* records) ──────────────────────────────────────
@@ -41,6 +41,14 @@ export interface BoardCard {
    * needs "not this one", not a list to read. The keys are one click away on the issue.
    */
   blocked: boolean
+  /**
+   * When it is meant to happen, and how pressing that is today. Never null.
+   *
+   * ⚠️ On a card, unlike `blocked`, and for the opposite reason. A blocker is a list of other issues and
+   * costs a query per card, so the card carries a flag. A schedule is three columns already loaded with
+   * the row — and the board is the screen where "what is due" decides what somebody drags next.
+   */
+  schedule: IssueSchedule
   /** Recorded completion time the done-threshold measures against (ticket 06) — never `updatedAt`. */
   resolvedAt: string | null
 }

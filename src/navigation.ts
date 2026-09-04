@@ -2,6 +2,7 @@ import {
   Bookmark,
   CircleDot,
   CircleDotDashed,
+  Search,
   FolderKanban,
   FolderOpen,
   LayoutDashboard,
@@ -14,7 +15,7 @@ import { ADMINISTER_ACCESS, ADMINISTER_CONFIGURATION } from "@/api/permissions"
 /** Where the member is, for the entries whose destination depends on it. */
 export interface NavigationContext {
   /** ⚠️ Null before this browser has ever been in a project — an ordinary answer, not an error. */
-  currentProjectId: string | null
+  currentProjectReference: string | null
 }
 
 /** The part of the location an entry may match on. `search` carries the leading `?`. */
@@ -119,7 +120,7 @@ export const navigationGroups: NavigationGroup[] = [
         translationKey: "nav.issues",
         path: "/projects",
         resolvePath: (context) =>
-          context.currentProjectId ? `/projects/${context.currentProjectId}?tab=issues` : "/projects",
+          context.currentProjectReference ? `/projects/${context.currentProjectReference}?tab=issues` : "/projects",
         // Only the issues tab, never the whole project — without this the entry would light up on the
         // board, the backlog and the settings too, taking the highlight off Projects on all three.
         // The tab has to be named: `/projects/x` with no `?tab=` opens whichever tab the project's
@@ -140,6 +141,23 @@ export const navigationGroups: NavigationGroup[] = [
         translationKey: "nav.allIssues",
         path: "/issues",
         icon: CircleDotDashed,
+        isBuilt: true,
+        description: "",
+      },
+      // Where the member looks something up they cannot name: ranked relevance over summaries,
+      // descriptions AND comments (TSSR-156).
+      //
+      // ⚠️ THE THIRD ENTRY ABOUT ISSUES, and the split is real rather than tidy. "Issues" is one
+      // project's list you work in. "All issues" is a filtered table — pick a status, a sort column,
+      // page through it — which needs you to already know how to narrow. This is for when you do not:
+      // you remember a phrase and not where it was, and the answer is ranked and quotes the passage.
+      // Folding it into "All issues" was considered and refused: relevance ordering cannot coexist
+      // with sorting by priority, and a screen that tries is bad at both.
+      {
+        title: "Search",
+        translationKey: "nav.search",
+        path: "/search",
+        icon: Search,
         isBuilt: true,
         description: "",
       },

@@ -282,6 +282,7 @@ export function IssueSearchPanel() {
                 status={issue.status}
                 open={issue.open}
                 projectKey={project.key}
+                schedule={issue.schedule}
                 trailing={
                   <>
                     <PriorityBadge priority={issue.priority} />
