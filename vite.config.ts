@@ -50,7 +50,7 @@ export default defineConfig({
     // PROGRAM, and `node.exe` under one Node installation carries no rule for another — see
     // "Reaching the dev servers from outside" in the workspace CLAUDE.md.
     host: '0.0.0.0',
-    allowedHosts: ["tessera.jmouse.org"],
+    allowedHosts: allowedHosts,
     proxy: {
       // Tessera's own API.
       '/api': 'http://localhost:8100',
